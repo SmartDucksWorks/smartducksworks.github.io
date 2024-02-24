@@ -512,51 +512,57 @@ span.lineno {
 
   
   
+  nav .p-staff { border-color: #fab125; }
+  #staff { background-color: #233d4d !important; color: #ffe2cf; }
+  #staff a { color: #111111; }
+  #staff .sectiondivider { color: #fab125; }
+
   
-  nav .p-video { border-color: #cc3e44; }
-  #video { background-color: #cc3e44 !important; color: #111111; }
+  
+  nav .p-video { border-color: #fab125; }
+  #video { background-color: #fab125 !important; color: #000000; }
   #video a { color: #111111; }
-  #video .sectiondivider { color: #cc3e44; }
+  #video .sectiondivider { color: #233d4d; }
 
   
   
   
-  nav .p-communication { border-color: #fc88fd; }
-  #communication { background-color: #fc88fd !important; color: #111111; }
-  #communication a { color: #111111; }
-  #communication .sectiondivider { color: #fc88fd; }
+  nav .p-quacking { border-color: #fab125; }
+  #quacking { background-color: #233d4d !important; color: #ffe2cf; }
+  #quacking a { color: #111111; }
+  #quacking .sectiondivider { color: #fab125; }
 
   
   
   
   nav .p-reality { border-color: #fab125; }
-  #reality { background-color: #fab125 !important; color: #111111; }
+  #reality { background-color: #fab125 !important; color: #000000; }
   #reality a { color: #111111; }
-  #reality .sectiondivider { color: #fab125; }
+  #reality .sectiondivider { color: #233d4d; }
 
   
   
   
-  nav .p-smartduck { border-color: #64b836; }
-  #smartduck { background-color: #64b836 !important; color: #111111; }
+  nav .p-smartduck { border-color: #fab125; }
+  #smartduck { background-color: #233d4d !important; color: #ffe2cf; }
   #smartduck a { color: #111111; }
-  #smartduck .sectiondivider { color: #64b836; }
+  #smartduck .sectiondivider { color: #fab125; }
 
   
   
   
-  nav .p-problem { border-color: #0fbfcf; }
-  #problem { background-color: #0fbfcf !important; color: #111111; }
+  nav .p-problem { border-color: #fab125; }
+  #problem { background-color: #fab125 !important; color: #000000; }
   #problem a { color: #111111; }
-  #problem .sectiondivider { color: #0fbfcf; }
+  #problem .sectiondivider { color: #233d4d; }
 
   
   
   
-  nav .p-home { border-color: #49a7e9; }
-  #home { background-color: #49a7e9 !important; color: #111111; }
+  nav .p-home { border-color: #fab125; }
+  #home { background-color: #233d4d !important; color: #ffe2cf; }
   #home a { color: #111111; }
-  #home .sectiondivider { color: #49a7e9; }
+  #home .sectiondivider { color: #fab125; }
 
 
 
@@ -604,7 +610,7 @@ hr {
 
 .container h1, .container h2, .container h3, .container h4 {
   margin-bottom: 20px;
-  text-align: center;
+  text-align: left;
   padding: 0 4%;
 }
 .container p, .container ol, .container ul {
@@ -771,7 +777,19 @@ nav ul li:hover, nav ul li.active {
   text-shadow:1px 4px 5px #000000;
   text-indent: 92%;
 }
-
+.sectiondivider h6 {
+  font-size:45px;
+  font-weight:700;
+  text-transform:uppercase;
+  position:relative;
+  bottom:105px;
+  text-align:center;
+  display:block;
+  z-index:1;
+  width:240px;
+  text-shadow:1px 4px 5px #fce5c7;
+  text-indent: 92%;
+}
 .sectiondivider .icon {
   display: inline-block;
   width: 1em;

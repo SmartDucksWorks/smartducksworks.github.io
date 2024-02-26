@@ -611,6 +611,7 @@ hr {
 .container h1, .container h2, .container h3, .container h4 {
   margin-bottom: 20px;
   text-align: left;
+  text-wrap: balance;
   padding: 0 4%;
 }
 .container p, .container ol, .container ul {
@@ -765,12 +766,12 @@ nav ul li:hover, nav ul li.active {
 
 /* ----- page title section and again near bottom ----- */
 .sectiondivider h5 {
-  font-size:45px;
+  font-size:35px;
   font-weight:700;
   text-transform:uppercase;
   position:relative;
-  bottom:105px;
-  text-align:center;
+  bottom:110px;
+  text-align:justify;
   display:block;
   z-index:1;
   width:240px;
@@ -778,11 +779,11 @@ nav ul li:hover, nav ul li.active {
   text-indent: 92%;
 }
 .sectiondivider h6 {
-  font-size:45px;
+  font-size:35px;
   font-weight:700;
   text-transform:uppercase;
   position:relative;
-  bottom:105px;
+  bottom:110px;
   text-align:center;
   display:block;
   z-index:1;
@@ -919,13 +920,26 @@ nav ul li:hover, nav ul li.active {
     font-weight:700;
     text-transform:uppercase;
     position:relative;
-    bottom:105px;
+    bottom:-10px;
     text-align:center;
     display:block;
     z-index:1;
     width:240px;
     text-shadow: #000000;
-    text-indent: 63%;
+    text-indent: -20%;
+  }
+  .sectiondivider h6 {
+    font-size:25px;
+    font-weight:700;
+    text-transform:uppercase;
+    position:relative;
+    bottom:-10px;
+    text-align:center;
+    display:block;
+    z-index:1;
+    width:240px;
+    text-shadow: #000000;
+    text-indent: -20%;
   }
 
   .columned {

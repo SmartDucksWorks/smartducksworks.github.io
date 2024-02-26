@@ -64,12 +64,12 @@
 	h1, h2, h3, h4, h5, h6 {
 		font-weight: 400; }
 	h1 a, h2 a, h3 a, h4 a, h5 a, h6 a { font-weight: inherit; }
-	h1 { font-size: 66px; line-height: 50px; margin-bottom: 14px;}
-	h2 { font-size: 45px; line-height: 40px; margin-bottom: 10px; }
+	h1 { font-size: 66px; line-height: 50px; margin-bottom: 14px; margin-top: 20px;} 
+	h2 { font-size: 45px; line-height: 40px; margin-bottom: 10px; margin-top: 40px; }
 	h3 { font-size: 38px; line-height: 34px; margin-bottom: 8px; }
 	h4 { font-size: 31px; line-height: 30px; margin-bottom: 4px; }
-	h5 { font-size: 27px; line-height: 24px; }
-	h6 { font-size: 27px; line-height: 24px; }
+	h5 { font-size: 27px; line-height: 24px; margin-bottom: 24px;}
+	h6 { font-size: 27px; line-height: 24px; margin-bottom: 24px;}
 	.subheader { color: #777; }
 
 	p { margin: 0 0 20px 0; }
@@ -878,7 +878,7 @@ nav ul li:hover, nav ul li.active {
 
 
 /* mid size (tablets, landscapes) */
-@media only screen and (max-width: 679px) {
+@media only screen and (max-width: 600px) {
   nav { font-size:11px; }
   nav ul li {
     min-width:60px;
@@ -887,14 +887,14 @@ nav ul li:hover, nav ul li.active {
 }
 
 /* tiny size (phones) */
-@media only screen and (max-width: 380px) {
+@media only screen and (max-width: 360px) {
   nav ul li { min-width:90px; line-height:20px; }
 }
 
 /* anything not desktop */
 @media only screen and (max-width: 767px) {
 	.container h1 { font-size: 30px; }
-	.container h2 { font-size: 24px; }
+	.container h2 { font-size: 24px; line-height: 20px;}
 	.container h3 { font-size: 20px; }
 	.container h4 { font-size: 18px; }
 

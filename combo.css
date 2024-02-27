@@ -598,6 +598,12 @@ img {
   vertical-align:middle;
 }
 
+img2 {
+  max-width:100%!important;
+  height:auto;
+  vertical-align:middle;
+}
+
 hr {
   margin:60px auto;
   width:50%;

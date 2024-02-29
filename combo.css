@@ -960,6 +960,13 @@ nav ul li:hover, nav ul li.active {
     -moz-column-count:    2;
     column-count:         2;
   }
+
+  .navicon {
+    width: 2em;
+    height: 2em;
+    vertical-align: -0.5em;
+  } 
+  
 }
 
 

@@ -665,6 +665,12 @@ nav {
   background:#2e2e2e;
 }
 
+.navicon {
+  width: 2em;
+  height: 2em;
+  vertical-align: -0.5em;
+} 
+
 nav ul {
   list-style:none;
   text-align:center;
@@ -682,7 +688,7 @@ nav ul li {
   line-height:normal;
   letter-spacing:normal;
   text-transform:uppercase;
-  min-width:110px;
+  min-width:90px;
   line-height:60px;
   margin:0;
 }

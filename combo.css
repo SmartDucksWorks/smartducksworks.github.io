@@ -598,6 +598,10 @@ img {
   vertical-align:middle;
 }
 
+.logo img {
+  horizontal-align:middle;
+}
+
 hr {
   margin:60px auto;
   width:50%;

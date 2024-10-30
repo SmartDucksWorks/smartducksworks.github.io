@@ -1,0 +1,382 @@
+
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: 'Arial', sans-serif;
+  background-color: #f0f0f0;
+  scroll-behavior: smooth;
+  font-size: 17.6px;
+
+}
+
+header {
+  background-color: #333333;
+  color: white;
+  padding: 15px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.logo {
+  font-size: 26.4px;
+  font-weight: 300;
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  font-size: 17.6px;
+  transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+  color: #F1C40F;
+}
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.hamburger span {
+  width: 25px;
+  height: 3px;
+  background-color: white;
+  margin: 2px 0;
+  transition: 0.4s;
+}
+
+.panel {
+  padding: 40px;
+  text-align: center;
+  padding-bottom: 80px;
+}
+
+.dark-panel {
+  background-color: #233d4d;
+  color: white;
+}
+
+.light-panel {
+  background-color: #FDFDF8;
+  color: #233d4d;
+}
+
+.centered-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+h1, h2 {
+  font-size: 46.2px;
+  margin-bottom: 20px;
+}
+
+p {
+  font-size: 17.6px;
+  line-height: 1.6;
+  margin-bottom: 50px;
+}
+
+.order-button {
+  background-color: #F1C40F;
+  color: #233d4d;
+  padding: 12px 24px;
+  font-size: 30px;
+  font-weight: bold;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.order-button:hover {
+  background-color: #F39C12;
+}
+
+/* Features section */
+.features-container {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 30px;
+}
+
+.feature {
+  flex-basis: calc(33.33% - 20px);
+  margin-bottom: 30px;
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: #ECF0F1;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  text-wrap: balance;
+}
+
+.feature:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.feature h3 {
+  color: #F1C40F;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+/* Product description section */
+.product-description {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.product-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+
+.product-item {
+  flex-basis: calc(50% - 20px);
+  text-align: left;
+}
+
+.product-item h3 {
+  color: #F1C40F;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+/* Testimonials Section */
+.testimonials-container {
+display: flex;
+justify-content: space-between;
+overflow: hidden;
+width: 100%;
+position: relative;
+padding: 20px 0;
+height: 250px;
+}
+
+.testimonial {
+flex: 1 0 45%; /* Show 50% of two testimonials on larger screens */
+padding: 30px;
+background-color: #ECF0F1;
+border-radius: 10px;
+box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+font-style: italic;
+transition: opacity 0.5s ease, transform 0.5s ease;
+opacity: 0; /* Initially hidden */
+display: none;
+margin: 0 10px;
+box-sizing: border-box;
+}
+
+.testimonial.p {
+margin: 0; /* remove extra margin from <p> to prevent extra space */
+}
+
+.testimonial.visible {
+opacity: 1;  /* Make visible */
+display: block; /* Ensure visible testimonials take space */
+}
+
+.testimonial.hidden {
+opacity: 0; /* Keep hidden */
+display: none; /* Remove from layout to avoid occupying space */
+}
+
+
+/* Details section */
+.details-container {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.details-item {
+  margin-bottom: 30px;
+  text-wrap: balance;
+}
+
+.details-item h3 {
+  color: #F1C40F;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+/* Science section */
+.science-container {
+  max-width: 800px;
+  margin: 30px auto 0;
+}
+
+.science-item {
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #ECF0F1;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  text-wrap: balance;
+}
+
+.science-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.science-item h3 {
+  color: #F1C40F;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+/* Footer styling */
+footer {
+  background-color: #333333;
+  color: white;
+  text-align: center;
+  padding: 20px;
+  font-size: 14px;
+}
+
+.image-box {
+  background-color: #333333; /* Dark grey background for the whole panel */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  justify-content: center; /* Centers content horizontally */
+  align-items: center; /* Centers content vertically */
+}
+
+/* First image box */
+.image-box:first-of-type {
+  height: 800px; /* Adjust the height to your desired value */
+  width: 100%;
+  background-image: url('img/hero2.jpg');
+}
+
+ /* Background image and styles for full-width-image */
+.full-width-image {
+width: 100%;
+height: 1000px; /* Adjust height to fit your design */
+background-image: url('img/SiteGraphicPageBottom.png');
+background-size: cover; /* Ensures the image covers the container without white spaces */
+background-position: center;
+background-repeat: no-repeat;
+margin-bottom: 0;
+}
+
+/* Background image and styles for full-width-image2 */
+.full-width-image2 {
+width: 100%;
+height: 125px; /* Adjust height to fit your design */
+background-image: url('img/SmartDucksFeetLogoColour.png');
+background-size: contain; /* Ensures the logo image is fully visible */
+background-position: center;
+background-repeat: no-repeat;
+background-color: #333333;
+margin-bottom: 0;
+display: flex;
+justify-content: center;
+align-items: center;
+}
+
+
+
+/*  Large Screens (e.g. desktops and large tablets) */
+@media (min-width: 1024px) {
+  .full-width-image {
+    background-size: contain; /* Ensure full image is visible */
+    height: auto;
+    padding-top: 71.97%; /* Adjust padding to maintain aspect ratio */
+  }
+}
+
+
+
+/* Optional media queries for responsive design */
+@media (max-width: 768px) {
+  .feature, .product-item, .testimonial {
+    flex-basis: 100%;
+  }
+  
+  .full-width-image {
+    height: 400px; /* Adjust height for smaller screens */
+  }
+
+  .full-width-image2 {
+    height: 100px; /* Adjust height for smaller screens */
+    background-color: #333333;
+    background-size: contain;
+}
+
+  .product-container, .testimonials-container, .features-container {
+    flex-direction: column;
+  }
+
+  .testimonials-container {
+  flex-direction: column; /* Stack testimonials on smaller screens */
+  height: 300px;
+}
+
+.testimonial {
+  flex-basis: 100%;
+  margin-bottom: 20px;
+  height: 100%;
+}
+
+.testimonial.visible {
+  display: block; /* show only the testimonial aone ata. time */
+}
+
+.testimonial.hidden {
+  display: none;
+}
+
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    width: 100%;
+    background-color: #333333;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+  }
+
+  .nav-links.active {
+    display: flex;
+  }
+
+  .nav-links a {
+    padding: 10px 0;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+}
+
+
+
+
+
+
+
+

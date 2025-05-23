@@ -835,11 +835,31 @@
             }
             window._fixesInitialized = true;
             
-            // Apply the postal code and form submission fixes
-            fixPostalCodeFormatting();
-            fixFormSubmission();
+            // Define the states object first to ensure it's available for all functions
+            if (typeof window.states !== 'object') {
+                window.states = {
+                    US: {
+                        AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
+                        CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', FL: 'Florida', GA: 'Georgia',
+                        HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa',
+                        KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland',
+                        MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi',
+                        MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire',
+                        NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina',
+                        ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
+                        RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee',
+                        TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington',
+                        WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming'
+                    },
+                    CA: {
+                        AB: 'Alberta', BC: 'British Columbia', MB: 'Manitoba', NB: 'New Brunswick',
+                        NL: 'Newfoundland and Labrador', NS: 'Nova Scotia', ON: 'Ontario',
+                        PE: 'Prince Edward Island', QC: 'Quebec', SK: 'Saskatchewan'
+                    }
+                };
+            }
             
-            // Apply state/province fix with a clean approach that replaces DOM elements
+            // Apply state/province fix FIRST with a clean approach that replaces DOM elements
             function applyStateProvinceFix() {
                 console.log('Applying robust state/province fix...');
                 
@@ -865,13 +885,16 @@
                 const freshCountrySelect = document.getElementById('countryCode');
                 const freshStateSelect = document.getElementById('state');
                 
-                // Make sure updateStateOptions function is defined properly
+                // Define updateStateOptions in the window scope for global access
                 window.updateStateOptions = function(country) {
                     console.log('Updating state options for country:', country);
                     
                     // Always get fresh references
                     const stateSelect = document.getElementById('state');
-                    if (!stateSelect) return;
+                    if (!stateSelect) {
+                        console.error("State select element not available");
+                        return;
+                    }
                     
                     // Clear options
                     stateSelect.innerHTML = '<option value="" disabled selected>Select State/Province</option>';
@@ -908,17 +931,29 @@
                     if (stateLabel) {
                         stateLabel.textContent = isCanada ? 'Province*' : 'State*';
                     }
+                    
+                    console.log(`State/Province selector updated for ${country} with ${Object.keys(window.states[country]).length} options`);
                 };
                 
-                // Add the change event handler
-                freshCountrySelect.addEventListener('change', function() {
-                    const country = this.value;
+                // Define a clear event handler for country changes
+                window.handleCountryChange = function() {
+                    const countrySelect = document.getElementById('countryCode');
+                    if (!countrySelect) return;
+                    
+                    const country = countrySelect.value;
+                    console.log("Country changed to:", country);
+                    
+                    // Update state options
                     window.updateStateOptions(country);
                     
                     // Clear postal code
                     const postalInput = document.getElementById('postalCode');
                     if (postalInput) postalInput.value = '';
-                });
+                };
+                
+                // Add the change event handler with our named function
+                freshCountrySelect.removeEventListener('change', window.handleCountryChange);
+                freshCountrySelect.addEventListener('change', window.handleCountryChange);
                 
                 // Initialize with current country value
                 if (freshCountrySelect.value) {
@@ -930,34 +965,57 @@
                 }
                 
                 console.log('State/province fix applied successfully');
+                
+                // Return true to indicate success
+                return true;
             }
             
-            // Apply the state/province fix first
-            applyStateProvinceFix();
+            // Apply the state/province fix FIRST and only continue if successful
+            const stateFixApplied = applyStateProvinceFix();
             
-            // Also run the original fix for backward compatibility
-            fixStateProvinceSelection();
+            // Now apply the other fixes
+            fixPostalCodeFormatting();
+            fixFormSubmission();
             
-            // Add a robust monitoring mechanism that checks periodically
+            // Add a more reliable monitoring mechanism for state/province selector
             function monitorStateSelector() {
                 const countrySelect = document.getElementById('countryCode');
                 const stateSelect = document.getElementById('state');
                 
-                if (countrySelect && stateSelect && countrySelect.value) {
-                    // If a country is selected but state is disabled or has no options, fix it
-                    if (stateSelect.disabled || stateSelect.options.length <= 1) {
-                        console.log('State monitor: State selector needs fixing...');
-                        window.updateStateOptions(countrySelect.value);
-                        stateSelect.disabled = false;
+                if (countrySelect && stateSelect) {
+                    // Check if country has a value but state is disabled or has no options
+                    if (countrySelect.value && (stateSelect.disabled || stateSelect.options.length <= 1)) {
+                        console.log('State monitor: State selector broken after reload - fixing...');
+                        
+                        // Completely replace both elements to clear all event handlers
+                        const newCountrySelect = countrySelect.cloneNode(true);
+                        countrySelect.parentNode.replaceChild(newCountrySelect, countrySelect);
+                        
+                        const newStateSelect = stateSelect.cloneNode(true);
+                        stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
+                        
+                        // Get fresh references
+                        const freshCountrySelect = document.getElementById('countryCode');
+                        const freshStateSelect = document.getElementById('state');
+                        
+                        // Add event listener again
+                        freshCountrySelect.addEventListener('change', window.handleCountryChange);
+                        
+                        // Update state options
+                        window.updateStateOptions(freshCountrySelect.value);
+                        freshStateSelect.disabled = false;
                     }
                 }
                 
-                // Continue monitoring every 2 seconds
-                setTimeout(monitorStateSelector, 2000);
+                // Continue monitoring every 1 second for the first minute, then every 30 seconds
+                const nextInterval = window._monitorCount && window._monitorCount < 60 ? 1000 : 30000;
+                window._monitorCount = (window._monitorCount || 0) + 1;
+                
+                setTimeout(monitorStateSelector, nextInterval);
             }
             
-            // Start monitoring after a short delay
-            setTimeout(monitorStateSelector, 1000);
+            // Start monitoring immediately
+            monitorStateSelector();
             
         } catch (err) {
             console.error('Error during SmartDucks form fixes initialization:', err);
@@ -975,7 +1033,7 @@
     
     // Add additional window.load event handler for extra assurance
     window.addEventListener('load', function() {
-        console.log('Window load event - ensuring state/province selector works');
+        console.log('Window load event triggered - ensuring state/province selector works');
         
         // Make sure fixes run even if they didn't run earlier
         if (!window._fixesInitialized) {
@@ -983,17 +1041,37 @@
             initFixes();
         }
         
-        // Final verification
+        // Final verification after a short delay to ensure DOM is fully ready
         setTimeout(function() {
             const countrySelect = document.getElementById('countryCode');
             const stateSelect = document.getElementById('state');
             
-            if (countrySelect && stateSelect && countrySelect.value) {
+            if (countrySelect && stateSelect) {
                 console.log('Final window.load check: Verifying state selector');
-                if (stateSelect.disabled || stateSelect.options.length <= 1) {
-                    console.log('Fixing state selector at window.load');
-                    window.updateStateOptions(countrySelect.value);
-                    stateSelect.disabled = false;
+                
+                if (countrySelect.value) {
+                    if (stateSelect.disabled || stateSelect.options.length <= 1) {
+                        console.log('State selector broken at window.load - fixing immediately');
+                        
+                        // Force a clean slate by replacing elements
+                        const newCountrySelect = countrySelect.cloneNode(true);
+                        countrySelect.parentNode.replaceChild(newCountrySelect, countrySelect);
+                        
+                        const newStateSelect = stateSelect.cloneNode(true);
+                        stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
+                        
+                        // Get fresh references
+                        const freshCountrySelect = document.getElementById('countryCode');
+                        freshCountrySelect.addEventListener('change', window.handleCountryChange);
+                        
+                        // Re-initialize the state options
+                        window.updateStateOptions(freshCountrySelect.value);
+                        
+                        // Ensure state select is enabled
+                        document.getElementById('state').disabled = false;
+                    } else {
+                        console.log('State selector appears to be working correctly');
+                    }
                 }
             }
         }, 500);

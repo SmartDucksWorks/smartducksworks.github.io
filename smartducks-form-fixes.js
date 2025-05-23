@@ -237,45 +237,6 @@
         
         console.log('Postal code formatting fix applied successfully');
     }
-        
-        // Format postal code on input
-        postalInputNew.addEventListener('input', function() {
-            const country = countrySelectNew.value;
-            const formattedValue = formatPostalCode(country, this.value);
-            
-            // Only update if the formatted value is different
-            if (formattedValue !== this.value) {
-                // Get cursor position before update
-                const start = this.selectionStart;
-                const end = this.selectionEnd;
-                
-                this.value = formattedValue;
-                
-                // Adjust cursor position if needed
-                if (document.activeElement === this) {
-                    if (start === end) {
-                        // If no selection, just move cursor to appropriate position
-                        const newPos = Math.min(start + (formattedValue.length - start), formattedValue.length);
-                        this.setSelectionRange(newPos, newPos);
-                    } else {
-                        // If there was a selection, preserve it
-                        this.setSelectionRange(start, end);
-                    }
-                }
-            }
-        });
-        
-        // Update postal format and clear postal code when country changes
-        countrySelectNew.addEventListener('change', function() {
-            postalInputNew.value = '';
-            updatePostalFormat(this.value);
-        });
-        
-        // Initialize with current country value
-        if (countrySelectNew.value) {
-            updatePostalFormat(countrySelectNew.value);
-        }
-    }
 
     // 3. Fix Form Submission
     function fixFormSubmission() {

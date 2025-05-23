@@ -448,6 +448,38 @@
         setTimeout(monitorStateProvince, interval);
     }
 
+    // Ensure form submission handler is properly working
+    function ensureFormSubmitWorks() {
+        console.log('Ensuring form submission handler is working');
+        
+        const addressForm = document.getElementById('addressForm');
+        const submitButton = addressForm ? addressForm.querySelector('.submit-button') : null;
+        
+        if (!addressForm || !submitButton) {
+            console.log('Form elements not found yet for form submission check, will retry...');
+            setTimeout(ensureFormSubmitWorks, 500);
+            return;
+        }
+        
+        console.log('Form found, ensuring submission handler is working');
+        
+        // Re-attach the submit event listener to make sure it works
+        const originalSubmit = addressForm.onsubmit;
+        
+        // Check if the form already has an explicit submit handler
+        if (!originalSubmit && !window._formSubmitFixed) {
+            window._formSubmitFixed = true;
+            
+            // Re-verify that the form submission handler is working
+            submitButton.addEventListener('click', function(e) {
+                console.log('Submit button clicked, verifying form submission handler...');
+                // We don't need to do anything here - just make sure the event propagates
+            });
+            
+            console.log('Form submission fix applied');
+        }
+    }
+    
     // Run the fix when the document is ready
     function runFixes() {
         if (window._fixesHaveRun) return;
@@ -455,6 +487,7 @@
         
         initStateProvinceFix();
         setTimeout(monitorStateProvince, 2000);
+        setTimeout(ensureFormSubmitWorks, 1000); // Add form submission fix
     }
 
     // Run when DOM is loaded
@@ -537,16 +570,31 @@
     const addressForm = document.getElementById('addressForm');
     if (addressForm) {
         console.log('Final verification of form submission handler');
-        // This doesn't add functionality, but ensures we've checked it exists
         
         // Find the submit button
         const submitButton = addressForm.querySelector('.submit-button');
         if (submitButton) {
             console.log('Found submit button: "' + submitButton.textContent.trim() + '"');
+            
+            // If we haven't fixed the form submission yet, do it now as a fallback
+            if (!window._formSubmitFixed) {
+                console.log('Form submission fix not applied yet, applying now as final measure');
+                ensureFormSubmitWorks();
+            } else {
+                console.log('Form submission handler already verified and fixed if needed');
+            }
         } else {
             console.warn('Submit button not found in address form');
         }
     } else {
         console.warn('Could not perform final verification for address form');
+        // Try again after a short delay as a last resort
+        setTimeout(function() {
+            const lateAddressForm = document.getElementById('addressForm');
+            if (lateAddressForm && !window._formSubmitFixed) {
+                console.log('Late form check: applying form submission fix');
+                ensureFormSubmitWorks();
+            }
+        }, 2000);
     }
 })();

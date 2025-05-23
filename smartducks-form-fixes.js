@@ -7,74 +7,110 @@
 
     // 1. Fix State/Province Selection
     function fixStateProvinceSelection() {
+        console.log('Fixing state/province selector...');
+        
         const countrySelect = document.getElementById('countryCode');
         const stateSelect = document.getElementById('state');
         
-        if (!countrySelect || !stateSelect) return;
+        if (!countrySelect || !stateSelect) {
+            console.log('Country or state select elements not found yet, trying again in 500ms');
+            setTimeout(fixStateProvinceSelection, 500);
+            return;
+        }
         
-        // Backup states data for US and Canada
-        const statesData = {
-            US: {
-                AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
-                CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', FL: 'Florida', GA: 'Georgia',
-                HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa',
-                KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland',
-                MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi',
-                MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire',
-                NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina',
-                ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
-                RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee',
-                TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington',
-                WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming'
-            },
-            CA: {
-                AB: 'Alberta', BC: 'British Columbia', MB: 'Manitoba', NB: 'New Brunswick',
-                NL: 'Newfoundland and Labrador', NS: 'Nova Scotia', ON: 'Ontario',
-                PE: 'Prince Edward Island', QC: 'Quebec', SK: 'Saskatchewan'
-            }
-        };
+        // Create backup states object if not already defined globally
+        if (typeof window.states !== 'object') {
+            window.states = {
+                US: {
+                    AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
+                    CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', FL: 'Florida', GA: 'Georgia',
+                    HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa',
+                    KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland',
+                    MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi',
+                    MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire',
+                    NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina',
+                    ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
+                    RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee',
+                    TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington',
+                    WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming'
+                },
+                CA: {
+                    AB: 'Alberta', BC: 'British Columbia', MB: 'Manitoba', NB: 'New Brunswick',
+                    NL: 'Newfoundland and Labrador', NS: 'Nova Scotia', ON: 'Ontario',
+                    PE: 'Prince Edward Island', QC: 'Quebec', SK: 'Saskatchewan'
+                }
+            };
+        }
         
-        // Update state/province options based on selected country
-        function updateStateOptions(country) {
-            // Clear existing options
-            stateSelect.innerHTML = '<option value="" disabled selected>Select State/Province</option>';
+        // Define the updateStateOptions function in the window scope
+        window.updateStateOptions = function(country) {
+            console.log("Updating state options for country:", country);
             
-            // If no country is selected, disable the state select
-            if (!country) {
-                stateSelect.disabled = true;
+            if (!stateSelect) {
+                console.error("State select element not available");
                 return;
             }
             
-            // Get states for the selected country
-            const states = statesData[country];
+            // Clear existing options
+            stateSelect.innerHTML = '<option value="" disabled selected>Select State/Province</option>';
             
-            // If we have states for this country, populate the dropdown
-            if (states) {
-                // Enable the state select
-                stateSelect.disabled = false;
-                
-                // Add options for each state
-                for (const [code, name] of Object.entries(states)) {
+            // Use the global states object
+            const statesObj = window.states;
+            
+            // Disable the select if no options are available
+            stateSelect.disabled = !country || !statesObj[country];
+            
+            // If no country selected or no states for the country, return early
+            if (!country || !statesObj[country]) return;
+            
+            // Add state options sorted alphabetically
+            Object.entries(statesObj[country])
+                .sort((a, b) => a[1].localeCompare(b[1]))
+                .forEach(([code, name]) => {
                     const option = document.createElement('option');
                     option.value = code;
                     option.textContent = name;
                     stateSelect.appendChild(option);
-                }
-            } else {
-                // If we don't have states for this country, disable the select
-                stateSelect.disabled = true;
+                });
+                
+            // Update labels and validation patterns
+            const isCanada = country === 'CA';
+            const postalInput = document.getElementById('postalCode');
+            if (postalInput) {
+                postalInput.pattern = isCanada ? '[A-Za-z][0-9][A-Za-z] [0-9][A-Za-z][0-9]' : '\\d{5}(-\\d{4})?';
+                postalInput.placeholder = isCanada ? 'A1A 1A1' : '12345 or 12345-6789';
             }
-        }
+            
+            // Update state/province label
+            const stateLabel = document.querySelector('label[for="state"]');
+            if (stateLabel) {
+                stateLabel.textContent = isCanada ? 'Province*' : 'State*';
+            }
+            
+            console.log(`State/Province selector updated for ${country} with ${Object.keys(statesObj[country]).length} options`);
+        };
         
-        // Update state options when country changes
-        countrySelect.addEventListener('change', function() {
-            updateStateOptions(this.value);
+        // Make sure we remove any existing listeners before adding new ones
+        countrySelect.removeEventListener('change', function() {
+            window.updateStateOptions(this.value);
         });
         
-        // Initialize state options with the current country value
+        // Add the change listener
+        countrySelect.addEventListener('change', function() {
+            window.updateStateOptions(this.value);
+            
+            // Clear postal code input when country changes
+            const postalInput = document.getElementById('postalCode');
+            if (postalInput) postalInput.value = '';
+        });
+        
+        // If country is already selected, update state options
         if (countrySelect.value) {
-            updateStateOptions(countrySelect.value);
+            console.log('Country already selected, updating state options:', countrySelect.value);
+            window.updateStateOptions(countrySelect.value);
         }
+        
+        console.log('State/Province selector fix applied successfully');
     }
 
     // 2. Fix Postal Code Formatting
@@ -82,7 +118,24 @@
         const countrySelect = document.getElementById('countryCode');
         const postalInput = document.getElementById('postalCode');
         
-        if (!countrySelect || !postalInput) return;
+        if (!countrySelect || !postalInput) {
+            console.log('Country or postal code elements not found yet, will try again on DOM load');
+            return;
+        }
+        
+        // Set proper placeholder and pattern based on selected country
+        function updatePostalFormat(country) {
+            if (country === 'CA') {
+                postalInput.placeholder = 'A1A 1A1';
+                postalInput.pattern = '[A-Za-z][0-9][A-Za-z] [0-9][A-Za-z][0-9]';
+            } else if (country === 'US') {
+                postalInput.placeholder = '12345 or 12345-6789';
+                postalInput.pattern = '\\d{5}(-\\d{4})?';
+            } else {
+                postalInput.placeholder = 'Enter postal code';
+                postalInput.pattern = '';
+            }
+        }
         
         // Format postal code based on country
         function formatPostalCode(country, value) {
@@ -111,9 +164,20 @@
             return cleanValue;
         }
         
+        // Remove any existing listeners to prevent duplicates
+        const newPostalInput = postalInput.cloneNode(true);
+        postalInput.parentNode.replaceChild(newPostalInput, postalInput);
+        
+        const newCountrySelect = countrySelect.cloneNode(true);
+        countrySelect.parentNode.replaceChild(newCountrySelect, countrySelect);
+        
+        // Get new references
+        const postalInputNew = document.getElementById('postalCode');
+        const countrySelectNew = document.getElementById('countryCode');
+        
         // Format postal code on input
-        postalInput.addEventListener('input', function() {
-            const country = countrySelect.value;
+        postalInputNew.addEventListener('input', function() {
+            const country = countrySelectNew.value;
             const formattedValue = formatPostalCode(country, this.value);
             
             // Only update if the formatted value is different
@@ -138,10 +202,16 @@
             }
         });
         
-        // Clear postal code when country changes
-        countrySelect.addEventListener('change', function() {
-            postalInput.value = '';
+        // Update postal format and clear postal code when country changes
+        countrySelectNew.addEventListener('change', function() {
+            postalInputNew.value = '';
+            updatePostalFormat(this.value);
         });
+        
+        // Initialize with current country value
+        if (countrySelectNew.value) {
+            updatePostalFormat(countrySelectNew.value);
+        }
     }
 
     // 3. Fix Form Submission
@@ -692,15 +762,33 @@
 
     // Run all fixes
     function initFixes() {
+        console.log('Running SmartDucks form fixes...');
+        
+        // Apply fixes immediately
         fixStateProvinceSelection();
         fixPostalCodeFormatting();
         fixFormSubmission();
+        
+        // If initial attempt fails, try again after a short delay
+        setTimeout(function() {
+            const countrySelect = document.getElementById('countryCode');
+            const stateSelect = document.getElementById('state');
+            if (countrySelect && stateSelect) {
+                // If elements are found but not properly initialized, fix again
+                if (stateSelect.options.length <= 1 && countrySelect.value) {
+                    console.log('State select not properly initialized, fixing again...');
+                    fixStateProvinceSelection();
+                }
+            }
+        }, 1000);
     }
     
     // Run immediately if DOM is already loaded
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initFixes);
-    } else {
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        console.log('Document already loaded, initializing fixes immediately');
         initFixes();
+    } else {
+        console.log('Document still loading, waiting for DOMContentLoaded event');
+        document.addEventListener('DOMContentLoaded', initFixes);
     }
 })();

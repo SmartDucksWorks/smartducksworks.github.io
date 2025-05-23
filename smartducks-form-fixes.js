@@ -1,9 +1,12 @@
 // Consolidated fixes for SmartDucks payment form - Fresh implementation
-// Version: 2024-05-23
-// Focus: Properly handling state/province selection, ensuring it works after page reload
+// Version: 2024-05-24
+// Focus: Properly handling state/province selection and postal code formatting
 
 (function() {
     console.log('SmartDucks form fixes loaded - Fresh implementation');
+    
+    // Expose formatPostalCode function globally for testing purposes
+    window.formatPostalCode = formatPostalCode;
 
     // Define our states data (US states and Canadian provinces)
     const statesData = {
@@ -60,15 +63,22 @@
         
         if (country === 'CA') {
             // For Canadian postal codes: A1A 1A1 format
-            // Uppercase all letters
-            const upperValue = cleanValue.toUpperCase();
+            // Uppercase all letters and limit to 6 characters total
+            const upperValue = cleanValue.toUpperCase().substring(0, 6);
             
             // Insert space after the 3rd character if it doesn't exist and we have more than 3 chars
             if (upperValue.length <= 3) {
+                console.log('Canadian postal code formatting: short value', upperValue);
                 return upperValue;
             } else {
                 // Add space after first 3 characters
-                return `${upperValue.substring(0, 3)} ${upperValue.substring(3, 6)}`.trim();
+                const formatted = `${upperValue.substring(0, 3)} ${upperValue.substring(3)}`.trim();
+                console.log('Canadian postal code formatting:', {
+                    original: value,
+                    cleaned: cleanValue,
+                    formatted: formatted
+                });
+                return formatted;
             }
         } else if (country === 'US') {
             // For US zip codes: 12345 or 12345-6789 format
@@ -137,25 +147,62 @@
             window.handlePostalInput = function() {
                 const countrySelect = document.getElementById('countryCode');
                 const country = countrySelect ? countrySelect.value : '';
-                const formattedValue = formatPostalCode(country, this.value);
+                
+                // Get cursor position and content before update
+                const currentValue = this.value;
+                const cursorPos = this.selectionStart;
+                
+                // Calculate if we're adding or removing a space character
+                const willAddSpace = country === 'CA' && 
+                                    currentValue.length === 3 && 
+                                    !currentValue.includes(' ') && 
+                                    cursorPos === 3;
+                
+                const formattedValue = formatPostalCode(country, currentValue);
                 
                 // Only update if the formatted value is different
-                if (formattedValue !== this.value) {
+                if (formattedValue !== currentValue) {
                     // Get cursor position before update
                     const start = this.selectionStart;
                     const end = this.selectionEnd;
                     
+                    // Save the old value to compare
+                    const oldValue = this.value;
                     this.value = formattedValue;
                     
                     // Adjust cursor position if needed
                     if (document.activeElement === this) {
+                        let newPos = start;
+                        
+                        // If adding a space after typing the first 3 characters, move cursor after space
+                        if (willAddSpace) {
+                            newPos = 4; // Position after the space
+                        }
+                        // If cursor was at or after a space that was added/removed, adjust position
+                        else if (formattedValue.length !== oldValue.length) {
+                            // Check if cursor was after position where space is added in Canadian postal code
+                            if (country === 'CA' && cursorPos > 3) {
+                                // If space was added, move cursor forward
+                                if (formattedValue.length > oldValue.length) {
+                                    newPos = cursorPos + 1;
+                                } 
+                                // If space was removed, move cursor backward
+                                else if (formattedValue.length < oldValue.length) {
+                                    newPos = Math.max(3, cursorPos - 1);
+                                }
+                            }
+                        }
+                        
+                        // Make sure we're not beyond the end of the string
+                        newPos = Math.min(newPos, formattedValue.length);
+                        
                         if (start === end) {
-                            // If no selection, just move cursor to appropriate position
-                            const newPos = Math.min(start + (formattedValue.length - this.value.length), formattedValue.length);
+                            // If no selection, use calculated position
                             this.setSelectionRange(newPos, newPos);
                         } else {
-                            // If there was a selection, preserve it
-                            this.setSelectionRange(start, end);
+                            // If there was a selection, adjust the selection
+                            const selectionLength = end - start;
+                            this.setSelectionRange(newPos, newPos + selectionLength);
                         }
                     }
                 }
@@ -231,8 +278,67 @@
                 if (postalInput) {
                     postalInput.removeEventListener('input', window.handlePostalInput);
                     window.handlePostalInput = function() {
-                        const countryValue = document.getElementById('countryCode').value;
-                        this.value = formatPostalCode(countryValue, this.value);
+                        const countrySelect = document.getElementById('countryCode');
+                        const country = countrySelect ? countrySelect.value : '';
+                        
+                        // Get cursor position and content before update
+                        const currentValue = this.value;
+                        const cursorPos = this.selectionStart;
+                        
+                        // Calculate if we're adding or removing a space character
+                        const willAddSpace = country === 'CA' && 
+                                            currentValue.length === 3 && 
+                                            !currentValue.includes(' ') && 
+                                            cursorPos === 3;
+                        
+                        const formattedValue = formatPostalCode(country, currentValue);
+                        
+                        // Only update if the formatted value is different
+                        if (formattedValue !== currentValue) {
+                            // Get cursor position before update
+                            const start = this.selectionStart;
+                            const end = this.selectionEnd;
+                            
+                            // Save the old value to compare
+                            const oldValue = this.value;
+                            this.value = formattedValue;
+                            
+                            // Adjust cursor position if needed
+                            if (document.activeElement === this) {
+                                let newPos = start;
+                                
+                                // If adding a space after typing the first 3 characters, move cursor after space
+                                if (willAddSpace) {
+                                    newPos = 4; // Position after the space
+                                }
+                                // If cursor was at or after a space that was added/removed, adjust position
+                                else if (formattedValue.length !== oldValue.length) {
+                                    // Check if cursor was after position where space is added in Canadian postal code
+                                    if (country === 'CA' && cursorPos > 3) {
+                                        // If space was added, move cursor forward
+                                        if (formattedValue.length > oldValue.length) {
+                                            newPos = cursorPos + 1;
+                                        } 
+                                        // If space was removed, move cursor backward
+                                        else if (formattedValue.length < oldValue.length) {
+                                            newPos = Math.max(3, cursorPos - 1);
+                                        }
+                                    }
+                                }
+                                
+                                // Make sure we're not beyond the end of the string
+                                newPos = Math.min(newPos, formattedValue.length);
+                                
+                                if (start === end) {
+                                    // If no selection, use calculated position
+                                    this.setSelectionRange(newPos, newPos);
+                                } else {
+                                    // If there was a selection, adjust the selection
+                                    const selectionLength = end - start;
+                                    this.setSelectionRange(newPos, newPos + selectionLength);
+                                }
+                            }
+                        }
                     };
                     postalInput.addEventListener('input', window.handlePostalInput);
                     console.log('Postal code formatting handlers applied');
@@ -287,7 +393,13 @@
                     
                     // Format the current value if it exists
                     if (postalInput.value) {
-                        postalInput.value = formatPostalCode(freshCountrySelect.value, postalInput.value);
+                        const currentCountry = freshCountrySelect.value || 'CA';
+                        console.log('Reformatting postal code via monitor:', postalInput.value);
+                        const formatted = formatPostalCode(currentCountry, postalInput.value);
+                        if (formatted !== postalInput.value) {
+                            console.log(`Postal code updated: ${postalInput.value} → ${formatted}`);
+                            postalInput.value = formatted;
+                        }
                     }
                 }
                 
@@ -372,6 +484,17 @@
                                 
                                 // Update state options
                                 updateStateOptions(freshCountrySelect.value);
+                                
+                                // Also check postal code formatting
+                                const postalInput = document.getElementById('postalCode');
+                                if (postalInput && postalInput.value) {
+                                    console.log('Final check: Reformatting postal code:', postalInput.value);
+                                    const formatted = formatPostalCode(freshCountrySelect.value, postalInput.value);
+                                    if (formatted !== postalInput.value) {
+                                        console.log(`Postal code corrected during final check: ${postalInput.value} → ${formatted}`);
+                                        postalInput.value = formatted;
+                                    }
+                                }
                                 console.log('Aggressive fix applied');
                             }
                         } catch (err) {
@@ -382,4 +505,7 @@
             }, 500);
         }
     });
+    
+    // Export function for testing
+    window.formatPostalCode = formatPostalCode;
 })();

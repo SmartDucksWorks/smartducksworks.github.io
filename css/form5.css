@@ -1,0 +1,312 @@
+/* Moved from form5.html */
+:root {
+    --primary-color: #1f6685;
+    --border-color: #ccc;
+    --error-color: #dc3545;
+    --success-color: #28a745;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background-color: rgba(0, 0, 0, 0.8);
+    overflow-x: hidden;
+}
+.page-wrapper {
+    min-height: 100vh;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    width: 100%;
+}
+.form-container {
+    background-color: white;
+    border-radius: 8px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+}
+.form-group {
+    margin-bottom: 1rem;
+}
+.form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--primary-color);
+}
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+}
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(31, 102, 133, 0.1);
+}
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.invalid {
+    border-color: var(--error-color);
+}
+.valid {
+    border-color: var(--success-color);
+}
+select:required:invalid {
+    color: gray;
+}
+option[value=""][disabled] {
+    display: none;
+}
+option {
+    color: black;
+}
+.submit-button {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.submit-button:hover {
+    background-color: #174d63;
+}
+.submit-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+.shipping-options {
+    display: none;
+    margin-top: 2rem;
+    width: 100%;
+    max-width: 600px;
+}
+.shipping-option {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.shipping-option:hover {
+    border-color: var(--primary-color);
+    background-color: rgba(31, 102, 133, 0.05);
+}
+.shipping-option.selected {
+    border-color: var(--primary-color);
+    background-color: rgba(31, 102, 133, 0.1);
+}
+.shipping-option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.shipping-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+}
+.price-breakdown {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+.product-selection {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+.product-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.quantity-input {
+    width: 60px;
+    text-align: center;
+}
+.total-section {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+.status-text {
+    color: var(--success-color);
+    font-weight: bold;
+}
+.hidden-options {
+    display: none;
+}
+.shipping-summary {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: rgba(31, 102, 133, 0.05);
+    border-radius: 4px;
+}
+#finalActions {
+    margin-top: 2rem;
+    text-align: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+.hidden-field {
+    display: none;
+}
+.form-control.validating {
+    background-color: rgba(var(--primary-color-rgb), 0.05);
+    transition: background-color 0.3s ease;
+}
+.validation-progress {
+    height: 2px;
+    background: var(--primary-color);
+    width: 0;
+    transition: width 0.3s ease;
+}
+.form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+.form-group:empty {
+    display: none;
+}
+#paymentSection {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+#paymentSection h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: var(--primary-color);
+}
+#stripe-element-main {
+    margin-bottom: 1.5rem;
+}
+.payment-status-message {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    text-align: center;
+}
+.payment-error-main {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+.payment-success-main {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+.processing-indicator-main {
+    text-align: center;
+    padding: 1rem;
+    color: var(--primary-color);
+    font-style: italic;
+}
+.n8n-instructions {
+     background-color: #fff3cd;
+     color: #856404;
+     padding: 15px;
+     border-radius: 4px;
+     margin-bottom: 20px;
+     margin-top: 20px;
+     border: 1px solid #ffeeba;
+}
+.n8n-instructions h3 {
+    margin-top: 0;
+    color: #856404;
+}
+.n8n-instructions ol {
+    margin-bottom: 1rem;
+}
+.n8n-instructions button {
+    margin-top: 0.5rem;
+}
+#debug-container-main {
+    /* Hide debug container in production */
+    display: none !important;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 20px;
+    font-size: 12px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    overflow: auto;
+    max-height: 200px;
+}
+
+/* Ensure N8N instructions are hidden in production */
+#n8n-instructions-container {
+    display: none !important;
+}
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+#payment-submit-btn {
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    font-size: 1.2rem;
+    background-color: var(--success-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+#payment-submit-btn:hover {
+    background-color: #218838;
+}
+#payment-submit-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}

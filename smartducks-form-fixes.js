@@ -27,14 +27,28 @@
         }
     };
 
-    // Simple helper to ensure an element exists
-    function waitForElement(selector, callback) {
-        if (document.querySelector(selector)) {
-            callback(document.querySelector(selector));
-        } else {
-            console.log(`Waiting for ${selector}...`);
-            setTimeout(() => waitForElement(selector, callback), 100);
+    // Simple helper to ensure an element exists with improved reliability
+    function waitForElement(selector, callback, maxAttempts = 50) {
+        let attempts = 0;
+        
+        function checkElement() {
+            attempts++;
+            const element = document.querySelector(selector);
+            
+            if (element) {
+                callback(element);
+                return true;
+            } else if (attempts >= maxAttempts) {
+                console.error(`Element ${selector} not found after ${maxAttempts} attempts`);
+                return false;
+            } else {
+                console.log(`Waiting for ${selector}... (attempt ${attempts}/${maxAttempts})`);
+                setTimeout(checkElement, 100);
+                return false;
+            }
         }
+        
+        return checkElement();
     }
 
     // Update state options when country changes
@@ -95,12 +109,18 @@
         
         // Make sure the states data is available globally
         window.states = statesData;
+        
+        // Also make updateStateOptions available globally immediately
+        window.updateStateOptions = updateStateOptions;
             
         // Wait for the country select to be available
         waitForElement('#countryCode', (countrySelect) => {
             // Wait for the state select to be available
             waitForElement('#state', (stateSelect) => {
                 console.log('Both country and state selectors found, applying fix');
+
+                // Store the current value before replacing elements
+                const currentCountryValue = countrySelect.value;
 
                 // Clone elements to remove any existing event listeners
                 const newCountrySelect = countrySelect.cloneNode(true);
@@ -111,22 +131,30 @@
 
                 // Get fresh references after replacement
                 const freshCountrySelect = document.getElementById('countryCode');
+                const freshStateSelect = document.getElementById('state');
                 
-                // Add change event listener to country select
-                freshCountrySelect.addEventListener('change', function() {
+                // Add change event listener to country select - use a named function for better debugging
+                function handleCountryChange() {
+                    console.log('Country changed to:', this.value);
                     updateStateOptions(this.value);
-                });
+                }
                 
-                // Make our function available globally
-                window.updateStateOptions = updateStateOptions;
+                // Add the event listener
+                freshCountrySelect.addEventListener('change', handleCountryChange);
+                
+                // Store the handler on window for potential future use
+                window.handleCountryChange = handleCountryChange;
                 
                 // Initialize with current country selection if available
-                if (freshCountrySelect.value) {
-                    console.log('Country already selected, initializing states for:', freshCountrySelect.value);
-                    updateStateOptions(freshCountrySelect.value);
+                if (currentCountryValue) {
+                    console.log('Country already selected, initializing states for:', currentCountryValue);
+                    // Make sure the value is set properly after clone
+                    freshCountrySelect.value = currentCountryValue;
+                    // Update the state options
+                    updateStateOptions(currentCountryValue);
                 } else {
                     console.log('No country selected yet, state select will initialize when country is chosen');
-                    document.getElementById('state').disabled = true;
+                    freshStateSelect.disabled = true;
                 }
                 
                 console.log('State/province fix successfully applied');
@@ -143,12 +171,52 @@
             // Check if country has a value but state is disabled or has no options
             if (countrySelect.value && (stateSelect.disabled || stateSelect.options.length <= 1)) {
                 console.log('Monitor detected broken state selector - fixing');
-                updateStateOptions(countrySelect.value);
+                
+                try {
+                    // More aggressive fix: completely replace both elements again
+                const newCountrySelect = countrySelect.cloneNode(true);
+                countrySelect.parentNode.replaceChild(newCountrySelect, countrySelect);
+                
+                const newStateSelect = stateSelect.cloneNode(true);
+                stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
+                
+                // Get fresh references
+                const freshCountrySelect = document.getElementById('countryCode');
+                
+                // Re-add event listener
+                if (window.handleCountryChange) {
+                    freshCountrySelect.addEventListener('change', window.handleCountryChange);
+                } else {
+                    freshCountrySelect.addEventListener('change', function() {
+                        updateStateOptions(this.value);
+                    });
+                }
+                
+                // Preserve the country value
+                freshCountrySelect.value = countrySelect.value;
+                
+                // Update state options
+                updateStateOptions(freshCountrySelect.value);
+                
+                console.log('State selector fixed by monitor');
+                } catch (err) {
+                    console.error('Error fixing state selector:', err);
+                    // Try a simpler approach as a fallback
+                    try {
+                        updateStateOptions(countrySelect.value);
+                    } catch (innerErr) {
+                        console.error('Fallback approach also failed:', innerErr);
+                    }
+                }
             }
         }
         
-        // Continue monitoring every 2 seconds
-        setTimeout(monitorStateProvince, 2000);
+        // Monitoring frequency: more aggressive initially, then less frequent
+        const interval = window._monitorCount && window._monitorCount > 10 ? 5000 : 1000;
+        window._monitorCount = (window._monitorCount || 0) + 1;
+        
+        // Continue monitoring
+        setTimeout(monitorStateProvince, interval);
     }
 
     // Run the fix when the document is ready
@@ -176,7 +244,7 @@
         } else {
             console.log('Fixes already applied, performing final verification');
             
-            // Final verification
+            // Final verification using several approaches
             setTimeout(function() {
                 const countrySelect = document.getElementById('countryCode');
                 const stateSelect = document.getElementById('state');
@@ -184,7 +252,38 @@
                 if (countrySelect && stateSelect && countrySelect.value) {
                     if (stateSelect.disabled || stateSelect.options.length <= 1) {
                         console.log('Final check: Fixing state selector');
-                        updateStateOptions(countrySelect.value);
+                        
+                        try {
+                            // First try - direct update
+                            updateStateOptions(countrySelect.value);
+                            
+                            // Additional validation
+                            if (stateSelect.disabled || stateSelect.options.length <= 1) {
+                                console.log('Direct update failed, trying aggressive approach');
+                                
+                                // Replace elements if the direct approach didn't work
+                                const newCountrySelect = countrySelect.cloneNode(true);
+                                countrySelect.parentNode.replaceChild(newCountrySelect, countrySelect);
+                                
+                                const newStateSelect = stateSelect.cloneNode(true);
+                                stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
+                                
+                                // Get fresh references
+                                const freshCountrySelect = document.getElementById('countryCode');
+                                freshCountrySelect.value = countrySelect.value;
+                                
+                                // Re-add event listener
+                                freshCountrySelect.addEventListener('change', function() {
+                                    updateStateOptions(this.value);
+                                });
+                                
+                                // Update state options
+                                updateStateOptions(freshCountrySelect.value);
+                                console.log('Aggressive fix applied');
+                            }
+                        } catch (err) {
+                            console.error('Error during final state selector fix:', err);
+                        }
                     }
                 }
             }, 500);

@@ -9,6 +9,7 @@
     function fixStateProvinceSelection() {
         console.log('Fixing state/province selector...');
         
+        // Get fresh references to DOM elements
         const countrySelect = document.getElementById('countryCode');
         const stateSelect = document.getElementById('state');
         
@@ -42,82 +43,99 @@
             };
         }
         
-        // Define the updateStateOptions function in the window scope
-        window.updateStateOptions = function(country) {
-            console.log("Updating state options for country:", country);
-            
-            // Get a fresh reference to the state select element
-            const stateSelect = document.getElementById('state');
-            
-            if (!stateSelect) {
-                console.error("State select element not available");
-                return;
-            }
-            
-            // Clear existing options
-            stateSelect.innerHTML = '<option value="" disabled selected>Select State/Province</option>';
-            
-            // Use the global states object
-            const statesObj = window.states;
-            
-            // If no country selected or no states for the country, disable the select and return early
-            if (!country || !statesObj[country]) {
-                stateSelect.disabled = true;
-                console.log('No country selected or no states found for country:', country);
-                return;
-            }
-            
-            // Add state options sorted alphabetically
-            Object.entries(statesObj[country])
-                .sort((a, b) => a[1].localeCompare(b[1]))
-                .forEach(([code, name]) => {
-                    const option = document.createElement('option');
-                    option.value = code;
-                    option.textContent = name;
-                    stateSelect.appendChild(option);
-                });
-            
-            // Make sure the select is enabled when a supported country is selected
-            stateSelect.disabled = false;
+        // Define the updateStateOptions function in the global scope
+        // Use a cleaner approach to avoid redefining if it already exists
+        if (typeof window.updateStateOptions !== 'function') {
+            window.updateStateOptions = function(country) {
+                console.log("Updating state options for country:", country);
                 
-            // Update labels and validation patterns
-            const isCanada = country === 'CA';
-            const postalInput = document.getElementById('postalCode');
-            if (postalInput) {
-                postalInput.pattern = isCanada ? '[A-Za-z][0-9][A-Za-z] [0-9][A-Za-z][0-9]' : '\\d{5}(-\\d{4})?';
-                postalInput.placeholder = isCanada ? 'A1A 1A1' : '12345 or 12345-6789';
-            }
-            
-            // Update state/province label
-            const stateLabel = document.querySelector('label[for="state"]');
-            if (stateLabel) {
-                stateLabel.textContent = isCanada ? 'Province*' : 'State*';
-            }
-            
-            console.log(`State/Province selector updated for ${country} with ${Object.keys(statesObj[country]).length} options`);
-        };
+                // Get a fresh reference to the state select element each time
+                const stateSelect = document.getElementById('state');
+                
+                if (!stateSelect) {
+                    console.error("State select element not available");
+                    return;
+                }
+                
+                // Clear existing options
+                stateSelect.innerHTML = '<option value="" disabled selected>Select State/Province</option>';
+                
+                // Use the global states object
+                const statesObj = window.states;
+                
+                // If no country selected or no states for the country, disable the select and return early
+                if (!country || !statesObj[country]) {
+                    stateSelect.disabled = true;
+                    console.log('No country selected or no states found for country:', country);
+                    return;
+                }
+                
+                // Add state options sorted alphabetically
+                Object.entries(statesObj[country])
+                    .sort((a, b) => a[1].localeCompare(b[1]))
+                    .forEach(([code, name]) => {
+                        const option = document.createElement('option');
+                        option.value = code;
+                        option.textContent = name;
+                        stateSelect.appendChild(option);
+                    });
+                
+                // Make sure the select is enabled when a supported country is selected
+                stateSelect.disabled = false;
+                
+                // Update labels and validation patterns
+                const isCanada = country === 'CA';
+                const postalInput = document.getElementById('postalCode');
+                if (postalInput) {
+                    postalInput.pattern = isCanada ? '[A-Za-z][0-9][A-Za-z] [0-9][A-Za-z][0-9]' : '\\d{5}(-\\d{4})?';
+                    postalInput.placeholder = isCanada ? 'A1A 1A1' : '12345 or 12345-6789';
+                }
+                
+                // Update state/province label
+                const stateLabel = document.querySelector('label[for="state"]');
+                if (stateLabel) {
+                    stateLabel.textContent = isCanada ? 'Province*' : 'State*';
+                }
+                
+                console.log(`State/Province selector updated for ${country} with ${Object.keys(statesObj[country]).length} options`);
+            };
+        }
         
         // Store a reference to the handler function in the window object for consistent reference
-        window.handleCountryChange = function() {
-            window.updateStateOptions(countrySelect.value);
-            
-            // Clear postal code input when country changes
-            const postalInput = document.getElementById('postalCode');
-            if (postalInput) postalInput.value = '';
-        };
+        if (typeof window.handleCountryChange !== 'function') {
+            window.handleCountryChange = function() {
+                // Use fresh references to DOM elements
+                const countrySelect = document.getElementById('countryCode');
+                window.updateStateOptions(countrySelect.value);
+                
+                // Clear postal code input when country changes
+                const postalInput = document.getElementById('postalCode');
+                if (postalInput) postalInput.value = '';
+            };
+        }
         
-        // Make sure we remove any existing listeners before adding new ones
-        countrySelect.removeEventListener('change', window.handleCountryChange);
+        // Remove any existing listeners by replacing the element
+        const oldCountrySelect = countrySelect;
+        const newCountrySelect = oldCountrySelect.cloneNode(true);
+        oldCountrySelect.parentNode.replaceChild(newCountrySelect, oldCountrySelect);
+        
+        // Get fresh reference after replacement
+        const freshCountrySelect = document.getElementById('countryCode');
         
         // Add the change listener
-        countrySelect.addEventListener('change', window.handleCountryChange);
+        freshCountrySelect.addEventListener('change', window.handleCountryChange);
         
         // If country is already selected, update state options
-        if (countrySelect.value) {
-            console.log('Country already selected, updating state options:', countrySelect.value);
-            window.updateStateOptions(countrySelect.value);
+        if (freshCountrySelect.value) {
+            console.log('Country already selected, updating state options:', freshCountrySelect.value);
+            window.updateStateOptions(freshCountrySelect.value);
+            
+            // Get fresh reference to state select
+            const freshStateSelect = document.getElementById('state');
             // Make sure state select is enabled when country is selected
-            stateSelect.disabled = false;
+            if (freshStateSelect) {
+                freshStateSelect.disabled = false;
+            }
         } else {
             // If no country is selected, make sure state select is disabled
             stateSelect.disabled = true;
@@ -810,73 +828,137 @@
         try {
             console.log('Running SmartDucks form fixes...');
             
-            // Apply fixes immediately
-            fixStateProvinceSelection();
+            // Create a flag to prevent multiple initializations
+            if (window._fixesInitialized) {
+                console.log('Fixes already initialized, skipping');
+                return;
+            }
+            window._fixesInitialized = true;
+            
+            // Apply the postal code and form submission fixes
             fixPostalCodeFormatting();
             fixFormSubmission();
             
-            // Add more aggressive retries for fixing state/province
-            let retryCount = 0;
-            const maxRetries = 5;
-            
-            function retryStateProvinceInit() {
+            // Apply state/province fix with a clean approach that replaces DOM elements
+            function applyStateProvinceFix() {
+                console.log('Applying robust state/province fix...');
+                
+                // Get fresh references
                 const countrySelect = document.getElementById('countryCode');
                 const stateSelect = document.getElementById('state');
                 
-                if (countrySelect && stateSelect) {
-                    // If elements are found but not properly initialized, fix again
-                    if ((stateSelect.options.length <= 1 && countrySelect.value) || 
-                        (stateSelect.disabled && countrySelect.value)) {
-                        console.log(`Retry ${retryCount+1}/${maxRetries}: State select not properly initialized, fixing again...`);
-                        
-                        // Force enabling the state select if a country is selected
-                        if (countrySelect.value && stateSelect.disabled) {
-                            console.log('Country is selected but state select is disabled, forcing enable');
-                            stateSelect.disabled = false;
-                        }
-                        
-                        // Run the fix again
-                        fixStateProvinceSelection();
-                        
-                        // Force update state options with current country
-                        if (countrySelect.value) {
-                            window.updateStateOptions(countrySelect.value);
-                        }
-                        
-                        retryCount++;
-                        if (retryCount < maxRetries) {
-                            setTimeout(retryStateProvinceInit, 1000);
-                        }
-                    } else {
-                        console.log('State/province initialization verified successfully');
-                    }
-                } else {
-                    // Elements not found yet, try again
-                    retryCount++;
-                    if (retryCount < maxRetries) {
-                        setTimeout(retryStateProvinceInit, 1000);
-                    }
+                if (!countrySelect || !stateSelect) {
+                    console.log('Form elements not found, retrying in 500ms...');
+                    setTimeout(applyStateProvinceFix, 500);
+                    return;
                 }
+                
+                // Replace the country select element to clear all event listeners
+                const newCountrySelect = countrySelect.cloneNode(true);
+                countrySelect.parentNode.replaceChild(newCountrySelect, countrySelect);
+                
+                // Replace the state select element too for good measure
+                const newStateSelect = stateSelect.cloneNode(true);
+                stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
+                
+                // Get fresh references after replacement
+                const freshCountrySelect = document.getElementById('countryCode');
+                const freshStateSelect = document.getElementById('state');
+                
+                // Make sure updateStateOptions function is defined properly
+                window.updateStateOptions = function(country) {
+                    console.log('Updating state options for country:', country);
+                    
+                    // Always get fresh references
+                    const stateSelect = document.getElementById('state');
+                    if (!stateSelect) return;
+                    
+                    // Clear options
+                    stateSelect.innerHTML = '<option value="" disabled selected>Select State/Province</option>';
+                    
+                    // Exit early if no country selected
+                    if (!country || !window.states[country]) {
+                        stateSelect.disabled = true;
+                        return;
+                    }
+                    
+                    // Add options sorted alphabetically
+                    Object.entries(window.states[country])
+                        .sort((a, b) => a[1].localeCompare(b[1]))
+                        .forEach(([code, name]) => {
+                            const option = document.createElement('option');
+                            option.value = code;
+                            option.textContent = name;
+                            stateSelect.appendChild(option);
+                        });
+                    
+                    // Enable the select
+                    stateSelect.disabled = false;
+                    
+                    // Update labels and validation
+                    const isCanada = country === 'CA';
+                    const postalInput = document.getElementById('postalCode');
+                    if (postalInput) {
+                        postalInput.pattern = isCanada ? '[A-Za-z][0-9][A-Za-z] [0-9][A-Za-z][0-9]' : '\\d{5}(-\\d{4})?';
+                        postalInput.placeholder = isCanada ? 'A1A 1A1' : '12345 or 12345-6789';
+                    }
+                    
+                    // Update label
+                    const stateLabel = document.querySelector('label[for="state"]');
+                    if (stateLabel) {
+                        stateLabel.textContent = isCanada ? 'Province*' : 'State*';
+                    }
+                };
+                
+                // Add the change event handler
+                freshCountrySelect.addEventListener('change', function() {
+                    const country = this.value;
+                    window.updateStateOptions(country);
+                    
+                    // Clear postal code
+                    const postalInput = document.getElementById('postalCode');
+                    if (postalInput) postalInput.value = '';
+                });
+                
+                // Initialize with current country value
+                if (freshCountrySelect.value) {
+                    console.log('Country already selected, updating state options:', freshCountrySelect.value);
+                    window.updateStateOptions(freshCountrySelect.value);
+                } else {
+                    // Disable state select if no country selected
+                    freshStateSelect.disabled = true;
+                }
+                
+                console.log('State/province fix applied successfully');
             }
             
-            // Start retry sequence after a short delay
-            setTimeout(retryStateProvinceInit, 1000);
+            // Apply the state/province fix first
+            applyStateProvinceFix();
             
-            // Add a final check after everything else
-            setTimeout(function() {
-                // Get fresh references to DOM elements
+            // Also run the original fix for backward compatibility
+            fixStateProvinceSelection();
+            
+            // Add a robust monitoring mechanism that checks periodically
+            function monitorStateSelector() {
                 const countrySelect = document.getElementById('countryCode');
                 const stateSelect = document.getElementById('state');
                 
                 if (countrySelect && stateSelect && countrySelect.value) {
-                    // Double-check that state select is enabled and populated
+                    // If a country is selected but state is disabled or has no options, fix it
                     if (stateSelect.disabled || stateSelect.options.length <= 1) {
-                        console.log('Final check: Fixing state selector one last time');
+                        console.log('State monitor: State selector needs fixing...');
                         window.updateStateOptions(countrySelect.value);
                         stateSelect.disabled = false;
                     }
                 }
-            }, 2000);
+                
+                // Continue monitoring every 2 seconds
+                setTimeout(monitorStateSelector, 2000);
+            }
+            
+            // Start monitoring after a short delay
+            setTimeout(monitorStateSelector, 1000);
+            
         } catch (err) {
             console.error('Error during SmartDucks form fixes initialization:', err);
         }
@@ -890,4 +972,30 @@
         console.log('Document still loading, waiting for DOMContentLoaded event');
         document.addEventListener('DOMContentLoaded', initFixes);
     }
+    
+    // Add additional window.load event handler for extra assurance
+    window.addEventListener('load', function() {
+        console.log('Window load event - ensuring state/province selector works');
+        
+        // Make sure fixes run even if they didn't run earlier
+        if (!window._fixesInitialized) {
+            console.log('Fixes not initialized before window load, running now');
+            initFixes();
+        }
+        
+        // Final verification
+        setTimeout(function() {
+            const countrySelect = document.getElementById('countryCode');
+            const stateSelect = document.getElementById('state');
+            
+            if (countrySelect && stateSelect && countrySelect.value) {
+                console.log('Final window.load check: Verifying state selector');
+                if (stateSelect.disabled || stateSelect.options.length <= 1) {
+                    console.log('Fixing state selector at window.load');
+                    window.updateStateOptions(countrySelect.value);
+                    stateSelect.disabled = false;
+                }
+            }
+        }, 500);
+    });
 })();

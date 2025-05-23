@@ -50,6 +50,39 @@
         
         return checkElement();
     }
+    
+    // Format postal code based on country selection
+    function formatPostalCode(country, value) {
+        if (!value) return '';
+        
+        // First, clean up the value to remove non-alphanumeric characters
+        const cleanValue = value.replace(/[^a-zA-Z0-9]/g, '');
+        
+        if (country === 'CA') {
+            // For Canadian postal codes: A1A 1A1 format
+            // Uppercase all letters
+            const upperValue = cleanValue.toUpperCase();
+            
+            // Insert space after the 3rd character if it doesn't exist and we have more than 3 chars
+            if (upperValue.length <= 3) {
+                return upperValue;
+            } else {
+                // Add space after first 3 characters
+                return `${upperValue.substring(0, 3)} ${upperValue.substring(3, 6)}`.trim();
+            }
+        } else if (country === 'US') {
+            // For US zip codes: 12345 or 12345-6789 format
+            if (cleanValue.length <= 5) {
+                return cleanValue;
+            } else {
+                // Insert hyphen after 5th digit
+                return `${cleanValue.substring(0, 5)}-${cleanValue.substring(5, 9)}`.trim();
+            }
+        }
+        
+        // Default for other countries or no country selected
+        return cleanValue;
+    }
 
     // Update state options when country changes
     function updateStateOptions(country) {
@@ -98,6 +131,36 @@
             postalInput.placeholder = isCanada ? 'A1A 1A1' : '12345 or 12345-6789';
             // Clear postal code when country changes
             postalInput.value = '';
+            
+            // Remove any existing input event handlers and add the new one
+            postalInput.removeEventListener('input', window.handlePostalInput);
+            window.handlePostalInput = function() {
+                const countrySelect = document.getElementById('countryCode');
+                const country = countrySelect ? countrySelect.value : '';
+                const formattedValue = formatPostalCode(country, this.value);
+                
+                // Only update if the formatted value is different
+                if (formattedValue !== this.value) {
+                    // Get cursor position before update
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    
+                    this.value = formattedValue;
+                    
+                    // Adjust cursor position if needed
+                    if (document.activeElement === this) {
+                        if (start === end) {
+                            // If no selection, just move cursor to appropriate position
+                            const newPos = Math.min(start + (formattedValue.length - this.value.length), formattedValue.length);
+                            this.setSelectionRange(newPos, newPos);
+                        } else {
+                            // If there was a selection, preserve it
+                            this.setSelectionRange(start, end);
+                        }
+                    }
+                }
+            };
+            postalInput.addEventListener('input', window.handlePostalInput);
         }
         
         console.log(`Updated state select with ${Object.keys(statesData[country]).length} options`);
@@ -152,9 +215,27 @@
                     freshCountrySelect.value = currentCountryValue;
                     // Update the state options
                     updateStateOptions(currentCountryValue);
+                    
+                    // Also format the postal code if it has a value
+                    const postalInput = document.getElementById('postalCode');
+                    if (postalInput && postalInput.value) {
+                        postalInput.value = formatPostalCode(currentCountryValue, postalInput.value);
+                    }
                 } else {
                     console.log('No country selected yet, state select will initialize when country is chosen');
                     freshStateSelect.disabled = true;
+                }
+                
+                // Initialize postal code formatting handlers
+                const postalInput = document.getElementById('postalCode');
+                if (postalInput) {
+                    postalInput.removeEventListener('input', window.handlePostalInput);
+                    window.handlePostalInput = function() {
+                        const countryValue = document.getElementById('countryCode').value;
+                        this.value = formatPostalCode(countryValue, this.value);
+                    };
+                    postalInput.addEventListener('input', window.handlePostalInput);
+                    console.log('Postal code formatting handlers applied');
                 }
                 
                 console.log('State/province fix successfully applied');
@@ -198,7 +279,19 @@
                 // Update state options
                 updateStateOptions(freshCountrySelect.value);
                 
-                console.log('State selector fixed by monitor');
+                // Also reapply postal code formatting handlers if needed
+                const postalInput = document.getElementById('postalCode');
+                if (postalInput) {
+                    postalInput.removeEventListener('input', window.handlePostalInput);
+                    postalInput.addEventListener('input', window.handlePostalInput);
+                    
+                    // Format the current value if it exists
+                    if (postalInput.value) {
+                        postalInput.value = formatPostalCode(freshCountrySelect.value, postalInput.value);
+                    }
+                }
+                
+                console.log('State selector and postal code handlers fixed by monitor');
                 } catch (err) {
                     console.error('Error fixing state selector:', err);
                     // Try a simpler approach as a fallback

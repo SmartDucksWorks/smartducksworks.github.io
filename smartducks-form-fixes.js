@@ -63,16 +63,19 @@
         
         if (country === 'CA') {
             // For Canadian postal codes: A1A 1A1 format
-            // Uppercase all letters and limit to 6 characters total
-            const upperValue = cleanValue.toUpperCase().substring(0, 6);
+            // Simple approach: just uppercase and ensure max 6 chars with space after 3rd char
+            const upperValue = cleanValue.toUpperCase();
+            
+            // Take the first 6 characters only (excluding spaces)
+            const sixChars = upperValue.substring(0, 6);
             
             // Insert space after the 3rd character if it doesn't exist and we have more than 3 chars
-            if (upperValue.length <= 3) {
-                console.log('Canadian postal code formatting: short value', upperValue);
-                return upperValue;
+            if (sixChars.length <= 3) {
+                console.log('Canadian postal code formatting: short value', sixChars);
+                return sixChars;
             } else {
                 // Add space after first 3 characters
-                const formatted = `${upperValue.substring(0, 3)} ${upperValue.substring(3)}`.trim();
+                const formatted = `${sixChars.substring(0, 3)} ${sixChars.substring(3)}`.trim();
                 console.log('Canadian postal code formatting:', {
                     original: value,
                     cleaned: cleanValue,

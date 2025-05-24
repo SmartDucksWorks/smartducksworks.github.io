@@ -452,7 +452,58 @@
     function ensureFormSubmitWorks() {
         console.log('ShippingFix: Ensuring form submission handler is working');
         
-        const addressForm = document.getElementById('addressForm');
+        // Try to find the form with multiple selectors
+        let addressForm = document.getElementById('addressForm');
+        
+        // If not found by ID, try other approaches
+        if (!addressForm) {
+            console.log('ShippingFix: Form not found by ID, trying alternatives...');
+            
+            // Look for forms with specific classes or attributes
+            addressForm = document.querySelector('form[action*="shipping"], form[action*="checkout"], form.shipping-form, form.checkout-form');
+            
+            if (addressForm) {
+                console.log('ShippingFix: Found form via alternative selector:', addressForm.id || addressForm.className);
+            } else {
+                // Last resort - any form
+                const allForms = document.querySelectorAll('form');
+                console.log(`ShippingFix: Found ${allForms.length} forms on page, selecting first one with shipping-related button`);
+                
+                // Find the first form with a shipping-related button
+                for (const form of allForms) {
+                    const shippingButton = form.querySelector('button:contains("shipping"), button:contains("Shipping"), input[value*="shipping"]');
+                    if (shippingButton) {
+                        addressForm = form;
+                        console.log('ShippingFix: Selected form with shipping button:', form.id || form.className);
+                        break;
+                    }
+                }
+                
+                // If still not found, just use the first form
+                if (!addressForm && allForms.length > 0) {
+                    addressForm = allForms[0];
+                    console.log('ShippingFix: Using first form as fallback:', addressForm.id || addressForm.className);
+                }
+            }
+        }
+        
+        // Debug form fields to help diagnose issues
+        if (addressForm) {
+            console.log('ShippingFix: Form details:', {
+                id: addressForm.id,
+                className: addressForm.className,
+                action: addressForm.getAttribute('action'),
+                method: addressForm.getAttribute('method')
+            });
+            
+            // Log all form fields
+            console.log('ShippingFix: Form fields:');
+            Array.from(addressForm.elements).forEach(el => {
+                if (el.name) {
+                    console.log(`- ${el.name}: ${el.value} (${el.type})`);
+                }
+            });
+        }
         
         // Find the submit button - try multiple approaches
         let submitButton = null;
@@ -460,19 +511,21 @@
             // Try multiple approaches to find the button
             submitButton = addressForm.querySelector('.submit-button, button[type="submit"], input[type="submit"]');
             
-            // Try finding by text content
+            // Try finding by text content (more comprehensive approach)
             if (!submitButton) {
-                const buttons = Array.from(addressForm.querySelectorAll('button'));
-                submitButton = buttons.find(btn => 
-                    (btn.textContent && btn.textContent.trim().toLowerCase().includes('shipping')) || 
-                    (btn.textContent && btn.textContent.trim().toLowerCase().includes('options')) ||
-                    (btn.value && btn.value.toLowerCase().includes('shipping'))
-                );
+                const buttons = Array.from(addressForm.querySelectorAll('button, input[type="button"], input[type="submit"]'));
+                submitButton = buttons.find(btn => {
+                    const btnText = (btn.textContent || btn.value || '').toLowerCase();
+                    return btnText.includes('shipping') || 
+                           btnText.includes('options') || 
+                           btnText.includes('continue') ||
+                           btnText.includes('next');
+                });
             }
             
             // Last resort - any button in the form
             if (!submitButton) {
-                submitButton = addressForm.querySelector('button');
+                submitButton = addressForm.querySelector('button, input[type="button"], input[type="submit"]');
             }
         }
         
@@ -517,6 +570,10 @@
             e.preventDefault();
             e.stopPropagation();
             
+            // Debug the form and button details
+            console.log('ShippingFix: Form action:', addressForm.getAttribute('action'));
+            console.log('ShippingFix: Form method:', addressForm.getAttribute('method'));
+            
             // Log which button triggered the submission
             if (e.submitter) {
                 console.log('ShippingFix: Button that triggered submission:', e.submitter.textContent?.trim() || e.submitter.value);
@@ -529,28 +586,172 @@
             loadingEl.innerHTML = '<div style="background:white;padding:20px;border-radius:5px;">Loading shipping options...</div>';
             document.body.appendChild(loadingEl);
             
-            // Collect form data
-            const formData = new FormData(addressForm);
-            const formDataObj = {};
-            formData.forEach((value, key) => {
-                formDataObj[key] = value;
-            });
+            // Collect form data - use form elements directly to ensure we get everything
+            let formDataObj = {};
+            
+            // Get all form elements directly to ensure we capture everything
+            const formElements = addressForm.elements;
+            for (let i = 0; i < formElements.length; i++) {
+                const element = formElements[i];
+                // Only include elements with names
+                if (element.name) {
+                    // Handle different input types appropriately
+                    if (element.type === 'checkbox' || element.type === 'radio') {
+                        if (element.checked) {
+                            formDataObj[element.name] = element.value;
+                        }
+                    } else if (element.type !== 'submit' && element.type !== 'button') {
+                        formDataObj[element.name] = element.value;
+                    }
+                }
+            }
+            
+            // Also try FormData as a backup approach
+            try {
+                const formData = new FormData(addressForm);
+                // Check if we got anything from FormData
+                let hasEntries = false;
+                formData.forEach((value, key) => {
+                    hasEntries = true;
+                    formDataObj[key] = value;
+                });
+                
+                if (!hasEntries) {
+                    console.log('ShippingFix: FormData was empty, using direct element access instead');
+                }
+            } catch (err) {
+                console.error('ShippingFix: Error with FormData:', err);
+            }
             
             console.log('ShippingFix: Submitting form data:', formDataObj);
             
-            // Get the form action URL
-            const actionUrl = addressForm.getAttribute('action') || window.shippingOptionsUrl || '/api/shipping-options';
+            // Get the form action URL - try multiple approaches
+            let actionUrl = addressForm.getAttribute('action');
+            
+            // If no action attribute, check for data attributes that might contain the URL
+            if (!actionUrl) {
+                actionUrl = addressForm.dataset.action || 
+                            addressForm.dataset.url || 
+                            addressForm.dataset.endpoint ||
+                            window.shippingOptionsUrl ||
+                            '/api/shipping-options';
+            }
+            
+            // Special case for SmartDucks N8N integration - check if we're using form5.html
+            // This hardcoded approach ensures we connect to the right endpoint
+            if (window.location.pathname.includes('form5.html') || 
+                document.title.includes('SmartDucks') || 
+                document.querySelector('meta[name="description"]')?.content?.includes('SmartDucks')) {
+                
+                // Check if we should use the N8N proxy endpoint
+                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                if (isLocal) {
+                    // When testing locally, use the N8N proxy
+                    actionUrl = 'http://localhost:8788/webhook/shiptime-rates';
+                } else {
+                    // In production, use the direct N8N webhook
+                    actionUrl = 'https://duckpond.smartducks.works/webhook/shiptime-rates';
+                }
+                console.log('ShippingFix: Using SmartDucks N8N endpoint:', actionUrl);
+            }
+            
             console.log('ShippingFix: Submitting to URL:', actionUrl);
             
-            // Send the request
-            fetch(actionUrl, {
+            console.log('ShippingFix: Starting fetch request to:', actionUrl);
+            
+            // Create a properly formatted data structure for N8N
+            const n8nFormattedData = {
+                type: 'shipping_quote',
+                data: {
+                    from: {
+                        companyName: "SmartDucks.Works",
+                        streetAddress: formDataObj.fromStreetAddress || "2053 Wildflower Drive",
+                        city: formDataObj.fromCity || "Orleans",
+                        state: formDataObj.fromState || "ON",
+                        postalCode: formDataObj.fromPostalCode || "K1E 3R5",
+                        countryCode: formDataObj.fromCountryCode || "CA",
+                    },
+                    to: {
+                        companyName: formDataObj.companyName || formDataObj.lastName || "Customer",
+                        streetAddress: formDataObj.streetAddress || formDataObj.address || "",
+                        city: formDataObj.city || "",
+                        state: formDataObj.state || "",
+                        postalCode: formDataObj.postalCode || "",
+                        countryCode: formDataObj.countryCode || "CA",
+                        attention: formDataObj.firstName + " " + formDataObj.lastName || "Customer",
+                        email: formDataObj.email || "",
+                        phone: formDataObj.phone || ""
+                    },
+                    packageType: "PACKAGE",
+                    lineItems: [{
+                        length: 12,
+                        width: 5,
+                        height: 5,
+                        weight: 0.7,
+                        declaredValue: {
+                            currency: "CAD",
+                            amount: 1000
+                        },
+                        description: "SmartDucks",
+                        nmfcCode: "",
+                        freightClass: "package"
+                    }],
+                    unitOfMeasurement: "IMPERIAL",
+                    serviceOptions: ["APPOINTMENT"],
+                    shipDate: new Date().toISOString().split('T')[0],
+                    insuranceType: "NONE"
+                }
+            };
+
+            // Generate CSRF token for N8N if none exists
+            function generateCSRFToken() {
+                // Current time in milliseconds
+                const timestamp = Date.now();
+                
+                // Generate a random fingerprint if one doesn't exist
+                if (!window._csrfFingerprint) {
+                    window._csrfFingerprint = Math.random().toString(36).substring(2) + 
+                                              Math.random().toString(36).substring(2);
+                }
+                
+                // Format: timestamp:random:fingerprint
+                return `${timestamp}:${Math.random().toString(36).substring(2)}:${window._csrfFingerprint}`;
+            }
+            
+            // Get or generate CSRF token
+            let csrfToken = '';
+            // First try to get it from a form field
+            const csrfField = document.querySelector('input[name="_csrf"], input[name="csrf_token"]');
+            if (csrfField && csrfField.value) {
+                csrfToken = csrfField.value;
+                console.log('ShippingFix: Found CSRF token in form field');
+            } else {
+                // Generate a new token
+                csrfToken = generateCSRFToken();
+                console.log('ShippingFix: Generated new CSRF token');
+            }
+            
+            // Try multiple content types since some servers are particular about what they accept
+            let fetchOptions = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'request-method': 'POST',  // Add this explicitly for N8N
+                    'Request-Method': 'POST',  // Add alternative capitalization
+                    'X-HTTP-Method': 'POST',   // Add additional method header format
+                    'X-Method-Override': 'POST', // Add yet another format
+                    'X-CSRF-Token': csrfToken // Add CSRF token needed by N8N
                 },
-                body: JSON.stringify(formDataObj)
-            })
+                body: JSON.stringify(n8nFormattedData),
+                // Include credentials to handle any auth requirements
+                credentials: 'include'
+            };
+            
+            console.log('ShippingFix: Fetch options:', fetchOptions);
+            
+            // Send the request with fallbacks for errors
+            fetch(actionUrl, fetchOptions)
             .then(response => {
                 console.log('ShippingFix: Got response:', response.status);
                 
@@ -644,48 +845,154 @@
                 container.innerHTML = '';
                 
                 // Parse and display the shipping options
-                if (data.html) {
+                // First, try to extract the quotes from the N8N response
+                let quotes = [];
+                
+                // Try all possible response formats from N8N
+                if (data.quotes && Array.isArray(data.quotes)) {
+                    quotes = data.quotes;
+                    console.log('ShippingFix: Found quotes directly in response');
+                }
+                else if (data.data && data.data.quotes && Array.isArray(data.data.quotes)) {
+                    quotes = data.data.quotes;
+                    console.log('ShippingFix: Found quotes in data.quotes');
+                }
+                else if (data.success && data.data && Array.isArray(data.data)) {
+                    quotes = data.data;
+                    console.log('ShippingFix: Found quotes in data array');
+                }
+                else if (data.html) {
                     // If we got HTML directly
                     container.innerHTML = data.html;
-                } 
+                    console.log('ShippingFix: Using HTML content from response');
+                }
                 else if (data.options && Array.isArray(data.options)) {
-                    // If we got options array
-                    data.options.forEach(option => {
-                        const optionEl = document.createElement('div');
-                        optionEl.className = 'shipping-option';
-                        optionEl.style.cssText = 'margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px;';
-                        
-                        optionEl.innerHTML = `
-                            <input type="radio" name="shipping_option" value="${option.id || option.value || ''}">
-                            <label style="margin-left:8px;font-weight:bold;">${option.name || option.label || 'Option'}</label>
-                            <span style="float:right">${option.price || option.cost || ''}</span>
-                            ${option.description ? `<div style="margin-top:5px;color:#666;">${option.description}</div>` : ''}
-                        `;
-                        
-                        container.appendChild(optionEl);
-                    });
-                } 
+                    quotes = data.options;
+                    console.log('ShippingFix: Found quotes in options array');
+                }
                 else if (data.shipping_rates && Array.isArray(data.shipping_rates)) {
-                    // Alternative structure sometimes used
-                    data.shipping_rates.forEach(option => {
+                    quotes = data.shipping_rates;
+                    console.log('ShippingFix: Found quotes in shipping_rates array');
+                }
+                else {
+                    // Check if we got the full response object from N8N
+                    try {
+                        // Sometimes the quotes are deeply nested in the response
+                        if (data.body && typeof data.body === 'string') {
+                            const parsedBody = JSON.parse(data.body);
+                            if (parsedBody.quotes && Array.isArray(parsedBody.quotes)) {
+                                quotes = parsedBody.quotes;
+                                console.log('ShippingFix: Found quotes in parsed body');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('ShippingFix: Error parsing body:', e);
+                    }
+                }
+                
+                // If we found quotes, display them
+                if (quotes.length > 0) {
+                    console.log('ShippingFix: Displaying', quotes.length, 'shipping options');
+                    
+                    quotes.forEach(quote => {
                         const optionEl = document.createElement('div');
                         optionEl.className = 'shipping-option';
-                        optionEl.style.cssText = 'margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px;';
+                        optionEl.style.cssText = 'margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px;cursor:pointer;';
                         
+                        // Store quote data for later use
+                        optionEl.dataset.quoteId = quote.id || '';
+                        
+                        // Format the price consistently (decimal with 2 decimal places)
+                        let price = 0;
+                        let currency = 'CAD';
+                        
+                        // Try all possible price formats
+                        if (quote.total_charge) {
+                            price = quote.total_charge / 100; // Usually in cents
+                            currency = quote.currency || 'CAD';
+                        } else if (quote.total_price) {
+                            price = parseFloat(quote.total_price);
+                            currency = quote.currency || 'CAD';
+                        } else if (quote.price) {
+                            price = parseFloat(quote.price);
+                            currency = quote.currency || 'CAD';
+                        }
+                        
+                        // Format the price for display
+                        const formattedPrice = `$${price.toFixed(2)} ${currency}`;
+                        optionEl.dataset.price = price.toFixed(2);
+                        
+                        // Build a consistent structure for the shipping option
                         optionEl.innerHTML = `
-                            <input type="radio" name="shipping_option" value="${option.id || option.service_code || ''}">
-                            <label style="margin-left:8px;font-weight:bold;">${option.service_name || option.carrier || 'Option'}</label>
-                            <span style="float:right">${option.total_price || option.price || ''}</span>
+                            <div class="shipping-option-header" style="display:flex;justify-content:space-between;margin-bottom:5px;">
+                                <h3 style="margin:0;font-size:16px;font-weight:bold;">${quote.carrier_name || quote.service_name || quote.name || 'Shipping Option'}</h3>
+                                <h3 style="margin:0;font-size:16px;font-weight:bold;">${formattedPrice}</h3>
+                            </div>
+                            <div class="shipping-details">
+                                <div>Transit Time: ${quote.transit_days || quote.transit_time || '3-5'} Days</div>
+                                ${quote.description ? `<div style="color:#666;margin-top:5px;">${quote.description}</div>` : ''}
+                            </div>
                         `;
+                        
+                        // Add click handler to select this option
+                        optionEl.addEventListener('click', function() {
+                            // Remove selected class from all options
+                            container.querySelectorAll('.shipping-option').forEach(opt => {
+                                opt.classList.remove('selected');
+                                opt.style.backgroundColor = '';
+                                opt.style.borderColor = '#ddd';
+                            });
+                            
+                            // Mark this option as selected
+                            this.classList.add('selected');
+                            this.style.backgroundColor = '#f0f8ff';
+                            this.style.borderColor = '#007bff';
+                            
+                            // Update the select button to show the selected option
+                            const selectBtn = modal.querySelector('.select-option-btn');
+                            if (selectBtn) {
+                                selectBtn.textContent = `Select ${quote.carrier_name || quote.service_name || 'This Option'}`;
+                                selectBtn.disabled = false;
+                            }
+                        });
                         
                         container.appendChild(optionEl);
                     });
+                    
+                    // Add select button functionality
+                    const selectBtn = modal.querySelector('.select-option-btn');
+                    if (selectBtn) {
+                        selectBtn.disabled = true;
+                        selectBtn.textContent = 'Select an Option';
+                        
+                        selectBtn.addEventListener('click', function() {
+                            const selectedOption = container.querySelector('.shipping-option.selected');
+                            if (!selectedOption) {
+                                alert('Please select a shipping option first');
+                                return;
+                            }
+                            
+                            // Create an event to communicate the selected shipping option
+                            const event = new CustomEvent('shipping-option-selected', {
+                                detail: {
+                                    quoteId: selectedOption.dataset.quoteId,
+                                    price: selectedOption.dataset.price,
+                                    option: selectedOption.innerHTML
+                                }
+                            });
+                            document.dispatchEvent(event);
+                            
+                            // Hide the modal
+                            modal.style.display = 'none';
+                        });
+                    }
                 } 
                 else {
-                    // If we didn't recognize the data structure, just show raw data
+                    // If no quotes found, show raw data
                     container.innerHTML = `
-                        <p>Shipping options received. Please select an option:</p>
-                        <pre style="background:#f4f4f4;padding:10px;overflow:auto;font-size:12px;">${JSON.stringify(data, null, 2)}</pre>
+                        <p>Shipping options received but couldn't be parsed. Please select an option:</p>
+                        <pre style="background:#f4f4f4;padding:10px;overflow:auto;font-size:12px;max-height:400px;">${JSON.stringify(data, null, 2)}</pre>
+                        <p>If you see shipping options above, please contact support with this data.</p>
                     `;
                 }
                 
@@ -761,30 +1068,140 @@
                 // Show error message
                 alert('Error loading shipping options. Please try again.');
             });
+            
+            // Set up global event handler for shipping option selection
+            if (!window._shippingOptionHandlerInstalled) {
+                document.addEventListener('shipping-option-selected', function(e) {
+                    console.log('ShippingFix: Shipping option selected:', e.detail);
+                    
+                    // Find or create a field to store the selected shipping option
+                    let shippingOptionField = addressForm.querySelector('input[name="selected_shipping_option"]');
+                    if (!shippingOptionField) {
+                        shippingOptionField = document.createElement('input');
+                        shippingOptionField.type = 'hidden';
+                        shippingOptionField.name = 'selected_shipping_option';
+                        addressForm.appendChild(shippingOptionField);
+                    }
+                    shippingOptionField.value = e.detail.quoteId;
+                    
+                    // Find or create a field to store the selected shipping price
+                    let shippingPriceField = addressForm.querySelector('input[name="selected_shipping_price"]');
+                    if (!shippingPriceField) {
+                        shippingPriceField = document.createElement('input');
+                        shippingPriceField.type = 'hidden';
+                        shippingPriceField.name = 'selected_shipping_price';
+                        addressForm.appendChild(shippingPriceField);
+                    }
+                    shippingPriceField.value = e.detail.price;
+                    
+                    // Update the shipping display in the form
+                    const shippingDisplay = document.createElement('div');
+                    shippingDisplay.className = 'selected-shipping-display';
+                    shippingDisplay.innerHTML = `
+                        <h3>Selected Shipping Option</h3>
+                        <div class="shipping-summary">${e.detail.option}</div>
+                        <button type="button" class="change-shipping-btn">Change Shipping Option</button>
+                    `;
+                    
+                    // Find a good place to display the shipping information
+                    const existingDisplay = document.querySelector('.selected-shipping-display');
+                    if (existingDisplay) {
+                        existingDisplay.innerHTML = shippingDisplay.innerHTML;
+                    } else {
+                        // Try to find the submit button to insert before
+                        const submitBtn = addressForm.querySelector('.submit-button, button[type="submit"], input[type="submit"]');
+                        if (submitBtn && submitBtn.parentNode) {
+                            submitBtn.parentNode.insertBefore(shippingDisplay, submitBtn);
+                        } else {
+                            // Just append to the form if we can't find a good place
+                            addressForm.appendChild(shippingDisplay);
+                        }
+                    }
+                    
+                    // Enable the change shipping button if it exists
+                    const changeBtn = document.querySelector('.change-shipping-btn');
+                    if (changeBtn) {
+                        changeBtn.addEventListener('click', function() {
+                            // Re-show the shipping options modal
+                            const modal = document.getElementById('shipping-options-modal');
+                            if (modal) {
+                                modal.style.display = 'block';
+                                modal.style.visibility = 'visible';
+                                modal.style.opacity = '1';
+                            } else {
+                                // If modal doesn't exist anymore, trigger the form submission again
+                                window._shippingFixHandler({
+                                    preventDefault: () => {},
+                                    stopPropagation: () => {}
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Hide the loading/address form and show the next step
+                    addressForm.style.display = 'none';
+                    
+                    // Check if there's a specific section to show next
+                    const paymentSection = document.getElementById('payment-section') || document.querySelector('.payment-section, .payment-form');
+                    if (paymentSection) {
+                        paymentSection.style.display = 'block';
+                    }
+                    
+                    // Dispatch an event indicating shipping selection is complete
+                    const completeEvent = new CustomEvent('shipping-selection-complete', {
+                        detail: e.detail
+                    });
+                    document.dispatchEvent(completeEvent);
+                });
+                window._shippingOptionHandlerInstalled = true;
+            }
         };
         
         // Add the submit handler to the form
         addressForm._hasShippingFix = true;
         addressForm.addEventListener('submit', window._shippingFixHandler);
         
-        // Also add a click handler to the button as a backup
+        // Add a much more aggressive click handler to the button that directly
+        // handles the submission without relying on form events
         const buttonClickHandler = function(e) {
             console.log('ShippingFix: Button clicked directly');
-            // If it's not a submit button, manually trigger submit
-            if (submitButton.type !== 'submit') {
-                e.preventDefault();
-                
-                // Trigger form submission to use our handler
-                const submitEvent = new Event('submit', {
-                    bubbles: true,
-                    cancelable: true
-                });
-                addressForm.dispatchEvent(submitEvent);
+            
+            // Always prevent default behavior to take full control
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Mark the form as being processed to prevent multiple submissions
+            if (addressForm._isSubmitting) {
+                console.log('ShippingFix: Form already submitting, ignoring additional clicks');
+                return;
             }
+            
+            addressForm._isSubmitting = true;
+            
+            // We'll manually call our handler function directly
+            console.log('ShippingFix: Manually triggering submission handler');
+            
+            // Call our handler directly with a fake event
+            window._shippingFixHandler({
+                preventDefault: () => {},
+                stopPropagation: () => {},
+                submitter: submitButton
+            });
+            
+            // Reset the submitting flag after a delay
+            setTimeout(() => {
+                addressForm._isSubmitting = false;
+            }, 2000);
         };
         
+        // Store the handler for potential cleanup
         submitButton._clickHandler = buttonClickHandler;
-        submitButton.addEventListener('click', buttonClickHandler);
+        
+        // Remove any existing click handlers from the button to avoid conflicts
+        submitButton.removeEventListener('click', submitButton._clickHandler);
+        
+        // Add our click handler with capture to ensure it runs first
+        submitButton.addEventListener('click', buttonClickHandler, true);
         
         console.log('ShippingFix: Form handlers installed successfully');
         
@@ -818,6 +1235,61 @@
         initStateProvinceFix();
         setTimeout(monitorStateProvince, 2000);
         setTimeout(ensureFormSubmitWorks, 1000); // Add form submission fix
+        
+        // Special case for SmartDucks form5.html
+        if (window.location.pathname.includes('form5.html') || 
+            document.title.includes('SmartDucks') || 
+            document.querySelector('meta[name="description"]')?.content?.includes('SmartDucks')) {
+            
+            console.log('ShippingFix: Detected SmartDucks form5.html, applying specialized integrations');
+            
+            // Try to find specific elements from form5.html to integrate with
+            setTimeout(function integrateDeeply() {
+                // Check for the main shipping options div
+                const shippingOptionsDiv = document.getElementById('shippingOptions');
+                if (shippingOptionsDiv) {
+                    console.log('ShippingFix: Found shippingOptions div, will integrate directly');
+                    
+                    // Listen for our custom event to update their UI
+                    document.addEventListener('shipping-option-selected', function(e) {
+                        console.log('ShippingFix: Updating form5 UI with selected shipping');
+                        
+                        // Hide our modal since form5.html has its own UI
+                        const modal = document.getElementById('shipping-options-modal');
+                        if (modal) modal.style.display = 'none';
+                        
+                        // Show the shipping options div
+                        shippingOptionsDiv.style.display = 'block';
+                        
+                        // Update any summary or order total elements if they exist
+                        const orderSummary = document.getElementById('orderSummary');
+                        if (orderSummary) {
+                            orderSummary.style.display = 'block';
+                            
+                            // Try to update the shipping cost display
+                            const shippingCostEl = document.getElementById('shippingCost');
+                            if (shippingCostEl && e.detail.price) {
+                                shippingCostEl.textContent = '$' + parseFloat(e.detail.price).toFixed(2);
+                                
+                                // If they have an updateTotals function, call it
+                                if (typeof window.updateTotals === 'function') {
+                                    window.updateTotals();
+                                }
+                            }
+                        }
+                        
+                        // Hide the address form if it exists
+                        const addressForm = document.getElementById('addressForm');
+                        if (addressForm) {
+                            addressForm.style.display = 'none';
+                        }
+                    });
+                } else {
+                    // Try again in a moment if page is still loading
+                    setTimeout(integrateDeeply, 500);
+                }
+            }, 1000);
+        }
     }
 
     // Run when DOM is loaded

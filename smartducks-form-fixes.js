@@ -564,14 +564,19 @@
             // Get the form action URL - try multiple approaches
             let actionUrl = addressForm.getAttribute('action');
             
-            // ALWAYS use the N8N endpoint for SmartDucks integration
-            // Use the production N8N webhook regardless of form action or data attributes
-            actionUrl = 'https://duckpond.smartducks.works/webhook/shiptime-rates';
-            console.log('ShippingFix: Using SmartDucks N8N endpoint:', actionUrl);
+            // Try using the proxy path first (which avoids CORS issues)
+            actionUrl = '/api/webhook/shiptime-rates';
+            
+            // Fallback to direct URL if we're not in production
+            if (window.location.hostname !== 'smartducks.works' && window.location.hostname !== 'www.smartducks.works') {
+                // For development/testing, use the direct URL
+                actionUrl = 'https://duckpond.smartducks.works/webhook/shiptime-rates';
+                console.log('ShippingFix: Using direct webhook URL in non-production environment:', actionUrl);
+            } else {
+                console.log('ShippingFix: Using proxy webhook URL in production environment:', actionUrl);
+            }
             
             console.log('ShippingFix: Submitting to URL:', actionUrl);
-            
-            console.log('ShippingFix: Starting fetch request to:', actionUrl);
             
             // Create a properly formatted data structure for N8N
             const n8nFormattedData = {
@@ -655,12 +660,17 @@
                     'Request-Method': 'POST',  // Add alternative capitalization
                     'X-HTTP-Method': 'POST',   // Add additional method header format
                     'X-Method-Override': 'POST', // Add yet another format
-                    'X-CSRF-Token': csrfToken // Add CSRF token needed by N8N
+                    'X-CSRF-Token': csrfToken, // Add CSRF token needed by N8N
+                    'Origin': window.location.origin  // Explicitly set origin for CORS
                 },
                 body: JSON.stringify(n8nFormattedData),
                 // Include credentials to handle any auth requirements
-                credentials: 'include'
+                credentials: 'include',
+                // Explicitly set mode for CORS
+                mode: 'cors'
             };
+            
+            console.log('ShippingFix: Starting fetch request to:', actionUrl);
             
             // No need to log fetch options in production
             

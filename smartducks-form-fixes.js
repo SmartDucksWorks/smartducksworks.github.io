@@ -5,8 +5,7 @@
 (function() {
     console.log('SmartDucks form fixes loaded - Fresh implementation');
     
-    // Expose formatPostalCode function globally for testing purposes
-    window.formatPostalCode = formatPostalCode;
+    // No need to expose for testing purposes
 
     // Define our states data (US states and Canadian provinces)
     const statesData = {
@@ -71,16 +70,10 @@
             
             // Insert space after the 3rd character if it doesn't exist and we have more than 3 chars
             if (sixChars.length <= 3) {
-                console.log('Canadian postal code formatting: short value', sixChars);
                 return sixChars;
             } else {
                 // Add space after first 3 characters
                 const formatted = `${sixChars.substring(0, 3)} ${sixChars.substring(3)}`.trim();
-                console.log('Canadian postal code formatting:', {
-                    original: value,
-                    cleaned: cleanValue,
-                    formatted: formatted
-                });
                 return formatted;
             }
         } else if (country === 'US') {
@@ -109,9 +102,7 @@
         }
         
         // Clear existing options
-        stateSelect.innerHTML = '<option value="" disabled selected>Select State/Province</option>';
-        
-        // If no country or no states for country, disable state select
+        stateSelect.innerHTML = '<option value="" disabled selected>Select State/Province</option>';            // If no country or no states for country, disable state select
         if (!country || !statesData[country]) {
             stateSelect.disabled = true;
             return;
@@ -220,11 +211,7 @@
     function initStateProvinceFix() {
         console.log('Initializing state/province selector fix');
         
-        // Make sure the states data is available globally
-        window.states = statesData;
-        
-        // Also make updateStateOptions available globally immediately
-        window.updateStateOptions = updateStateOptions;
+        // No need to expose these functions globally for production
             
         // Wait for the country select to be available
         waitForElement('#countryCode', (countrySelect) => {
@@ -255,8 +242,7 @@
                 // Add the event listener
                 freshCountrySelect.addEventListener('change', handleCountryChange);
                 
-                // Store the handler on window for potential future use
-                window.handleCountryChange = handleCountryChange;
+                // No need to store the handler on window
                 
                 // Initialize with current country selection if available
                 if (currentCountryValue) {
@@ -279,19 +265,7 @@
                 // Initialize postal code formatting handlers
                 const postalInput = document.getElementById('postalCode');
                 if (postalInput) {
-                    // Preserve the existing handlers by keeping track of them
-                    if (!window.existingPostalInputHandlers) {
-                        window.existingPostalInputHandlers = [];
-                        const originalAddEventListener = postalInput.addEventListener;
-                        
-                        // Override the addEventListener method to track handlers
-                        postalInput.addEventListener = function(type, handler, options) {
-                            if (type === 'input') {
-                                window.existingPostalInputHandlers.push(handler);
-                            }
-                            return originalAddEventListener.call(this, type, handler, options);
-                        };
-                    }
+                    // Simplified event handling for production
                     
                     postalInput.removeEventListener('input', window.handlePostalInput);
                     window.handlePostalInput = function(event) {
@@ -418,10 +392,8 @@
                     // Format the current value if it exists
                     if (postalInput.value) {
                         const currentCountry = freshCountrySelect.value || 'CA';
-                        console.log('Reformatting postal code via monitor:', postalInput.value);
                         const formatted = formatPostalCode(currentCountry, postalInput.value);
                         if (formatted !== postalInput.value) {
-                            console.log(`Postal code updated: ${postalInput.value} → ${formatted}`);
                             postalInput.value = formatted;
                         }
                     }
@@ -487,23 +459,7 @@
             }
         }
         
-        // Debug form fields to help diagnose issues
-        if (addressForm) {
-            console.log('ShippingFix: Form details:', {
-                id: addressForm.id,
-                className: addressForm.className,
-                action: addressForm.getAttribute('action'),
-                method: addressForm.getAttribute('method')
-            });
-            
-            // Log all form fields
-            console.log('ShippingFix: Form fields:');
-            Array.from(addressForm.elements).forEach(el => {
-                if (el.name) {
-                    console.log(`- ${el.name}: ${el.value} (${el.type})`);
-                }
-            });
-        }
+        // No need to debug form fields in production
         
         // Find the submit button - try multiple approaches
         let submitButton = null;
@@ -545,10 +501,6 @@
         
         // Check for any existing modals to determine the right approach
         const existingModals = document.querySelectorAll('.modal, [id*="modal"], [class*="modal"], dialog');
-        console.log(`ShippingFix: Found ${existingModals.length} potential modal elements in the DOM`);
-        existingModals.forEach((modal, i) => {
-            console.log(`ShippingFix: Modal ${i+1}: class="${modal.className}" id="${modal.id}"`);
-        });
         
         // Remove previous handlers to prevent duplicate submissions
         if (window._shippingFixHandler && addressForm._hasShippingFix) {
@@ -570,14 +522,7 @@
             e.preventDefault();
             e.stopPropagation();
             
-            // Debug the form and button details
-            console.log('ShippingFix: Form action:', addressForm.getAttribute('action'));
-            console.log('ShippingFix: Form method:', addressForm.getAttribute('method'));
-            
-            // Log which button triggered the submission
-            if (e.submitter) {
-                console.log('ShippingFix: Button that triggered submission:', e.submitter.textContent?.trim() || e.submitter.value);
-            }
+            // Simplified for production
             
             // Show a loading indicator
             const loadingEl = document.createElement('div');
@@ -609,51 +554,20 @@
             // Also try FormData as a backup approach
             try {
                 const formData = new FormData(addressForm);
-                // Check if we got anything from FormData
-                let hasEntries = false;
                 formData.forEach((value, key) => {
-                    hasEntries = true;
                     formDataObj[key] = value;
                 });
-                
-                if (!hasEntries) {
-                    console.log('ShippingFix: FormData was empty, using direct element access instead');
-                }
             } catch (err) {
                 console.error('ShippingFix: Error with FormData:', err);
             }
             
-            console.log('ShippingFix: Submitting form data:', formDataObj);
-            
             // Get the form action URL - try multiple approaches
             let actionUrl = addressForm.getAttribute('action');
             
-            // If no action attribute, check for data attributes that might contain the URL
-            if (!actionUrl) {
-                actionUrl = addressForm.dataset.action || 
-                            addressForm.dataset.url || 
-                            addressForm.dataset.endpoint ||
-                            window.shippingOptionsUrl ||
-                            '/api/shipping-options';
-            }
-            
-            // Special case for SmartDucks N8N integration - check if we're using form5.html
-            // This hardcoded approach ensures we connect to the right endpoint
-            if (window.location.pathname.includes('form5.html') || 
-                document.title.includes('SmartDucks') || 
-                document.querySelector('meta[name="description"]')?.content?.includes('SmartDucks')) {
-                
-                // Check if we should use the N8N proxy endpoint
-                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                if (isLocal) {
-                    // When testing locally, use the N8N proxy
-                    actionUrl = 'http://localhost:8788/webhook/shiptime-rates';
-                } else {
-                    // In production, use the direct N8N webhook
-                    actionUrl = 'https://duckpond.smartducks.works/webhook/shiptime-rates';
-                }
-                console.log('ShippingFix: Using SmartDucks N8N endpoint:', actionUrl);
-            }
+            // ALWAYS use the N8N endpoint for SmartDucks integration
+            // Use the production N8N webhook regardless of form action or data attributes
+            actionUrl = 'https://duckpond.smartducks.works/webhook/shiptime-rates';
+            console.log('ShippingFix: Using SmartDucks N8N endpoint:', actionUrl);
             
             console.log('ShippingFix: Submitting to URL:', actionUrl);
             
@@ -748,7 +662,7 @@
                 credentials: 'include'
             };
             
-            console.log('ShippingFix: Fetch options:', fetchOptions);
+            // No need to log fetch options in production
             
             // Send the request with fallbacks for errors
             fetch(actionUrl, fetchOptions)
@@ -851,28 +765,27 @@
                 // Try all possible response formats from N8N
                 if (data.quotes && Array.isArray(data.quotes)) {
                     quotes = data.quotes;
-                    console.log('ShippingFix: Found quotes directly in response');
+
                 }
                 else if (data.data && data.data.quotes && Array.isArray(data.data.quotes)) {
                     quotes = data.data.quotes;
-                    console.log('ShippingFix: Found quotes in data.quotes');
+
                 }
                 else if (data.success && data.data && Array.isArray(data.data)) {
                     quotes = data.data;
-                    console.log('ShippingFix: Found quotes in data array');
+
                 }
                 else if (data.html) {
                     // If we got HTML directly
                     container.innerHTML = data.html;
-                    console.log('ShippingFix: Using HTML content from response');
                 }
                 else if (data.options && Array.isArray(data.options)) {
                     quotes = data.options;
-                    console.log('ShippingFix: Found quotes in options array');
+
                 }
                 else if (data.shipping_rates && Array.isArray(data.shipping_rates)) {
                     quotes = data.shipping_rates;
-                    console.log('ShippingFix: Found quotes in shipping_rates array');
+
                 }
                 else {
                     // Check if we got the full response object from N8N
@@ -882,7 +795,6 @@
                             const parsedBody = JSON.parse(data.body);
                             if (parsedBody.quotes && Array.isArray(parsedBody.quotes)) {
                                 quotes = parsedBody.quotes;
-                                console.log('ShippingFix: Found quotes in parsed body');
                             }
                         }
                     } catch (e) {
@@ -892,7 +804,6 @@
                 
                 // If we found quotes, display them
                 if (quotes.length > 0) {
-                    console.log('ShippingFix: Displaying', quotes.length, 'shipping options');
                     
                     quotes.forEach(quote => {
                         const optionEl = document.createElement('div');
@@ -1252,7 +1163,6 @@
                     
                     // Listen for our custom event to update their UI
                     document.addEventListener('shipping-option-selected', function(e) {
-                        console.log('ShippingFix: Updating form5 UI with selected shipping');
                         
                         // Hide our modal since form5.html has its own UI
                         const modal = document.getElementById('shipping-options-modal');
@@ -1365,8 +1275,7 @@
         }
     });
     
-    // Export function for testing
-    window.formatPostalCode = formatPostalCode;
+    // No need to export function for production
     
     // Final check to ensure form submission handler works
     const addressForm = document.getElementById('addressForm');

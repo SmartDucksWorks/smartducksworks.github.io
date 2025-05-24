@@ -657,14 +657,11 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'request-method': 'POST',  // Add this explicitly for N8N
-                    'Request-Method': 'POST',  // Add alternative capitalization
-                    'X-HTTP-Method': 'POST',   // Add additional method header format
-                    'X-Method-Override': 'POST', // Add yet another format
                     'X-CSRF-Token': csrfToken, // Add CSRF token needed by N8N
                     'Origin': window.location.origin  // Explicitly set origin for CORS
                 },
                 body: JSON.stringify(n8nFormattedData),
-                // Include credentials to handle any auth requirements
+                // Include credentials to allow cookies to be sent
                 credentials: 'include',
                 // Explicitly set mode for CORS
                 mode: 'cors'

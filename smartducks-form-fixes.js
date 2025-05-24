@@ -450,371 +450,364 @@
 
     // Ensure form submission handler is properly working
     function ensureFormSubmitWorks() {
-        console.log('Ensuring form submission handler is working');
+        console.log('ShippingFix: Ensuring form submission handler is working');
         
         const addressForm = document.getElementById('addressForm');
-        const submitButton = addressForm ? 
-            (addressForm.querySelector('.submit-button, button[type="submit"], input[type="submit"]') || 
-            addressForm.querySelector('button:contains("Get Shipping Options")')) : null;
+        
+        // Find the submit button - try multiple approaches
+        let submitButton = null;
+        if (addressForm) {
+            // Try multiple approaches to find the button
+            submitButton = addressForm.querySelector('.submit-button, button[type="submit"], input[type="submit"]');
+            
+            // Try finding by text content
+            if (!submitButton) {
+                const buttons = Array.from(addressForm.querySelectorAll('button'));
+                submitButton = buttons.find(btn => 
+                    (btn.textContent && btn.textContent.trim().toLowerCase().includes('shipping')) || 
+                    (btn.textContent && btn.textContent.trim().toLowerCase().includes('options')) ||
+                    (btn.value && btn.value.toLowerCase().includes('shipping'))
+                );
+            }
+            
+            // Last resort - any button in the form
+            if (!submitButton) {
+                submitButton = addressForm.querySelector('button');
+            }
+        }
         
         if (!addressForm) {
-            console.log('Address form not found yet for form submission check, will retry...');
+            console.log('ShippingFix: Address form not found yet, will retry in 500ms...');
             setTimeout(ensureFormSubmitWorks, 500);
             return;
         }
         
         if (!submitButton) {
-            console.log('Submit button not found, looking for any button in the form...');
-            const anyButton = addressForm.querySelector('button');
-            if (anyButton) {
-                console.log('Using generic button as submit button:', anyButton.textContent.trim());
-            } else {
-                console.log('No button found in form, will retry...');
-                setTimeout(ensureFormSubmitWorks, 500);
-                return;
-            }
+            console.log('ShippingFix: Submit button not found, will retry in 500ms...');
+            setTimeout(ensureFormSubmitWorks, 500);
+            return;
         }
         
-        console.log('Form found, ensuring submission handler is working');
-
-        // Find all potential modal elements
-        const potentialModals = document.querySelectorAll('.shipping-options-modal, .modal, #shippingOptionsModal, [class*="modal"], [id*="modal"], dialog');
-        console.log(`Found ${potentialModals.length} potential modal elements`);
-        potentialModals.forEach((modal, i) => {
-            console.log(`Modal ${i+1}: class="${modal.className}" id="${modal.id}"`);
+        console.log('ShippingFix: Found form and button:', submitButton.textContent?.trim() || submitButton.value || 'Unknown button');
+        
+        // Check for any existing modals to determine the right approach
+        const existingModals = document.querySelectorAll('.modal, [id*="modal"], [class*="modal"], dialog');
+        console.log(`ShippingFix: Found ${existingModals.length} potential modal elements in the DOM`);
+        existingModals.forEach((modal, i) => {
+            console.log(`ShippingFix: Modal ${i+1}: class="${modal.className}" id="${modal.id}"`);
         });
+        
+        // Remove previous handlers to prevent duplicate submissions
+        if (window._shippingFixHandler && addressForm._hasShippingFix) {
+            console.log('ShippingFix: Removing previous handler to avoid duplicates');
+            addressForm.removeEventListener('submit', window._shippingFixHandler);
+            if (submitButton._clickHandler) {
+                submitButton.removeEventListener('click', submitButton._clickHandler);
+            }
+        }
         
         // Re-attach the submit event listener to make sure it works
         const originalSubmit = addressForm.onsubmit;
         
-        // Check if the form already has our fixed handler installed
-        if (!window._formSubmitFixed) {
-            window._formSubmitFixed = true;
+        // Create our handler function and store it for potential removal later
+        window._shippingFixHandler = function(e) {
+            console.log('ShippingFix: Form submission intercepted');
             
-            // Enhanced submission handler that ensures the modal is shown
-            addressForm.addEventListener('submit', function(e) {
-                console.log('Form submit event intercepted');
-                
-                // Always prevent default to ensure we control the submission flow
-                e.preventDefault();
-                
-                // Find all potential modal elements - check again in case elements were added after page load
-                const shippingModal = document.querySelector('.shipping-options-modal, .modal, #shippingOptionsModal, [class*="modal"], [id*="modal"], dialog');
-                if (shippingModal) {
-                    console.log('Found shipping modal:', shippingModal);
-                    console.log('Modal class:', shippingModal.className);
-                    console.log('Modal ID:', shippingModal.id);
-                    console.log('Modal display style:', shippingModal.style.display);
-                    console.log('Modal visibility:', window.getComputedStyle(shippingModal).visibility);
-                } else {
-                    console.warn('No shipping modal found in DOM!');
-                }
-                
-                const loadingIndicator = document.querySelector('.loading-indicator, .spinner, #loadingSpinner, .loader, .loading');
-                
-                // Show the loading indicator if it exists
-                if (loadingIndicator) {
-                    console.log('Showing loading indicator');
-                    loadingIndicator.style.display = 'block';
-                    loadingIndicator.style.visibility = 'visible';
-                    loadingIndicator.classList.add('active', 'visible', 'show');
-                } else {
-                    console.log('No loading indicator found, creating one');
-                    // Create a simple loading indicator if none exists
-                    const tempLoader = document.createElement('div');
-                    tempLoader.id = 'tempLoadingIndicator';
-                    tempLoader.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(255,255,255,0.8);padding:20px;border-radius:5px;box-shadow:0 0 10px rgba(0,0,0,0.2);';
-                    tempLoader.innerHTML = 'Loading shipping options...';
-                    document.body.appendChild(tempLoader);
-                }
-                
-                // Collect form data to send
-                const formData = new FormData(addressForm);
-                const formDataObj = {};
-                formData.forEach((value, key) => {
-                    formDataObj[key] = value;
-                });
-                
-                console.log('Submitting form data to get shipping options:', formDataObj);
-                
-                // Make the AJAX request (always do our own request to ensure it works)
-                // Find the form action URL
-                const actionUrl = addressForm.getAttribute('action') || window.shippingOptionsUrl || '/api/shipping-options';
-                
-                console.log('Sending form data to URL:', actionUrl);
-                
-                // Send the AJAX request
-                fetch(actionUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(formDataObj),
-                })
-                .then(response => {
-                    console.log('Received response:', response.status);
-                    // Try to parse JSON, but also handle non-JSON responses
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('application/json')) {
-                        return response.json().then(data => {
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok: ' + response.status);
-                            }
-                            return data;
-                        });
-                    } else {
-                        return response.text().then(text => {
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok: ' + response.status);
-                            }
-                            // Try to parse as JSON anyway, in case content-type is wrong
-                            try {
-                                return JSON.parse(text);
-                            } catch(e) {
-                                // Return as HTML content
-                                return { html: text };
-                            }
-                        });
-                    }
-                })
-                .then(data => {
-                    console.log('Received shipping options data:', data);
-                    
-                    // Remove temp loader if we created one
-                    const tempLoader = document.getElementById('tempLoadingIndicator');
-                    if (tempLoader) {
-                        tempLoader.remove();
-                    }
-                    
-                    // Hide loading indicator
-                    if (loadingIndicator) {
-                        loadingIndicator.style.display = 'none';
-                        loadingIndicator.style.visibility = 'hidden';
-                        loadingIndicator.classList.remove('active', 'visible', 'show');
-                    }
-                    
-                    // Find the modal again - it might have been added to the DOM after our initial check
-                    const shippingModal = document.querySelector('.shipping-options-modal, .modal, #shippingOptionsModal, [class*="modal"], [id*="modal"], dialog');
-                    
-                    // Show the modal with the shipping options
-                    if (shippingModal) {
-                        console.log('Found shipping modal, attempting to show it');
-                        
-                        // Populate the modal with the received data if needed
-                        const shippingOptionsContainer = shippingModal.querySelector('.shipping-options-container, .modal-body, .shipping-options');
-                        
-                        if (shippingOptionsContainer) {
-                            console.log('Found container for shipping options, populating it');
-                            
-                            // If we have HTML content directly, use it
-                            if (data.html) {
-                                shippingOptionsContainer.innerHTML = data.html;
-                            }
-                            // Otherwise, try to build from JSON data
-                            else if (data.options) {
-                                // Clear previous options
-                                shippingOptionsContainer.innerHTML = '';
-                                
-                                // Add new options
-                                data.options.forEach(option => {
-                                    const optionElement = document.createElement('div');
-                                    optionElement.className = 'shipping-option';
-                                    optionElement.innerHTML = `
-                                        <input type="radio" name="shipping_option" value="${option.id}">
-                                        <label>${option.name} - ${option.price}</label>
-                                    `;
-                                    shippingOptionsContainer.appendChild(optionElement);
-                                });
-                            }
-                            // If none of the above match, try to handle as generic data
-                            else {
-                                // Just in case the data structure is different than expected
-                                const content = document.createElement('div');
-                                content.innerHTML = '<p>Shipping options available:</p>';
-                                
-                                // Create a simple representation of the data
-                                const dataList = document.createElement('pre');
-                                dataList.textContent = JSON.stringify(data, null, 2);
-                                content.appendChild(dataList);
-                                
-                                shippingOptionsContainer.appendChild(content);
-                            }
-                        } else {
-                            console.warn('No container found for shipping options in modal');
-                            // Create a simple container as a fallback
-                            const container = document.createElement('div');
-                            container.className = 'shipping-options-container';
-                            container.innerHTML = '<p>Shipping options data received</p>';
-                            shippingModal.appendChild(container);
-                        }
-                        
-                        // Show the modal - try EVERY possible approach
-                        console.log('Showing modal using multiple methods');
-                        
-                        // Try direct style manipulation
-                        shippingModal.style.display = 'block';
-                        shippingModal.style.visibility = 'visible';
-                        shippingModal.style.opacity = '1';
-                        
-                        // For Bootstrap modals
-                        if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
-                            console.log('Using jQuery Bootstrap modal method');
-                            try {
-                                window.jQuery(shippingModal).modal('show');
-                            } catch(e) {
-                                console.error('Error showing Bootstrap modal:', e);
-                            }
-                        }
-                        
-                        // For Dialog element
-                        if (shippingModal.tagName.toLowerCase() === 'dialog') {
-                            console.log('Using native dialog methods');
-                            if (shippingModal.showModal) {
-                                shippingModal.showModal();
-                            } else if (shippingModal.show) {
-                                shippingModal.show();
-                            }
-                        }
-                        
-                        // Add all possible classes that might make it visible
-                        shippingModal.classList.add('show', 'active', 'visible', 'displayed', 'in', 'open');
-                        shippingModal.classList.remove('hide', 'hidden', 'closed');
-                        
-                        // Add backdrop if needed
-                        if (!document.querySelector('.modal-backdrop')) {
-                            const backdrop = document.createElement('div');
-                            backdrop.className = 'modal-backdrop fade show';
-                            document.body.appendChild(backdrop);
-                            
-                            // Make backdrop visible
-                            backdrop.style.display = 'block';
-                            backdrop.style.opacity = '0.5';
-                            backdrop.style.position = 'fixed';
-                            backdrop.style.top = '0';
-                            backdrop.style.right = '0';
-                            backdrop.style.bottom = '0';
-                            backdrop.style.left = '0';
-                            backdrop.style.zIndex = '1040';
-                            backdrop.style.backgroundColor = '#000';
-                        }
-                        
-                        // Set z-index high to ensure visibility
-                        shippingModal.style.zIndex = '1050';
-                        
-                        // Force display after a short delay in case other scripts are hiding it
-                        setTimeout(() => {
-                            shippingModal.style.display = 'block';
-                            shippingModal.style.visibility = 'visible';
-                            shippingModal.style.opacity = '1';
-                        }, 100);
-                        
-                        console.log('Modal should now be visible');
-                    } else {
-                        console.error('Shipping modal not found in the DOM after submission');
-                        
-                        // As a last resort, create our own modal if none exists
-                        console.log('Creating a temporary modal to display shipping options');
-                        const tempModal = document.createElement('div');
-                        tempModal.className = 'shipping-options-modal modal show';
-                        tempModal.id = 'tempShippingOptionsModal';
-                        tempModal.style.cssText = 'display:block;position:fixed;top:0;left:0;width:100%;height:100%;z-index:1050;overflow:auto;background-color:rgba(0,0,0,0.5);';
-                        
-                        // Create modal content
-                        tempModal.innerHTML = `
-                            <div class="modal-dialog" style="margin:50px auto;max-width:600px;background:#fff;border-radius:5px;padding:20px;position:relative;">
-                                <div class="modal-header" style="border-bottom:1px solid #eee;padding-bottom:10px;margin-bottom:20px;">
-                                    <h3>Shipping Options</h3>
-                                    <button type="button" class="close" style="position:absolute;top:10px;right:15px;font-size:24px;cursor:pointer;background:none;border:none;">&times;</button>
-                                </div>
-                                <div class="modal-body shipping-options-container"></div>
-                                <div class="modal-footer" style="margin-top:20px;padding-top:10px;border-top:1px solid #eee;">
-                                    <button type="button" class="btn-close" style="padding:8px 16px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">Close</button>
-                                </div>
-                            </div>
-                        `;
-                        
-                        document.body.appendChild(tempModal);
-                        
-                        // Populate the temporary modal
-                        const tempContainer = tempModal.querySelector('.shipping-options-container');
-                        if (tempContainer) {
-                            if (data.html) {
-                                tempContainer.innerHTML = data.html;
-                            } else if (data.options) {
-                                data.options.forEach(option => {
-                                    const optionElement = document.createElement('div');
-                                    optionElement.className = 'shipping-option';
-                                    optionElement.innerHTML = `
-                                        <input type="radio" name="shipping_option" value="${option.id}">
-                                        <label>${option.name} - ${option.price}</label>
-                                    `;
-                                    tempContainer.appendChild(optionElement);
-                                });
-                            } else {
-                                tempContainer.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-                            }
-                        }
-                        
-                        // Add close button functionality
-                        const closeButtons = tempModal.querySelectorAll('.close, .btn-close');
-                        closeButtons.forEach(button => {
-                            button.addEventListener('click', () => {
-                                tempModal.remove();
-                            });
-                        });
-                    }
-                    
-                    // If there was an original submit handler, call it now but prevent form submission
-                    if (originalSubmit && typeof originalSubmit === 'function') {
-                        console.log('Calling original submit handler...');
-                        try {
-                            // Create a fake event to pass to the original handler
-                            const fakeEvent = { preventDefault: () => {} };
-                            originalSubmit.call(addressForm, fakeEvent);
-                        } catch (err) {
-                            console.error('Error calling original submit handler:', err);
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error getting shipping options:', error);
-                    
-                    // Remove temp loader if we created one
-                    const tempLoader = document.getElementById('tempLoadingIndicator');
-                    if (tempLoader) {
-                        tempLoader.remove();
-                    }
-                    
-                    // Hide loading indicator
-                    if (loadingIndicator) {
-                        loadingIndicator.style.display = 'none';
-                        loadingIndicator.style.visibility = 'hidden';
-                        loadingIndicator.classList.remove('active', 'visible', 'show');
-                    }
-                    
-                    // Show an error message to the user
-                    alert('Error getting shipping options. Please try again.');
-                });
-            }, true); // Use capturing to ensure our handler runs first
+            // Always prevent default - this is critical to prevent double submission
+            e.preventDefault();
+            e.stopPropagation();
             
-            // Also keep the click handler for additional logging
-            if (submitButton) {
-                submitButton.addEventListener('click', function(e) {
-                    console.log('Submit button clicked, form will be submitted...');
-                    
-                    // Look for the shipping modal element on click as well
-                    const shippingModal = document.querySelector('.shipping-options-modal, .modal, #shippingOptionsModal, [class*="modal"]');
-                    if (shippingModal) {
-                        console.log('Found shipping modal on click:', shippingModal);
-                    } else {
-                        console.warn('No shipping modal found on click!');
-                    }
-                });
+            // Log which button triggered the submission
+            if (e.submitter) {
+                console.log('ShippingFix: Button that triggered submission:', e.submitter.textContent?.trim() || e.submitter.value);
             }
             
-            console.log('Enhanced form submission handler applied successfully');
+            // Show a loading indicator
+            const loadingEl = document.createElement('div');
+            loadingEl.id = 'sm-loading-indicator';
+            loadingEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;justify-content:center;align-items:center;';
+            loadingEl.innerHTML = '<div style="background:white;padding:20px;border-radius:5px;">Loading shipping options...</div>';
+            document.body.appendChild(loadingEl);
+            
+            // Collect form data
+            const formData = new FormData(addressForm);
+            const formDataObj = {};
+            formData.forEach((value, key) => {
+                formDataObj[key] = value;
+            });
+            
+            console.log('ShippingFix: Submitting form data:', formDataObj);
+            
+            // Get the form action URL
+            const actionUrl = addressForm.getAttribute('action') || window.shippingOptionsUrl || '/api/shipping-options';
+            console.log('ShippingFix: Submitting to URL:', actionUrl);
+            
+            // Send the request
+            fetch(actionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(formDataObj)
+            })
+            .then(response => {
+                console.log('ShippingFix: Got response:', response.status);
+                
+                // Handle different response types
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    return response.text().then(text => {
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            return { html: text };
+                        }
+                    });
+                }
+            })
+            .then(data => {
+                console.log('ShippingFix: Received data:', data);
+                
+                // Remove loading indicator
+                const loadingEl = document.getElementById('sm-loading-indicator');
+                if (loadingEl) loadingEl.remove();
+                
+                // Look for an existing modal first
+                let modal = document.querySelector('.modal.shipping-modal, #shippingModal, .shipping-options-modal, .modal, [id*="modal"], [class*="modal"]');
+                
+                // If no modal exists, create one
+                if (!modal) {
+                    console.log('ShippingFix: No existing modal found, creating one');
+                    modal = document.createElement('div');
+                    modal.id = 'shipping-options-modal';
+                    modal.className = 'modal shipping-options-modal';
+                    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1050;display:block;';
+                    
+                    modal.innerHTML = `
+                        <div class="modal-dialog" style="margin:60px auto;max-width:600px;background:white;border-radius:5px;box-shadow:0 5px 15px rgba(0,0,0,0.5);">
+                            <div class="modal-content">
+                                <div class="modal-header" style="padding:15px;border-bottom:1px solid #e5e5e5;">
+                                    <h4 class="modal-title">Shipping Options</h4>
+                                    <button type="button" class="close" style="position:absolute;right:15px;top:15px;font-size:24px;font-weight:bold;background:none;border:none;cursor:pointer;">&times;</button>
+                                </div>
+                                <div class="modal-body shipping-options-container" style="padding:15px;max-height:70vh;overflow-y:auto;">
+                                    <!-- Options will be inserted here -->
+                                </div>
+                                <div class="modal-footer" style="padding:15px;border-top:1px solid #e5e5e5;text-align:right;">
+                                    <button type="button" class="btn btn-primary select-option-btn" style="padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:5px;">Select</button>
+                                    <button type="button" class="btn btn-secondary cancel-btn" style="padding:8px 16px;background:#6c757d;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:5px;">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                    
+                    // Add event listeners for closing
+                    const closeButtons = modal.querySelectorAll('.close, .cancel-btn');
+                    closeButtons.forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            modal.style.display = 'none';
+                        });
+                    });
+                    
+                    // Close when clicking outside
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            modal.style.display = 'none';
+                        }
+                    });
+                }
+                
+                // Get the container for shipping options
+                const container = modal.querySelector('.shipping-options-container, .modal-body');
+                if (!container) {
+                    console.error('ShippingFix: No container found in modal');
+                    
+                    // If no container found, create one
+                    const newContainer = document.createElement('div');
+                    newContainer.className = 'shipping-options-container';
+                    newContainer.style.cssText = 'padding:15px;';
+                    
+                    // Find a spot to insert it
+                    const modalContent = modal.querySelector('.modal-content, .modal-dialog') || modal;
+                    modalContent.appendChild(newContainer);
+                    
+                    // Use our new container
+                    container = newContainer;
+                }
+                
+                // Clear previous content
+                container.innerHTML = '';
+                
+                // Parse and display the shipping options
+                if (data.html) {
+                    // If we got HTML directly
+                    container.innerHTML = data.html;
+                } 
+                else if (data.options && Array.isArray(data.options)) {
+                    // If we got options array
+                    data.options.forEach(option => {
+                        const optionEl = document.createElement('div');
+                        optionEl.className = 'shipping-option';
+                        optionEl.style.cssText = 'margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px;';
+                        
+                        optionEl.innerHTML = `
+                            <input type="radio" name="shipping_option" value="${option.id || option.value || ''}">
+                            <label style="margin-left:8px;font-weight:bold;">${option.name || option.label || 'Option'}</label>
+                            <span style="float:right">${option.price || option.cost || ''}</span>
+                            ${option.description ? `<div style="margin-top:5px;color:#666;">${option.description}</div>` : ''}
+                        `;
+                        
+                        container.appendChild(optionEl);
+                    });
+                } 
+                else if (data.shipping_rates && Array.isArray(data.shipping_rates)) {
+                    // Alternative structure sometimes used
+                    data.shipping_rates.forEach(option => {
+                        const optionEl = document.createElement('div');
+                        optionEl.className = 'shipping-option';
+                        optionEl.style.cssText = 'margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px;';
+                        
+                        optionEl.innerHTML = `
+                            <input type="radio" name="shipping_option" value="${option.id || option.service_code || ''}">
+                            <label style="margin-left:8px;font-weight:bold;">${option.service_name || option.carrier || 'Option'}</label>
+                            <span style="float:right">${option.total_price || option.price || ''}</span>
+                        `;
+                        
+                        container.appendChild(optionEl);
+                    });
+                } 
+                else {
+                    // If we didn't recognize the data structure, just show raw data
+                    container.innerHTML = `
+                        <p>Shipping options received. Please select an option:</p>
+                        <pre style="background:#f4f4f4;padding:10px;overflow:auto;font-size:12px;">${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+                
+                // Now make the modal visible using multiple approaches
+                // 1. Direct style manipulation
+                modal.style.display = 'block';
+                modal.style.visibility = 'visible';
+                modal.style.opacity = '1';
+                
+                // 2. Bootstrap jQuery approach
+                if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
+                    console.log('ShippingFix: Using jQuery Bootstrap modal method');
+                    try {
+                        window.jQuery(modal).modal('show');
+                    } catch(e) {
+                        console.error('ShippingFix: Error showing Bootstrap modal:', e);
+                    }
+                }
+                
+                // 3. Native dialog element
+                if (modal.tagName && modal.tagName.toLowerCase() === 'dialog') {
+                    console.log('ShippingFix: Using native dialog methods');
+                    if (modal.showModal) {
+                        modal.showModal();
+                    } else if (modal.show) {
+                        modal.show();
+                    }
+                }
+                
+                // 4. Add/remove CSS classes
+                modal.classList.add('show', 'in', 'active', 'visible', 'opened');
+                modal.classList.remove('hide', 'hidden', 'closed');
+                
+                // 5. Add backdrop if needed
+                if (!document.querySelector('.modal-backdrop')) {
+                    const backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    backdrop.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:1040;background-color:rgba(0,0,0,0.5);';
+                    document.body.appendChild(backdrop);
+                }
+                
+                // 6. Use high z-index
+                modal.style.zIndex = '1050';
+                
+                // 7. Force display again after a slight delay in case other scripts try to hide it
+                setTimeout(() => {
+                    modal.style.display = 'block';
+                    modal.style.visibility = 'visible';
+                    modal.style.opacity = '1';
+                }, 100);
+                
+                console.log('ShippingFix: Modal should now be visible');
+                
+                // If there was an original submit handler, call it now but prevent form submission
+                if (originalSubmit && typeof originalSubmit === 'function') {
+                    console.log('ShippingFix: Calling original submit handler');
+                    try {
+                        // Create a fake event to pass to the original handler
+                        const fakeEvent = { preventDefault: () => {} };
+                        originalSubmit.call(addressForm, fakeEvent);
+                    } catch (err) {
+                        console.error('ShippingFix: Error calling original handler:', err);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('ShippingFix: Error fetching shipping options:', error);
+                
+                // Remove loading indicator
+                const loadingEl = document.getElementById('sm-loading-indicator');
+                if (loadingEl) loadingEl.remove();
+                
+                // Show error message
+                alert('Error loading shipping options. Please try again.');
+            });
+        };
+        
+        // Add the submit handler to the form
+        addressForm._hasShippingFix = true;
+        addressForm.addEventListener('submit', window._shippingFixHandler);
+        
+        // Also add a click handler to the button as a backup
+        const buttonClickHandler = function(e) {
+            console.log('ShippingFix: Button clicked directly');
+            // If it's not a submit button, manually trigger submit
+            if (submitButton.type !== 'submit') {
+                e.preventDefault();
+                
+                // Trigger form submission to use our handler
+                const submitEvent = new Event('submit', {
+                    bubbles: true,
+                    cancelable: true
+                });
+                addressForm.dispatchEvent(submitEvent);
+            }
+        };
+        
+        submitButton._clickHandler = buttonClickHandler;
+        submitButton.addEventListener('click', buttonClickHandler);
+        
+        console.log('ShippingFix: Form handlers installed successfully');
+        
+        // Special fix for nested form or form within a form
+        const parentForm = addressForm.closest('form');
+        if (parentForm && parentForm !== addressForm) {
+            console.log('ShippingFix: Detected nested form, applying special fix');
+            parentForm.addEventListener('submit', function(e) {
+                // If our form is inside another form, prevent the outer form from submitting
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Trigger our form instead
+                const submitEvent = new Event('submit', {
+                    bubbles: true,
+                    cancelable: true
+                });
+                addressForm.dispatchEvent(submitEvent);
+            });
         }
+        
+        // Mark the form as fixed
+        window._formSubmitFixed = true;
     }
     
     // Run the fix when the document is ready

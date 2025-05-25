@@ -564,17 +564,11 @@
             // Get the form action URL - try multiple approaches
             let actionUrl = addressForm.getAttribute('action');
             
-            // Try using the proxy path first (which avoids CORS issues)
-            actionUrl = '/api/webhook/shiptime-rates';
+            // Use direct URL to duckpond in all environments since CORS is properly configured now
+            actionUrl = 'https://duckpond.smartducks.works/webhook/shiptime-rates';
             
-            // Fallback to direct URL if we're not in production
-            if (window.location.hostname !== 'smartducks.works' && window.location.hostname !== 'www.smartducks.works') {
-                // For development/testing, use the direct URL
-                actionUrl = 'https://duckpond.smartducks.works/webhook/shiptime-rates';
-                console.log('ShippingFix: Using direct webhook URL in non-production environment:', actionUrl);
-            } else {
-                console.log('ShippingFix: Using proxy webhook URL in production environment:', actionUrl);
-            }
+            // Log the URL being used
+            console.log('ShippingFix: Using direct webhook URL:', actionUrl);
             
             console.log('ShippingFix: Submitting to URL:', actionUrl);
             

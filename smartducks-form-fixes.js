@@ -674,21 +674,62 @@
             // Send the request with fallbacks for errors
             fetch(actionUrl, fetchOptions)
             .then(response => {
-                console.log('ShippingFix: Got response:', response.status);
+                console.log('ShippingFix: Got response:', response.status, 'Content-Type:', response.headers.get('content-type'));
                 
                 // Handle different response types
                 const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    return response.json();
-                } else {
-                    return response.text().then(text => {
-                        try {
-                            return JSON.parse(text);
-                        } catch (e) {
-                            return { html: text };
+                
+                // First try to get the text response for debugging
+                return response.text().then(text => {
+                    console.log('ShippingFix: Raw response text:', text.substring(0, 200) + (text.length > 200 ? '...' : ''));
+                    
+                    try {
+                        // Try to parse as JSON
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('ShippingFix: JSON parse error:', e);
+                        
+                        // If the response is empty or whitespace only, return empty object
+                        if (!text.trim()) {
+                            console.log('ShippingFix: Empty response body');
+                            return { success: false, error: 'Empty response from server' };
                         }
-                    });
-                }
+                        
+                        // Check if it might be HTML or plain text response
+                        if (text.includes('<html') || text.includes('<!DOCTYPE')) {
+                            return { html: text, success: false, error: 'Server returned HTML instead of JSON' };
+                        }
+                        
+                        // If it looks like it might be JSON but has an error,
+                        // try to clean it up and parse again
+                        if (text.includes('{') && text.includes('}')) {
+                            try {
+                                // Try to extract JSON from the response if there might be extra text
+                                const jsonStartIndex = text.indexOf('{');
+                                const jsonEndIndex = text.lastIndexOf('}') + 1;
+                                if (jsonStartIndex >= 0 && jsonEndIndex > jsonStartIndex) {
+                                    const jsonPart = text.substring(jsonStartIndex, jsonEndIndex);
+                                    console.log('ShippingFix: Attempting to extract JSON part:', jsonPart.substring(0, 100) + (jsonPart.length > 100 ? '...' : ''));
+                                    return JSON.parse(jsonPart);
+                                }
+                            } catch (innerError) {
+                                console.error('ShippingFix: Failed to extract JSON:', innerError);
+                            }
+                        }
+                        
+                        // Last resort - return as HTML/text
+                        return { 
+                            html: text, 
+                            success: false, 
+                            error: 'Failed to parse server response as JSON',
+                            debug_info: { 
+                                parse_error: e.message,
+                                content_type: contentType,
+                                response_length: text.length
+                            }
+                        };
+                    }
+                });
             })
             .then(data => {
                 console.log('ShippingFix: Received data:', data);
@@ -696,6 +737,59 @@
                 // Remove loading indicator
                 const loadingEl = document.getElementById('sm-loading-indicator');
                 if (loadingEl) loadingEl.remove();
+                
+                // Normalize data format
+                if (!data) {
+                    console.error('ShippingFix: No data received from server');
+                    data = { success: false, error: 'No data received from server' };
+                }
+                
+                console.log('ShippingFix: Data type:', typeof data, 'Structure:', Object.keys(data));
+                
+                if (data && data.quotes && Array.isArray(data.quotes)) {
+                    console.log('ShippingFix: Found quotes directly in response');
+                } else if (data && typeof data === 'object') {
+                    // Try to find quotes in a nested structure
+                    console.log('ShippingFix: Searching for quotes in nested structure');
+                    
+                    // Handle N8N response format where data might be nested inside body or json property
+                    if (data.body) {
+                        try {
+                            // If body is a string that contains JSON
+                            if (typeof data.body === 'string' && data.body.includes('{')) {
+                                const parsedBody = JSON.parse(data.body);
+                                if (parsedBody.quotes && Array.isArray(parsedBody.quotes)) {
+                                    console.log('ShippingFix: Found quotes in parsed body string');
+                                    data = parsedBody;
+                                } else if (parsedBody.success && parsedBody.data) {
+                                    console.log('ShippingFix: Found success and data in parsed body');
+                                    data = parsedBody.data;
+                                }
+                            } 
+                            // If body is already an object with quotes
+                            else if (data.body.quotes && Array.isArray(data.body.quotes)) {
+                                console.log('ShippingFix: Found quotes in body object');
+                                data = data.body;
+                            }
+                        } catch (e) {
+                            console.error('ShippingFix: Error parsing body:', e);
+                        }
+                    }
+                    
+                    // Try other possible locations for quotes
+                    if (!data.quotes) {
+                        if (data.json && data.json.quotes && Array.isArray(data.json.quotes)) {
+                            console.log('ShippingFix: Found quotes in json property');
+                            data = data.json;
+                        } else if (data.data && data.data.quotes && Array.isArray(data.data.quotes)) {
+                            console.log('ShippingFix: Found quotes in data property');
+                            data = data.data;
+                        } else if (data.success && data.data && Array.isArray(data.data)) {
+                            console.log('ShippingFix: Found data array in success response');
+                            data.quotes = data.data;
+                        }
+                    }
+                }
                 
                 // Look for an existing modal first
                 let modal = document.querySelector('.modal.shipping-modal, #shippingModal, .shipping-options-modal, .modal, [id*="modal"], [class*="modal"]');

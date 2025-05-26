@@ -998,305 +998,394 @@
                 console.log('ShippingFix: Modal should now be visible');
                 
                 // If there was an original submit handler, call it now but prevent form submission
-                // This part seems problematic and might not be needed if we control the whole flow.
-                // if (originalSubmit && typeof originalSubmit === 'function') {
-                //    console.log('ShippingFix: Calling original submit handler (if any)');
-                //    // originalSubmit.call(addressForm, new Event('submit', { cancelable: true }));
-                // }
+                if (originalSubmit && typeof originalSubmit === 'function') {
+                    console.log('ShippingFix: Calling original submit handler');
+                    try {
+                        // Create a fake event to pass to the original handler
+                        const fakeEvent = { preventDefault: () => {} };
+                        originalSubmit.call(addressForm, fakeEvent);
+                    } catch (err) {
+                        console.error('ShippingFix: Error calling original handler:', err);
+                    }
+                }
             })
             .catch(error => {
-                console.error('ShippingFix: Fetch error:', error);
+                console.error('ShippingFix: Error fetching shipping options:', error);
+                
+                // Remove loading indicator
                 const loadingEl = document.getElementById('sm-loading-indicator');
                 if (loadingEl) loadingEl.remove();
                 
-                // Display a user-friendly error message
-                const errorDiv = document.createElement('div');
-                errorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;justify-content:center;align-items:center;color:white;';
-                errorDiv.innerHTML = `
-                    <div style="background:#f44336;padding:20px;border-radius:5px;max-width:500px;text-align:center;">
-                    <h3 style="margin-top:0;">Error Fetching Shipping Options</h3>
-                    <p>We encountered an issue: ${error.message || 'Unknown error'}. Please try again.</p>
-                    <button onclick="this.parentNode.parentNode.remove()" style="padding:8px 16px;background:#fff;color:#f44336;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">Close</button>
-                    </div>
-                `;
-                document.body.appendChild(errorDiv);
+                // Check for specific errors that might indicate CORS issues
+                if (error.message && error.message.includes('CORS')) {
+                    // Show a helpful error message specifically for CORS issues
+                    const corsErrorDiv = document.createElement('div');
+                    corsErrorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;justify-content:center;align-items:center;color:white;';
+                    corsErrorDiv.innerHTML = `
+                        <div style="background:#f44336;padding:20px;border-radius:5px;max-width:500px;text-align:center;">
+                        <h3 style="margin-top:0;">Connection Error</h3>
+                        <p>We're having trouble connecting to our shipping service due to a security configuration issue.</p>
+                        <p>Our team has been notified and is working on a fix. Please try again later or contact customer service.</p>
+                        <p>Technical details: CORS configuration error</p>
+                        <button onclick="this.parentNode.parentNode.remove()" style="padding:8px 16px;background:#fff;color:#f44336;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">Close</button>
+                        </div>
+                    `;
+                    document.body.appendChild(corsErrorDiv);
+                } else {
+                    // SIMPLIFIED THIS BLOCK
+                    // The console.error and loadingEl.remove() are already done at the start of the catch block.
+                    alert('Error loading shipping options. Please try again. If the problem persists, contact support.');
+            }
             });
+            
+            // Set up global event handler for shipping option selection
+            if (!window._shippingOptionHandlerInstalled) {
+                window._shippingOptionHandlerInstalled = true;
+                document.addEventListener('shipping-option-selected', function(e) {
+                    console.log('ShippingFix: Shipping option selected:', e.detail);
+                    
+                    // Find or create a field to store the selected shipping option
+                    let shippingOptionField = addressForm.querySelector('input[name="selected_shipping_option"]');
+                    if (!shippingOptionField) {
+                        shippingOptionField = document.createElement('input');
+                        shippingOptionField.type = 'hidden';
+                        shippingOptionField.name = 'selected_shipping_option';
+                        addressForm.appendChild(shippingOptionField);
+                    }
+                    shippingOptionField.value = e.detail.quoteId;
+                    
+                    // Find or create a field to store the selected shipping price
+                    let shippingPriceField = addressForm.querySelector('input[name="selected_shipping_price"]');
+                    if (!shippingPriceField) {
+                        shippingPriceField = document.createElement('input');
+                        shippingPriceField.type = 'hidden';
+                        shippingPriceField.name = 'selected_shipping_price';
+                        addressForm.appendChild(shippingPriceField);
+                    }
+                    shippingPriceField.value = e.detail.price;
+                    
+                    // Try to find an element to display the selection
+                    let shippingDisplay = document.querySelector('.shipping-display, .shipping-selection, .selected-option');
+                    
+                    // If no display element exists, create one
+                    if (!shippingDisplay) {
+                        shippingDisplay = document.createElement('div');
+                        shippingDisplay.className = 'shipping-display';
+                        shippingDisplay.style.cssText = 'margin:15px 0;padding:10px;border:1px solid #ddd;border-radius:4px;';
+                        
+                        // Try to find the right place to insert it
+                        const possibleContainers = [
+                            document.querySelector('.shipping-container, .order-summary, .checkout-summary'),
+                            addressForm.querySelector('fieldset:last-of-type, div:last-of-type'),
+                            addressForm
+                        ];
+                        
+                        // Insert into the first container that exists
+                        for (let container of possibleContainers) {
+                            if (container) {
+                                container.appendChild(shippingDisplay);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Update the display
+                    shippingDisplay.innerHTML = `
+                        <h4>Selected Shipping Option</h4>
+                        <div>${e.detail.option}</div>
+                        <button type="button" class="change-shipping-btn" style="margin-top:10px;padding:5px 10px;background:#6c757d;color:white;border:none;border-radius:4px;cursor:pointer;">Change</button>
+                    `;
+                    
+                    // Add event listener to the change button
+                    const changeBtn = shippingDisplay.querySelector('.change-shipping-btn');
+                    if (changeBtn) {
+                        changeBtn.addEventListener('click', () => {
+                            const modal = document.querySelector('#shipping-options-modal, .modal.shipping-modal, .shipping-options-modal');
+                            if (modal) {
+                                modal.style.display = 'block';
+                            }
+                        });
+                    }
+                });
+            }
         };
         
-        // Add the event listener
+        // Add the submit handler to the form
+        addressForm._hasShippingFix = true;
         addressForm.addEventListener('submit', window._shippingFixHandler);
-        addressForm._hasShippingFix = true; // Mark that we've attached our handler
         
-        console.log('ShippingFix: Form submission handler attached');
-    }
-
-
-    // NEW: Helper function to recalculate and update the order total
-    function recalculateOrderTotal() {
-        console.log('ShippingFix (recalculateOrderTotal): Recalculating order total...');
-        let subtotal = 0;
-        let shipping = 0;
-        let taxes = 0;
-
-        const smartducksTotalEl = document.getElementById('smartducksTotal');
-        const duckfeedTotalEl = document.getElementById('duckfeedTotal');
-        const shippingTotalEl = document.getElementById('shippingTotal');
-        const taxesTotalEl = document.getElementById('taxesTotal'); // HTML has this as $0.00
-        const orderTotalEl = document.getElementById('orderTotal');
-
-        if (smartducksTotalEl && smartducksTotalEl.textContent) {
-            const sdValue = parseFloat(smartducksTotalEl.textContent.replace('$', ''));
-            if (!isNaN(sdValue)) {
-                subtotal += sdValue;
-                console.log('ShippingFix (recalculateOrderTotal): SmartDucks item value:', sdValue);
-            } else {
-                console.warn('ShippingFix (recalculateOrderTotal): Could not parse SmartDucks total from:', smartducksTotalEl.textContent);
+        // Add a much more aggressive click handler to the button that directly
+        // handles the submission without relying on form events
+        const buttonClickHandler = function(e) {
+            console.log('ShippingFix: Button clicked directly');
+            
+            // Always prevent default behavior to take full control
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Mark the form as being processed to prevent multiple submissions
+            if (addressForm._isSubmitting) {
+                console.log('ShippingFix: Form already submitting, ignoring additional clicks');
+                return;
             }
-        } else {
-            console.warn('ShippingFix (recalculateOrderTotal): #smartducksTotal element or its content not found.');
-        }
-
-        if (duckfeedTotalEl && duckfeedTotalEl.textContent) {
-            const dfValueText = duckfeedTotalEl.textContent.replace('$', '');
-            // Based on HTML, #duckfeedTotal has a value like $120.00, despite "Included" text elsewhere.
-            // We will use the numeric value if present in this div for calculation.
-            if (dfValueText.toLowerCase().includes('included') && isNaN(parseFloat(dfValueText))) {
-                 console.log('ShippingFix (recalculateOrderTotal): DuckFeed is marked as included and value is not numeric, not adding to subtotal.');
-            } else {
-                const dfValue = parseFloat(dfValueText);
-                if (!isNaN(dfValue)) {
-                    subtotal += dfValue;
-                    console.log('ShippingFix (recalculateOrderTotal): DuckFeed item value:', dfValue);
-                } else {
-                    console.warn('ShippingFix (recalculateOrderTotal): Could not parse DuckFeed total from:', duckfeedTotalEl.textContent);
-                }
-            }
-        } else {
-            console.warn('ShippingFix (recalculateOrderTotal): #duckfeedTotal element or its content not found.');
-        }
-
-        if (shippingTotalEl && shippingTotalEl.textContent) {
-            const shippingValue = parseFloat(shippingTotalEl.textContent.replace('$', ''));
-            if (!isNaN(shippingValue)) {
-                shipping = shippingValue;
-                console.log('ShippingFix (recalculateOrderTotal): Shipping value:', shipping);
-            } else {
-                console.warn('ShippingFix (recalculateOrderTotal): Could not parse shipping total from:', shippingTotalEl.textContent);
-            }
-        } else {
-            console.warn('ShippingFix (recalculateOrderTotal): #shippingTotal element or its content not found.');
-        }
-
-        if (taxesTotalEl && taxesTotalEl.textContent) {
-            const taxesValue = parseFloat(taxesTotalEl.textContent.replace('$', ''));
-            if (!isNaN(taxesValue)) {
-                taxes = taxesValue;
-                console.log('ShippingFix (recalculateOrderTotal): Taxes value:', taxes);
-            } else {
-                console.warn('ShippingFix (recalculateOrderTotal): Could not parse taxes total from:', taxesTotalEl.textContent);
-            }
-        } else {
-            console.warn('ShippingFix (recalculateOrderTotal): #taxesTotal element or its content not found.');
-        }
-
-        const grandTotal = subtotal + shipping + taxes;
-        console.log('ShippingFix (recalculateOrderTotal): Calculated values - Subtotal:', subtotal.toFixed(2), 'Shipping:', shipping.toFixed(2), 'Taxes:', taxes.toFixed(2), 'Grand Total:', grandTotal.toFixed(2));
-
-        if (orderTotalEl) {
-            orderTotalEl.innerHTML = `<strong>$${grandTotal.toFixed(2)}</strong>`;
-            console.log('ShippingFix (recalculateOrderTotal): Updated #orderTotal to $', grandTotal.toFixed(2));
-        } else {
-            console.error('ShippingFix (recalculateOrderTotal): #orderTotal div not found! Cannot update grand total display.');
-        }
-    }
-
-    // MODIFIED: Function to handle deep integration with the original form's UI elements
-    function integrateDeeplyHandler(event) {
-        console.log('ShippingFix (integrateDeeplyHandler): Event received:', event.detail);
-        const { quoteId, price, option } = event.detail;
-
-        const shippingOptionsDiv = document.getElementById('shippingOptions');
-        const shippingOptionsListDiv = document.getElementById('shippingOptionsList');
-        const shippingTotalDiv = document.getElementById('shippingTotal');
-        const addressForm = document.getElementById('addressForm');
-        const orderSummaryDiv = document.getElementById('orderSummary');
-
-        // 1. Hide our custom modal (already done by the modal's select button's event listener)
-
-        // 2. Show the original form's shipping options display area
-        if (shippingOptionsDiv) {
-            shippingOptionsDiv.style.display = 'block';
-            console.log('ShippingFix (integrateDeeplyHandler): Made #shippingOptions visible');
-        } else {
-            console.error('ShippingFix (integrateDeeplyHandler): #shippingOptions div not found!');
-        }
-
-        // 3. Populate the original form's shipping option list
-        if (shippingOptionsListDiv) {
-            shippingOptionsListDiv.innerHTML = option; // 'option' is the HTML of the selected item
-            if (shippingOptionsListDiv.firstChild && shippingOptionsListDiv.firstChild.style) {
-                shippingOptionsListDiv.firstChild.classList.add('selected-shipping-option-display');
-                shippingOptionsListDiv.firstChild.style.cursor = 'default';
-                shippingOptionsListDiv.firstChild.style.border = 'none'; // Or '1px solid #ccc' for clarity
-                shippingOptionsListDiv.firstChild.style.padding = '5px 0';
-            }
-            console.log('ShippingFix (integrateDeeplyHandler): Populated #shippingOptionsList');
-        } else {
-            console.error('ShippingFix (integrateDeeplyHandler): #shippingOptionsList div not found!');
-        }
-
-        // 4. Update the shipping total in the order summary
-        if (shippingTotalDiv) {
-            shippingTotalDiv.textContent = `$${parseFloat(price).toFixed(2)}`;
-            console.log('ShippingFix (integrateDeeplyHandler): Updated #shippingTotal to $', price);
-        } else {
-            console.error('ShippingFix (integrateDeeplyHandler): #shippingTotal div not found!');
-        }
-
-        // 5. Hide the address form
-        if (addressForm) {
-            addressForm.style.display = 'none';
-            console.log('ShippingFix (integrateDeeplyHandler): Hid #addressForm');
-        } else {
-            console.error('ShippingFix (integrateDeeplyHandler): #addressForm not found!');
-        }
-
-        // 6. Show the order summary
-        if (orderSummaryDiv) {
-            orderSummaryDiv.style.display = 'block';
-            console.log('ShippingFix (integrateDeeplyHandler): Made #orderSummary visible');
-        } else {
-            console.error('ShippingFix (integrateDeeplyHandler): #orderSummary div not found!');
-        }
-
-        recalculateOrderTotal(); // Update grand total
-
-        // 7. Handle the "Confirm Shipping Option" button
-        const confirmShippingButton = document.getElementById('confirmShipping');
-        if (confirmShippingButton) {
-            console.log('ShippingFix (integrateDeeplyHandler): Found #confirmShipping button.');
-            const newConfirmButton = confirmShippingButton.cloneNode(true); // Clone to remove old listeners
-            confirmShippingButton.parentNode.replaceChild(newConfirmButton, confirmShippingButton);
-
-            newConfirmButton.addEventListener('click', function handleConfirmShippingClick() {
-                console.log('ShippingFix: #confirmShipping button clicked.');
-
-                if (shippingOptionsDiv) {
-                    shippingOptionsDiv.style.display = 'none';
-                    console.log('ShippingFix: Hid #shippingOptions.');
-                }
-
-                const finalActionsDiv = document.getElementById('finalActions');
-                if (finalActionsDiv) {
-                    finalActionsDiv.style.display = 'block';
-                    console.log('ShippingFix: Made #finalActions visible.');
-                } else {
-                    console.error('ShippingFix: #finalActions div not found!');
-                }
-
-                if (orderSummaryDiv) { // Ensure order summary remains visible
-                    orderSummaryDiv.style.display = 'block';
-                }
+            
+            addressForm._isSubmitting = true;
+            
+            // We'll manually call our handler function directly
+            console.log('ShippingFix: Manually triggering submission handler');
+            
+            // Call our handler directly with a fake event
+            window._shippingFixHandler({
+                preventDefault: () => {},
+                stopPropagation: () => {},
+                submitter: submitButton
             });
-        } else {
-            console.error('ShippingFix (integrateDeeplyHandler): #confirmShipping button not found!');
-        }
-    }
-
-    // This function sets up the listener for our custom event
-    function integrateDeeply() {
-        console.log('ShippingFix (integrateDeeply): Setting up listener for "shipping-option-selected" event.');
-        if (window._integrateDeeplyHandlerRef) { // Prevent multiple listeners
-            document.removeEventListener('shipping-option-selected', window._integrateDeeplyHandlerRef);
-        }
-        window._integrateDeeplyHandlerRef = integrateDeeplyHandler; // Store ref for potential removal
-        document.addEventListener('shipping-option-selected', window._integrateDeeplyHandlerRef);
-    }
-
-    // NEW: Function to set up "Change Shipping" and "Proceed to Payment" buttons
-    function setupFinalActionButtons() {
-        console.log('ShippingFix (setupFinalActionButtons): Setting up final action buttons.');
-        const changeShippingButton = document.getElementById('changeShipping');
-        if (changeShippingButton) {
-            const newChangeShippingButton = changeShippingButton.cloneNode(true);
-            changeShippingButton.parentNode.replaceChild(newChangeShippingButton, changeShippingButton);
-
-            newChangeShippingButton.addEventListener('click', function handleChangeShippingClick() {
-                console.log('ShippingFix: #changeShipping button clicked.');
-
-                const finalActionsDiv = document.getElementById('finalActions');
-                if (finalActionsDiv) finalActionsDiv.style.display = 'none';
-
-                const addressForm = document.getElementById('addressForm');
-                if (addressForm) {
-                    addressForm.style.display = 'block';
-                    console.log('ShippingFix: Made #addressForm visible for changing shipping.');
-                    // addressForm.scrollIntoView({ behavior: 'smooth' }); // Optional
-                } else {
-                    console.error('ShippingFix: #addressForm not found for #changeShipping action.');
-                }
-
-                const shippingOptionsDiv = document.getElementById('shippingOptions');
-                if (shippingOptionsDiv) shippingOptionsDiv.style.display = 'none';
-
-                const shippingOptionsListDiv = document.getElementById('shippingOptionsList');
-                if (shippingOptionsListDiv) shippingOptionsListDiv.innerHTML = '';
-
-                const shippingTotalDiv = document.getElementById('shippingTotal');
-                if (shippingTotalDiv) shippingTotalDiv.textContent = '$0.00';
-
-                const orderSummaryDiv = document.getElementById('orderSummary');
-                if (orderSummaryDiv) orderSummaryDiv.style.display = 'block'; // Keep summary visible
-
-                recalculateOrderTotal(); // Recalculate with $0 shipping
-            });
-        } else {
-            console.warn('ShippingFix (setupFinalActionButtons): #changeShipping button not found.');
-        }
-
-        const proceedToPaymentButton = document.getElementById('proceedToPayment');
-        if (proceedToPaymentButton) {
-            const newProceedToPaymentButton = proceedToPaymentButton.cloneNode(true);
-            proceedToPaymentButton.parentNode.replaceChild(newProceedToPaymentButton, proceedToPaymentButton);
-
-            newProceedToPaymentButton.addEventListener('click', function handleProceedToPaymentClick() {
-                console.log('ShippingFix: #proceedToPayment button clicked.');
-
-                const finalActionsDiv = document.getElementById('finalActions');
-                if (finalActionsDiv) finalActionsDiv.style.display = 'none';
+            
+            // Reset the submitting flag after a delay
+            setTimeout(() => {
+                addressForm._isSubmitting = false;
+            }, 2000);
+        };
+        
+        // Store the handler for potential cleanup
+        submitButton._clickHandler = buttonClickHandler;
+        
+        // Remove any existing click handlers from the button to avoid conflicts
+        submitButton.removeEventListener('click', submitButton._clickHandler);
+        
+        // Add our click handler with capture to ensure it runs first
+        submitButton.addEventListener('click', buttonClickHandler, true);
+        
+        console.log('ShippingFix: Form handlers installed successfully');
+        
+        // Special fix for nested form or form within a form
+        const parentForm = addressForm.closest('form');
+        if (parentForm && parentForm !== addressForm) {
+            console.log('ShippingFix: Detected nested form, applying special fix');
+            parentForm.addEventListener('submit', function(e) {
+                // If our form is inside another form, prevent the outer form from submitting
+                e.preventDefault();
+                e.stopPropagation();
                 
-                const orderSummaryDiv = document.getElementById('orderSummary');
-                if (orderSummaryDiv) orderSummaryDiv.style.display = 'block'; // Keep summary visible
-
-                const paymentSectionDiv = document.getElementById('paymentSection');
-                if (paymentSectionDiv) {
-                    paymentSectionDiv.style.display = 'block';
-                    console.log('ShippingFix: Made #paymentSection visible.');
-                    // Potentially initialize Stripe elements here if not done on page load
-                    // e.g., if (typeof initializeStripeElements === 'function') initializeStripeElements();
-                } else {
-                    console.error('ShippingFix: #paymentSection div not found!');
-                }
-                recalculateOrderTotal(); // Ensure total is correct before payment
+                // Trigger our form instead
+                const submitEvent = new Event('submit', {
+                    bubbles: true,
+                    cancelable: true
+                });
+                addressForm.dispatchEvent(submitEvent);
             });
-        } else {
-            console.warn('ShippingFix (setupFinalActionButtons): #proceedToPayment button not found.');
         }
+        
+        // Mark the form as fixed
+        window._formSubmitFixed = true;
+    }
+    
+    // Run the fix when the document is ready
+    function runFixes() {
+        if (window._fixesHaveRun) return;
+        window._fixesHaveRun = true;
+        
+        initStateProvinceFix();
+        setTimeout(monitorStateProvince, 2000);
+        setTimeout(ensureFormSubmitWorks, 1000); // Add form submission fix
+        
+        // Special case for SmartDucks form5.html
+        if (window.location.pathname.includes('form5.html') || 
+            document.title.includes('SmartDucks') || 
+            document.querySelector('meta[name="description"]')?.content?.includes('SmartDucks')) {
+            
+            console.log('ShippingFix: Detected SmartDucks form5.html, applying specialized integrations');
+            
+            // Try to find specific elements from form5.html to integrate with
+            setTimeout(function integrateDeeply() { // This is the outer function for the timeout
+                const shippingOptionsDiv = document.getElementById('shippingOptions');
+                if (shippingOptionsDiv) {
+                    console.log('ShippingFix (integrateDeeply): Found shippingOptionsDiv. Attempting to attach event listener.'); // MODIFIED LOG
+                    try {
+                        // Listen for our custom event to update their UI
+                        document.addEventListener('shipping-option-selected', function integrateDeeplyHandler(e) { // NAMED THE HANDLER
+                            console.log('ShippingFix (integrateDeeplyHandler): shipping-option-selected event caught. Detail:', e.detail);
+
+                            // Hide our modal since form5.html has its own UI
+                            const customModal = document.getElementById('shipping-options-modal');
+                            if (customModal) {
+                                customModal.style.display = 'none';
+                                console.log('ShippingFix (integrateDeeplyHandler): Hiding custom modal.');
+                            }
+
+                            // Ensure shippingOptionsDiv is still valid (it's from the outer scope)
+                            // const shippingOptionsDiv = document.getElementById('shippingOptions'); // Already available from outer scope
+
+                            if (shippingOptionsDiv) { // shippingOptionsDiv is assumed to be in scope
+                                shippingOptionsDiv.style.display = 'block'; // Or 'flex' etc.
+                                console.log('ShippingFix (integrateDeeplyHandler): Showing form5 shippingOptions div.');
+                            } else {
+                                console.log('ShippingFix (integrateDeeplyHandler): shippingOptionsDiv (form5.html) not found when trying to show.');
+                            }
+
+                            // Populate the shipping options list in form5.html
+                            const shippingOptionsList = document.getElementById('shippingOptionsList');
+                            if (shippingOptionsList) {
+                                console.log('ShippingFix (integrateDeeplyHandler): Populating form5 shippingOptionsList.');
+                                shippingOptionsList.innerHTML = `
+                                    <p><strong>Selected Shipping:</strong> ${e.detail.option}</p>
+                                    <p><strong>Price:</strong> $${parseFloat(e.detail.price).toFixed(2)}</p>
+                                    <p><strong>Carrier:</strong> ${e.detail.carrierName || 'N/A'}</p>
+                                    <p><strong>Service:</strong> ${e.detail.serviceName || 'N/A'}</p>
+                                    <p><strong>Delivery Time:</strong> ${e.detail.transitTime || 'N/A'}</p>
+                                `;
+                            } else {
+                                console.log('ShippingFix (integrateDeeplyHandler): shippingOptionsList in form5.html not found.');
+                            }
+
+                            // Show the order summary in form5.html
+                            const orderSummary = document.getElementById('orderSummary');
+                            if (orderSummary) {
+                                orderSummary.style.display = 'block'; // Or 'flex' etc.
+                                console.log('ShippingFix (integrateDeeplyHandler): Showing orderSummary.');
+                            } else {
+                                console.log('ShippingFix (integrateDeeplyHandler): orderSummary in form5.html not found.');
+                            }
+
+                            // Update the shipping total in form5.html
+                            const shippingTotalEl = document.getElementById('shippingTotal');
+                            if (shippingTotalEl) {
+                                shippingTotalEl.textContent = `$${parseFloat(e.detail.price).toFixed(2)}`;
+                                console.log(`ShippingFix (integrateDeeplyHandler): Updating shippingTotal to: ${e.detail.price}`);
+                            } else {
+                                console.log('ShippingFix (integrateDeeplyHandler): shippingTotal element in form5.html not found.');
+                            }
+
+                            // Hide the main address form (form#addressForm) as we are moving to shipping confirmation/payment
+                            const addressForm = document.getElementById('addressForm');
+                            if (addressForm) {
+                                addressForm.style.display = 'none';
+                                console.log('ShippingFix (integrateDeeplyHandler): Hiding addressForm.');
+                            } else {
+                                console.log('ShippingFix (integrateDeeplyHandler): addressForm not found to hide.');
+                            }
+
+                            // NOW, HANDLE THE "CONFIRM SHIPPING" BUTTON from form5.html
+                            console.log('ShippingFix (integrateDeeplyHandler): Attempting to find and set up confirmShipping button.');
+
+                            const confirmShippingButton = document.getElementById('confirmShipping'); // This is form5.html's button
+                            const paymentSection = document.getElementById('paymentSection'); // This is form5.html's payment section
+                            const finalActionsSection = document.getElementById('finalActions'); // Alternative section for proceeding
+
+                            console.log('ShippingFix (integrateDeeplyHandler): confirmShippingButton found?', confirmShippingButton !== null);
+                            console.log('ShippingFix (integrateDeeplyHandler): paymentSection found?', paymentSection !== null);
+                            console.log('ShippingFix (integrateDeeplyHandler): finalActionsSection found?', finalActionsSection !== null);
+
+                            if (confirmShippingButton) {
+                                console.log('ShippingFix (integrateDeeplyHandler): Found confirmShipping button in form5.html. ID: "confirmShipping". Setting up its click listener.');
+
+                                const confirmShippingButtonClone = confirmShippingButton.cloneNode(true);
+                                if (confirmShippingButton.parentNode) {
+                                    confirmShippingButton.parentNode.replaceChild(confirmShippingButtonClone, confirmShippingButton);
+                                    console.log('ShippingFix (integrateDeeplyHandler): confirmShippingButton cloned and replaced in DOM.');
+
+                                    confirmShippingButtonClone.addEventListener('click', function(event) {
+                                        event.preventDefault(); // Prevent any default button action
+                                        console.log('ShippingFix (integrateDeeplyHandler): confirmShippingButton (clone) clicked!');
+
+                                        if (shippingOptionsDiv) { // shippingOptionsDiv is assumed to be in scope
+                                            shippingOptionsDiv.style.display = 'none';
+                                            console.log('ShippingFix (integrateDeeplyHandler): Hid form5.html shippingOptionsDiv.');
+                                        } else {
+                                            console.log('ShippingFix (integrateDeeplyHandler): shippingOptionsDiv not found when trying to hide for payment.');
+                                        }
+                                        // Optionally hide orderSummary as well if it's part of the shipping confirmation step
+                                        if (orderSummary) {
+                                            // orderSummary.style.display = 'none';
+                                            // console.log('ShippingFix (integrateDeeplyHandler): Hid form5.html orderSummary.');
+                                        }
+
+                                        if (paymentSection) {
+                                            paymentSection.style.display = 'block'; // Or 'flex', or remove 'd-none' class etc.
+                                            console.log('ShippingFix (integrateDeeplyHandler): Displayed paymentSection.');
+                                        } else if (finalActionsSection) {
+                                            finalActionsSection.style.display = 'block'; // Or 'flex'
+                                            console.log('ShippingFix (integrateDeeplyHandler): paymentSection not found, displayed finalActionsSection.');
+                                        } else {
+                                            console.log('ShippingFix (integrateDeeplyHandler): Neither paymentSection nor finalActionsSection found. User needs to proceed manually or check element IDs.');
+                                        }
+                                    });
+                                    console.log('ShippingFix (integrateDeeplyHandler): Event listener added to confirmShippingButtonClone.');
+                                } else {
+                                    console.error('ShippingFix (integrateDeeplyHandler): confirmShippingButton found, but it has no parentNode. Cannot replace. Button might be detached or script timing issue.');
+                                }
+                            } else {
+                                console.log('ShippingFix (integrateDeeplyHandler): confirmShipping button (expected ID: "confirmShipping") NOT found in form5.html. Check form5.html for the correct ID.');
+                            }
+                        } catch (err) {
+                            console.error('ShippingFix (integrateDeeply): Error in shipping-option-selected event listener setup or execution:', err);
+                        }
+                    } else {
+                        console.log('ShippingFix (integrateDeeply): shippingOptionsDiv not found, will retry.');
+                        setTimeout(integrateDeeply, 500); // Retry finding shippingOptionsDiv
+                    }
+                }, 1000); // End of setTimeout(integrateDeeply, 1000)
+        } // End of SmartDucks form5.html specific integrations
+    } // End of runFixes function
+
+    // Run when DOM is loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', runFixes);
+    } else {
+        // DOM already loaded, run immediately
+        runFixes();
     }
 
-    // Ensure DOM is fully loaded before trying to attach listeners or manipulate elements
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('ShippingFix: DOM fully loaded and parsed. Applying all fixes.');
-        initStateProvinceFix(); 
-        ensureFormSubmitWorks(); 
-        integrateDeeply(); 
-        setupFinalActionButtons(); // Setup listeners for "Change Shipping" and "Proceed to Payment"
-
-        // Initial calculation of order total.
-        waitForElement('#orderTotal', () => {
-            console.log('ShippingFix (DOMContentLoaded): #orderTotal found, performing initial total calculation.');
-            recalculateOrderTotal();
-        }, 10); // Reduced attempts for faster initial load if element is there
+    // Extra safety: also run on window load
+    window.addEventListener('load', function() {
+        if (!window._fixesHaveRun) {
+            console.log('Fixes not run before window load, running now');
+            runFixes();
+        } else {
+            console.log('Fixes already applied, performing final verification');
+            
+            // Final verification using several approaches
+            setTimeout(function() {
+                const countrySelect = document.getElementById('countryCode');
+                const stateSelect = document.getElementById('state');
+                
+                if (countrySelect && stateSelect && countrySelect.value) {
+                    if (stateSelect.disabled || stateSelect.options.length <= 1) {
+                        console.log('Final check: Fixing state selector');
+                        
+                        try {
+                            // First try - direct update
+                            updateStateOptions(countrySelect.value);
+                            
+                            // Additional validation
+                            if (stateSelect.disabled || stateSelect.options.length <= 1) {
+                                console.log('Direct update failed, trying aggressive approach');
+                                
+                                // Replace elements if the direct approach didn't work
+                                const newCountrySelect = countrySelect.cloneNode(true);
+                                countrySelect.parentNode.replaceChild(newCountrySelect, countrySelect);
+                                
+                                const newStateSelect = stateSelect.cloneNode(true);
+                                stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
+                                
+                                // Get fresh references
+                                const freshCountrySelect = document.getElementById('countryCode');
+                                freshCountrySelect.value = countrySelect.value;
+                                
+                                // Re-add event listener
+                                freshCountrySelect.addEventListener('change', function() {
+                                    updateStateOptions(this.value);
+                                });
+                                
+                                // Update state options
+                                updateStateOptions(freshCountrySelect.value);
+                            }
+                        } catch (err) {
+                            console.error('Error in final fix attempt:', err);
+                        }
+                    }
+                }
+            }, 3000);
+        }
     });
-
-})(); // End of IIFE
+})();

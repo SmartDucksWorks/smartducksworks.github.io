@@ -1363,7 +1363,8 @@
                                 
                                 // Replace elements if the direct approach didn't work
                                 const newCountrySelect = countrySelect.cloneNode(true);
-                                countrySelect.parentNode.replaceChild(newCountrySelect, countrySelect);
+                                countrySelect.parentNode.replaceChild(
+                                    , countrySelect);
                                 
                                 const newStateSelect = stateSelect.cloneNode(true);
                                 stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);

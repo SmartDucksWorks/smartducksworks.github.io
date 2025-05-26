@@ -766,9 +766,15 @@
                 // Parse and display the shipping options
                 // First, try to extract the quotes from the N8N response
                 let quotes = [];
-                
-                // Try all possible response formats from N8N
-                if (data.quotes && Array.isArray(data.quotes)) {
+
+                // NEW: Prioritize data.rates as per N8N workflow's current successful output
+                if (data && data.rates && Array.isArray(data.rates)) {
+                    console.log('ShippingFix: Using data.rates directly.');
+                    quotes = data.rates;
+                }
+                // Existing logic as fallbacks
+                else if (data.quotes && Array.isArray(data.quotes)) {
+                    console.log('ShippingFix: Using data.quotes as fallback.');
                     quotes = data.quotes;
                 }
                 else if (data.data && data.data.quotes && Array.isArray(data.data.quotes)) {

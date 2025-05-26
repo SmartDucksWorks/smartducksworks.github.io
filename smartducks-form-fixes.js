@@ -1316,12 +1316,17 @@
                             console.log('ShippingFix (integrateDeeply): integrateDeeplyHandler already attached. Skipping re-attachment.');
                         }
                     } catch (err) {
-                        console.error('ShippingFix (integrateDeeply): Error in shipping-option-selected event listener setup or execution:', err);
+                        console.error('ShippingFix: Error in integrateDeeply listener. See next log for error object.');
+                        console.log('Error object details:', err);
                     }
                 } else {
                     // Log which elements were not found
-                    if (!shippingOptionsDiv) console.log('ShippingFix (integrateDeeply): shippingOptionsDiv not found, will retry.');
-                    if (!orderSummary) console.log('ShippingFix (integrateDeeply): orderSummary not found, will retry.');
+                    if (!shippingOptionsDiv) {
+                        console.log('ShippingFix Log: shippingOptionsDiv not found, will retry.');
+                    }
+                    if (!orderSummary) {
+                        console.log('ShippingFix (integrateDeeply): orderSummary not found, will retry.');
+                    }
                     if (!shippingOptionsList) console.log('ShippingFix (integrateDeeply): shippingOptionsList not found, will retry.');
                     if (!paymentSection) console.log('ShippingFix (integrateDeeply): paymentSection not found, will retry.');
                     if (!finalActionsSection) console.log('ShippingFix (integrateDeeply): finalActionsSection not found, will retry.');

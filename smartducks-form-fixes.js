@@ -889,27 +889,23 @@
                         // Store quote data for later use
                         optionEl.dataset.quoteId = quote.id || quote.quote_id || '';
                         
-                        // Format price - may come in different formats
-                        let price = '';
-                        
-                        if (typeof quote.total_charge === 'number') {
-                            price = (quote.total_charge / 100).toFixed(2); // Convert cents to dollars
-                        } else if (quote.price && typeof quote.price.amount === 'number') {
-                            price = (quote.price.amount / 100).toFixed(2);
-                        } else if (quote.amount) {
-                            price = (quote.amount / 100).toFixed(2);
-                        } else if (typeof quote.price === 'number') {
-                            price = (quote.price / 100).toFixed(2);
+                        // Format price
+                        let priceString = 'N/A';
+                        if (typeof quote.cost === 'number') {
+                            priceString = quote.cost.toFixed(2); // Use quote.cost and ensure two decimal places
+                        } else {
+                            // Fallback or log error if cost is not a number as expected
+                            console.warn('ShippingFix: quote.cost is not a number or missing:', quote.cost, quote);
                         }
                         
                         // Store the price
-                        optionEl.dataset.price = price;
+                        optionEl.dataset.price = priceString; // Store as string
                         
                         // Add the HTML content
                         optionEl.innerHTML = `
                             <div style="display:flex;justify-content:space-between;align-items:center;">
                                 <h4 style="margin:0;font-size:16px;">${quote.carrier_name || quote.carrier} - ${quote.service_name || quote.service}</h4>
-                                <h4 style="margin:0;font-size:16px;">$${price} ${quote.currency || 'CAD'}</h4>
+                                <h4 style="margin:0;font-size:16px;">$${priceString} ${quote.currency || 'CAD'}</h4>
                             </div>
                             <div style="font-size:14px;color:#666;margin-top:5px;">
                                 Transit Time: ${quote.transit_days || quote.transit_time || '2-5'} Days

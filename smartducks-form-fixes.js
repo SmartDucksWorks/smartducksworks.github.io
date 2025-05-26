@@ -767,20 +767,36 @@
                 // First, try to extract the quotes from the N8N response
                 let quotes = [];
 
-                // NEW: Prioritize data.rates as per N8N workflow's current successful output
-                if (data && data.rates && Array.isArray(data.rates)) {
-                    console.log('ShippingFix: Using data.rates directly.');
+                // --- BEGIN Enhanced Logging ---
+                console.log('ShippingFix: BEFORE quotes assignment. Full data object:', JSON.parse(JSON.stringify(data)));
+                if (data && data.rates) {
+                    console.log('ShippingFix: data.rates type:', typeof data.rates, 'isArray:', Array.isArray(data.rates));
+                    if (Array.isArray(data.rates)) {
+                        console.log('ShippingFix: data.rates.length:', data.rates.length);
+                        if (data.rates.length > 0) {
+                            console.log('ShippingFix: First item in data.rates:', JSON.parse(JSON.stringify(data.rates[0])));
+                        }
+                    }
+                } else {
+                    console.log('ShippingFix: data.rates is not present or undefined.');
+                }
+                // --- END Enhanced Logging ---
+
+                // Try all possible response formats from N8N
+                if (data && data.rates && Array.isArray(data.rates) && data.rates.length > 0) {
+                    console.log('ShippingFix: Assigning data.rates to quotes. Count:', data.rates.length);
                     quotes = data.rates;
                 }
-                // Existing logic as fallbacks
-                else if (data.quotes && Array.isArray(data.quotes)) {
-                    console.log('ShippingFix: Using data.quotes as fallback.');
+                else if (data.quotes && Array.isArray(data.quotes) && data.quotes.length > 0) {
+                    console.log('ShippingFix: Assigning data.quotes to quotes. Count:', data.quotes.length);
                     quotes = data.quotes;
                 }
-                else if (data.data && data.data.quotes && Array.isArray(data.data.quotes)) {
+                else if (data.data && data.data.quotes && Array.isArray(data.data.quotes) && data.data.quotes.length > 0) {
+                    console.log('ShippingFix: Assigning data.data.quotes to quotes. Count:', data.data.quotes.length);
                     quotes = data.data.quotes;
                 }
-                else if (data.success && data.data && Array.isArray(data.data)) {
+                else if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
+                    console.log('ShippingFix: Assigning data.data to quotes (as direct array). Count:', data.data.length);
                     quotes = data.data;
                 }
                 else if (data.html) {
@@ -802,10 +818,12 @@
                     console.error('ShippingFix: Possible CORS issue detected. HTML response received instead of JSON.');
                     return;
                 }
-                else if (data.options && Array.isArray(data.options)) {
+                else if (data.options && Array.isArray(data.options) && data.options.length > 0) {
+                    console.log('ShippingFix: Assigning data.options to quotes. Count:', data.options.length);
                     quotes = data.options;
                 }
-                else if (data.shipping_rates && Array.isArray(data.shipping_rates)) {
+                else if (data.shipping_rates && Array.isArray(data.shipping_rates) && data.shipping_rates.length > 0) {
+                    console.log('ShippingFix: Assigning data.shipping_rates to quotes. Count:', data.shipping_rates.length);
                     quotes = data.shipping_rates;
                 }
                 // Check if we got the full response object from N8N
@@ -813,20 +831,33 @@
                     // Sometimes the quotes are deeply nested in the response
                     if (data.body && typeof data.body === 'string') {
                         const parsedBody = JSON.parse(data.body);
-                        if (parsedBody.quotes && Array.isArray(parsedBody.quotes)) {
+                        if (parsedBody.quotes && Array.isArray(parsedBody.quotes) && parsedBody.quotes.length > 0) {
+                            console.log('ShippingFix: Re-assigning from parsedBody.quotes to quotes. Count:', parsedBody.quotes.length);
                             quotes = parsedBody.quotes;
                         }
                     }
                 } catch (e) {
-                    console.error('ShippingFix: Error parsing body:', e);
+                    console.error('ShippingFix: Error parsing body for quotes:', e);
                 }
+
+                // --- BEGIN Enhanced Logging ---
+                console.log('ShippingFix: AFTER quotes assignment. quotes type:', typeof quotes, 'isArray:', Array.isArray(quotes));
+                if (Array.isArray(quotes)) {
+                    console.log('ShippingFix: quotes.length directly before check:', quotes.length);
+                    if (quotes.length > 0) {
+                        console.log('ShippingFix: First item in quotes array before check:', JSON.parse(JSON.stringify(quotes[0])));
+                    }
+                } else {
+                    console.log('ShippingFix: quotes is not an array before check.');
+                }
+                // --- END Enhanced Logging ---
                 
-                // Look for an existing modal first
-                let modalElement = document.querySelector('.modal.shipping-modal, #shippingModal, .shipping-options-modal, .modal, [id*="modal"], [class*="modal"]');
+                // Get the modal element for shipping options
+                let modalElement = document.getElementById('shipping-options-modal');
                 
-                // If no modal exists, create one
+                // If modal doesn't exist, create it
                 if (!modalElement) {
-                    console.log('ShippingFix: No existing modal found, creating one');
+                    console.log('ShippingFix: Modal not found, creating new one');
                     modalElement = document.createElement('div');
                     modalElement.id = 'shipping-options-modal';
                     modalElement.className = 'modal shipping-options-modal';
@@ -879,7 +910,8 @@
                 container.innerHTML = '';
                 
                 // If we found quotes, display them
-                if (quotes.length > 0) {
+                if (quotes && Array.isArray(quotes) && quotes.length > 0) {
+                    console.log('ShippingFix: Displaying shipping options. Actual count being looped:', quotes.length);
                     
                     quotes.forEach(quote => {
                         const optionEl = document.createElement('div');
@@ -908,7 +940,7 @@
                                 <h4 style="margin:0;font-size:16px;">$${priceString} ${quote.currency || 'CAD'}</h4>
                             </div>
                             <div style="font-size:14px;color:#666;margin-top:5px;">
-                                Transit Time: ${quote.transit_days || quote.transit_time || '2-5'} Days
+                                Transit Time: ${quote.delivery_days || 'N/A'} Days
                             </div>
                         `;
                         
@@ -953,12 +985,21 @@
                         });
                     }
                 } 
-                else {
-                    // If no quotes found, show raw data
-                    container.innerHTML = `
-                        <p>Shipping options received but couldn't be parsed. Please select an option:</p>
-                        <pre style="background:#f4f4f4;padding:10px;overflow:auto;font-size:12px;max-height:400px;">${JSON.stringify(data, null, 2)}</pre>
-                    `;
+                else { // This block executes if quotes.length is 0 or quotes is not a valid array
+                    console.log('ShippingFix: Fallback - quotes array is empty, not an array, or length is zero. Actual length:', (quotes ? quotes.length : 'N/A'), 'Is Array:', Array.isArray(quotes));
+                    let messageHTML = "<p>Could not display shipping options at this time.</p>";
+
+                    if (data && data.rates && Array.isArray(data.rates) && data.rates.length > 0 && !(quotes && Array.isArray(quotes) && quotes.length > 0)) {
+                        messageHTML += "<p>However, we received some data from the server. It seems there was an issue processing the shipping options.</p>";
+                        messageHTML += `<pre style="background:#f4f4f4;padding:10px;overflow:auto;font-size:12px;max-height:400px;">${JSON.stringify(data.rates, null, 2)}</pre>`;
+                    } else if (data && data.quotes && Array.isArray(data.quotes) && data.quotes.length > 0) {
+                        messageHTML += "<p>Note: Some default quotes were found, but they may not be accurate.</p>";
+                        messageHTML += `<pre style="background:#f4f4f4;padding:10px;overflow:auto;font-size:12px;max-height:400px;">${JSON.stringify(data.quotes, null, 2)}</pre>`;
+                    } else {
+                        messageHTML += "<p>No shipping data was received. Please check your address and try again.</p>";
+                    }
+
+                    container.innerHTML = messageHTML;
                 }
                 
                 // Make sure the modal is visible

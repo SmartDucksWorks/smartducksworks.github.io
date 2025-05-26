@@ -421,7 +421,7 @@
     }
 
     // Ensure form submission handler is properly working
-    function ensureFormSubmitWorks() {
+    function runFixes() {
         // Find form and submit button
         const addressForm = document.querySelector('form');
         

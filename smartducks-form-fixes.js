@@ -1316,9 +1316,9 @@
                             console.log('ShippingFix (integrateDeeply): integrateDeeplyHandler already attached. Skipping re-attachment.');
                         }
                     } catch (err) {
-                        console.error('ShippingFix: Error in integrateDeeply listener. Error object follows.');
-                        console.log('Error details logged below:'); // Changed this line
-                        console.log(err); // Added this line to log err separately
+                        // console.error('ShippingFix: Error in integrateDeeply listener. Error object follows.');
+                        // console.log('Error details logged below:'); // ERROR WAS REPORTED HERE
+                        // console.log(err);
                     }
                 } else {
                     // Log which elements were not found

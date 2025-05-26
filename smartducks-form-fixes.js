@@ -756,7 +756,7 @@
                         } else if (data.data && data.data.quotes && Array.isArray(data.data.quotes)) {
                             console.log('ShippingFix: Found quotes in data property');
                             data = data.data;
-                        } else if (data.success && data.data && Array.isArray(data.data)) {
+                        } else if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
                             console.log('ShippingFix: Found data array in success response');
                             data.quotes = data.data;
                         }
@@ -1205,35 +1205,66 @@
                     
                     // Listen for our custom event to update their UI
                     document.addEventListener('shipping-option-selected', function(e) {
-                        
+                        console.log('ShippingFix (integrateDeeply): shipping-option-selected event caught. Detail:', e.detail);
+
                         // Hide our modal since form5.html has its own UI
-                        const modal = document.getElementById('shipping-options-modal');
-                        if (modal) modal.style.display = 'none';
-                        
-                        // Show the shipping options div
-                        shippingOptionsDiv.style.display = 'block';
-                        
+                        const customModal = document.getElementById('shipping-options-modal');
+                        if (customModal) {
+                            console.log('ShippingFix (integrateDeeply): Hiding custom modal.');
+                            customModal.style.display = 'none';
+                        }
+
+                        // Show the shipping options div from form5.html
+                        if (shippingOptionsDiv) { // shippingOptionsDiv is from the outer scope of integrateDeeply
+                            console.log('ShippingFix (integrateDeeply): Showing form5 shippingOptions div.');
+                            shippingOptionsDiv.style.display = 'block';
+
+                            const form5ShippingOptionsList = document.getElementById('shippingOptionsList');
+                            if (form5ShippingOptionsList) {
+                                console.log('ShippingFix (integrateDeeply): Populating form5 shippingOptionsList.');
+                                // e.detail.option contains the HTML of the selected rate from the custom modal
+                                form5ShippingOptionsList.innerHTML = e.detail.option;
+                                // Clean up styles from the modal if necessary
+                                const selectedInList = form5ShippingOptionsList.querySelector('.shipping-option');
+                                if (selectedInList) {
+                                    selectedInList.style.border = '1px solid #ddd'; // Reset modal's selection border
+                                    selectedInList.style.cursor = 'default';
+                                }
+                            } else {
+                                console.log('ShippingFix (integrateDeeply): form5 shippingOptionsList element not found.');
+                            }
+                        }
+
                         // Update any summary or order total elements if they exist
                         const orderSummary = document.getElementById('orderSummary');
                         if (orderSummary) {
+                            console.log('ShippingFix (integrateDeeply): Showing orderSummary.');
                             orderSummary.style.display = 'block';
-                            
+
                             // Try to update the shipping cost display
-                            const shippingCostEl = document.getElementById('shippingCost');
-                            if (shippingCostEl && e.detail.price) {
-                                shippingCostEl.textContent = '$' + parseFloat(e.detail.price).toFixed(2);
-                                
+                            const shippingTotalEl = document.getElementById('shippingTotal'); // Corrected ID
+                            if (shippingTotalEl && e.detail.price) {
+                                console.log('ShippingFix (integrateDeeply): Updating shippingTotal to:', e.detail.price);
+                                shippingTotalEl.textContent = '$' + parseFloat(e.detail.price).toFixed(2);
+
                                 // If they have an updateTotals function, call it
                                 if (typeof window.updateTotals === 'function') {
+                                    console.log('ShippingFix (integrateDeeply): Calling window.updateTotals().');
                                     window.updateTotals();
                                 }
+                            } else {
+                                if (!shippingTotalEl) console.log('ShippingFix (integrateDeeply): shippingTotalEl element not found.');
+                                if (e.detail.price === undefined) console.log('ShippingFix (integrateDeeply): e.detail.price is missing.');
                             }
+                        } else {
+                            console.log('ShippingFix (integrateDeeply): orderSummary element not found.');
                         }
-                        
+
                         // Hide the address form if it exists
-                        const addressForm = document.getElementById('addressForm');
-                        if (addressForm) {
-                            addressForm.style.display = 'none';
+                        const addressFormToHide = document.getElementById('addressForm'); // Use a different variable name to avoid conflict
+                        if (addressFormToHide) {
+                            console.log('ShippingFix (integrateDeeply): Hiding addressForm.');
+                            addressFormToHide.style.display = 'none';
                         }
                     });
                 } else {

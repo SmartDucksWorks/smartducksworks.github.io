@@ -767,31 +767,17 @@
                 // First, try to extract the quotes from the N8N response
                 let quotes = [];
 
-                // --- BEGIN Enhanced Logging ---
-                console.log('ShippingFix: BEFORE quotes assignment. Full data object:', JSON.parse(JSON.stringify(data)));
-                if (data && data.rates) {
-                    console.log('ShippingFix: data.rates type:', typeof data.rates, 'isArray:', Array.isArray(data.rates));
-                    if (Array.isArray(data.rates)) {
-                        console.log('ShippingFix: data.rates.length:', data.rates.length);
-                        if (data.rates.length > 0) {
-                            console.log('ShippingFix: First item in data.rates:', JSON.parse(JSON.stringify(data.rates[0])));
-                        }
-                    }
-                } else {
-                    console.log('ShippingFix: data.rates is not present or undefined.');
-                }
-                // --- END Enhanced Logging ---
-
-                // Try all possible response formats from N8N
-                if (data && data.rates && Array.isArray(data.rates) && data.rates.length > 0) {
-                    console.log('ShippingFix: Assigning data.rates to quotes. Count:', data.rates.length);
+                // NEW: Prioritize data.rates as per N8N workflow's current successful output
+                if (data && data.rates && Array.isArray(data.rates)) {
+                    console.log('ShippingFix: Using data.rates directly.');
                     quotes = data.rates;
                 }
-                else if (data.quotes && Array.isArray(data.quotes) && data.quotes.length > 0) {
-                    console.log('ShippingFix: Assigning data.quotes to quotes. Count:', data.quotes.length);
+                // Existing logic as fallbacks
+                else if (data.quotes && Array.isArray(data.quotes)) {
+                    console.log('ShippingFix: Using data.quotes as fallback.');
                     quotes = data.quotes;
                 }
-                else if (data.data && data.data.quotes && Array.isArray(data.data.quotes) && data.data.quotes.length > 0) {
+                else if (data.data && data.data.quotes && Array.isArray(data.data.quotes)) {
                     console.log('ShippingFix: Assigning data.data.quotes to quotes. Count:', data.data.quotes.length);
                     quotes = data.data.quotes;
                 }

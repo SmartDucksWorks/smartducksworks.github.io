@@ -422,82 +422,26 @@
 
     // Ensure form submission handler is properly working
     function ensureFormSubmitWorks() {
-        console.log('ShippingFix: Ensuring form submission handler is working');
-        
-        // Try to find the form with multiple selectors
-        let addressForm = document.getElementById('addressForm');
-        
-        // If not found by ID, try other approaches
-        if (!addressForm) {
-            console.log('ShippingFix: Form not found by ID, trying alternatives...');
-            
-            // Look for forms with specific classes or attributes
-            addressForm = document.querySelector('form[action*="shipping"], form[action*="checkout"], form.shipping-form, form.checkout-form');
-            
-            if (addressForm) {
-                console.log('ShippingFix: Found form via alternative selector:', addressForm.id || addressForm.className);
-            } else {
-                // Last resort - any form
-                const allForms = document.querySelectorAll('form');
-                console.log(`ShippingFix: Found ${allForms.length} forms on page, selecting first one with shipping-related button`);
-                
-                // Find the first form with a shipping-related button
-                for (const form of allForms) {
-                    const shippingButton = form.querySelector('button:contains("shipping"), button:contains("Shipping"), input[value*="shipping"]');
-                    if (shippingButton) {
-                        addressForm = form;
-                        console.log('ShippingFix: Selected form with shipping button:', form.id || form.className);
-                        break;
-                    }
-                }
-                
-                // If still not found, just use the first form
-                if (!addressForm && allForms.length > 0) {
-                    addressForm = allForms[0];
-                    console.log('ShippingFix: Using first form as fallback:', addressForm.id || addressForm.className);
-                }
-            }
-        }
-        
-        // No need to debug form fields in production
-        
-        // Find the submit button - try multiple approaches
-        let submitButton = null;
-        if (addressForm) {
-            // Try multiple approaches to find the button
-            submitButton = addressForm.querySelector('.submit-button, button[type="submit"], input[type="submit"]');
-            
-            // Try finding by text content (more comprehensive approach)
-            if (!submitButton) {
-                const buttons = Array.from(addressForm.querySelectorAll('button, input[type="button"], input[type="submit"]'));
-                submitButton = buttons.find(btn => {
-                    const btnText = (btn.textContent || btn.value || '').toLowerCase();
-                    return btnText.includes('shipping') || 
-                           btnText.includes('options') || 
-                           btnText.includes('continue') ||
-                           btnText.includes('next');
-                });
-            }
-            
-            // Last resort - any button in the form
-            if (!submitButton) {
-                submitButton = addressForm.querySelector('button, input[type="button"], input[type="submit"]');
-            }
-        }
+        // Find form and submit button
+        const addressForm = document.querySelector('form');
         
         if (!addressForm) {
-            console.log('ShippingFix: Address form not found yet, will retry in 500ms...');
-            setTimeout(ensureFormSubmitWorks, 500);
+            console.error('ShippingFix: No form found on page');
             return;
+        }
+        
+        // Find submit button in various ways
+        let submitButton = addressForm.querySelector('button[type="submit"], input[type="submit"]');
+        if (!submitButton) {
+            submitButton = addressForm.querySelector('button.submit-button, .button[type="submit"], [class*="submit"], .btn-primary');
         }
         
         if (!submitButton) {
-            console.log('ShippingFix: Submit button not found, will retry in 500ms...');
-            setTimeout(ensureFormSubmitWorks, 500);
+            console.error('ShippingFix: No submit button found');
             return;
         }
         
-        console.log('ShippingFix: Found form and button:', submitButton.textContent?.trim() || submitButton.value || 'Unknown button');
+        console.log('ShippingFix: Found form and submit button');
         
         // Check for any existing modals to determine the right approach
         const existingModals = document.querySelectorAll('.modal, [id*="modal"], [class*="modal"], dialog');
@@ -663,8 +607,6 @@
             
             console.log('ShippingFix: Starting fetch request to:', actionUrl);
             
-            // No need to log fetch options in production
-            
             // Send the request with fallbacks for errors
             fetch(actionUrl, fetchOptions)
             .then(response => {
@@ -673,25 +615,61 @@
                 // Handle different response types
                 const contentType = response.headers.get('content-type');
                 
-                // First try to get the text response for debugging
-                return response.text().then(text => {
-                    console.log('ShippingFix: Raw response text:', text.substring(0, 200) + (text.length > 200 ? '...' : ''));
+                // Log all response headers for debugging
+                console.log('ShippingFix: Response headers:');
+                let headerMap = {};
+                response.headers.forEach((value, name) => {
+                    console.log(`${name}: ${value}`);
                     
-                    try {
-                        // Try to parse as JSON
-                        return JSON.parse(text);
-                    } catch (e) {
-                        console.error('ShippingFix: JSON parse error:', e);
-                        
-                        // If the response is empty or whitespace only, return empty object
-                        if (!text.trim()) {
-                            console.log('ShippingFix: Empty response body');
-                            return { success: false, error: 'Empty response from server' };
+                    // Check for duplicate CORS headers
+                    name = name.toLowerCase();
+                    if (name.startsWith('access-control-')) {
+                        if (headerMap[name]) {
+                            console.warn(`ShippingFix: Duplicate CORS header detected: ${name}`);
+                            // For duplicates, we'll still use the first value
+                            headerMap[name].isDuplicate = true;
+                            headerMap[name].values.push(value);
+                        } else {
+                            headerMap[name] = { value: value, isDuplicate: false, values: [value] };
                         }
-                        
-                        // Check if it might be HTML or plain text response
-                        if (text.includes('<html') || text.includes('<!DOCTYPE')) {
-                            return { html: text, success: false, error: 'Server returned HTML instead of JSON' };
+                    }
+                });
+                
+                // Check if we found duplicate headers that could cause CORS issues
+                const duplicateHeaders = Object.keys(headerMap).filter(key => headerMap[key].isDuplicate);
+                if (duplicateHeaders.length > 0) {
+                    console.error('ShippingFix: Duplicate CORS headers found:', duplicateHeaders);
+                    console.info('ShippingFix: This may cause browser CORS errors. Server configuration needs to be fixed.');
+                }                        // Check for CORS issues in headers before processing response
+                        if (duplicateHeaders.length > 0) {
+                            console.error('ShippingFix: CORS issue detected - duplicate headers:', duplicateHeaders.join(', '));
+                            return { 
+                                success: false, 
+                                error: 'CORS configuration issue on server', 
+                                cors_error: true,
+                                duplicate_headers: duplicateHeaders
+                            };
+                        }
+
+                        // First try to get the text response for debugging
+                        return response.text().then(text => {
+                            console.log('ShippingFix: Raw response text:', text.substring(0, 200) + (text.length > 200 ? '...' : ''));
+                            
+                            try {
+                                // Try to parse as JSON
+                                return JSON.parse(text);
+                            } catch (e) {
+                                console.error('ShippingFix: JSON parse error:', e);
+                                
+                                // If the response is empty or whitespace only, return empty object
+                                if (!text.trim()) {
+                                    console.log('ShippingFix: Empty response body');
+                                    return { success: false, error: 'Empty response from server' };
+                                }
+                                
+                                // Check if it might be HTML or plain text response
+                                if (text.includes('<html') || text.includes('<!DOCTYPE')) {
+                                    return { html: text, success: false, error: 'Server returned HTML instead of JSON', possible_cors_issue: true };
                         }
                         
                         // If it looks like it might be JSON but has an error,
@@ -784,6 +762,359 @@
                         }
                     }
                 }
+                
+                // Parse and display the shipping options
+                // First, try to extract the quotes from the N8N response
+                let quotes = [];
+                
+                // Try all possible response formats from N8N
+                if (data.quotes && Array.isArray(data.quotes)) {
+                    quotes = data.quotes;
+                }
+                else if (data.data && data.data.quotes && Array.isArray(data.data.quotes)) {
+                    quotes = data.data.quotes;
+                }
+                else if (data.success && data.data && Array.isArray(data.data)) {
+                    quotes = data.data;
+                }
+                else if (data.html) {
+                    // If we got HTML directly, we may have a CORS issue
+                    // Show a user-friendly error message
+                    const corsErrorDiv = document.createElement('div');
+                    corsErrorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;justify-content:center;align-items:center;color:white;';
+                    corsErrorDiv.innerHTML = `
+                        <div style="background:#f44336;padding:20px;border-radius:5px;max-width:500px;text-align:center;">
+                        <h3 style="margin-top:0;">Connection Error</h3>
+                        <p>We're having trouble connecting to our shipping service due to a security configuration issue.</p>
+                        <p>Our team has been notified and is working on a fix. Please try again later or contact customer service.</p>
+                        <p>Technical details: CORS configuration error</p>
+                        <button onclick="this.parentNode.parentNode.remove()" style="padding:8px 16px;background:#fff;color:#f44336;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">Close</button>
+                        </div>
+                    `;
+                    document.body.appendChild(corsErrorDiv);
+                    
+                    console.error('ShippingFix: Possible CORS issue detected. HTML response received instead of JSON.');
+                    return;
+                }
+                else if (data.options && Array.isArray(data.options)) {
+                    quotes = data.options;
+                }
+                else if (data.shipping_rates && Array.isArray(data.shipping_rates)) {
+                    quotes = data.shipping_rates;
+                }
+                // Check if we got the full response object from N8N
+                try {
+                    // Sometimes the quotes are deeply nested in the response
+                    if (data.body && typeof data.body === 'string') {
+                        const parsedBody = JSON.parse(data.body);
+                        if (parsedBody.quotes && Array.isArray(parsedBody.quotes)) {
+                            quotes = parsedBody.quotes;
+                        }
+                    }
+                } catch (e) {
+                    console.error('ShippingFix: Error parsing body:', e);
+                }
+                
+                // Look for an existing modal first
+                let modalElement = document.querySelector('.modal.shipping-modal, #shippingModal, .shipping-options-modal, .modal, [id*="modal"], [class*="modal"]');
+                
+                // If no modal exists, create one
+                if (!modalElement) {
+                    console.log('ShippingFix: No existing modal found, creating one');
+                    modalElement = document.createElement('div');
+                    modalElement.id = 'shipping-options-modal';
+                    modalElement.className = 'modal shipping-options-modal';
+                    modalElement.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1050;display:block;';
+                    
+                    modalElement.innerHTML = `
+                        <div class="modal-dialog" style="margin:60px auto;max-width:600px;background:white;border-radius:5px;box-shadow:0 5px 15px rgba(0,0,0,0.5);">
+                            <div class="modal-content">
+                                <div class="modal-header" style="padding:15px;border-bottom:1px solid #e5e5e5;">
+                                    <h4 class="modal-title">Shipping Options</h4>
+                                    <button type="button" class="close" style="position:absolute;right:15px;top:15px;font-size:24px;font-weight:bold;background:none;border:none;cursor:pointer;">&times;</button>
+                                </div>
+                                <div class="modal-body shipping-options-container" style="padding:15px;max-height:70vh;overflow-y:auto;">
+                                    <!-- Options will be inserted here -->
+                                </div>
+                                <div class="modal-footer" style="padding:15px;border-top:1px solid #e5e5e5;text-align:right;">
+                                    <button type="button" class="btn btn-primary select-option-btn" style="padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:5px;">Select</button>
+                                    <button type="button" class="btn btn-secondary cancel-btn" style="padding:8px 16px;background:#6c757d;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:5px;">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modalElement);
+                    
+                    // Add event listeners for closing
+                    const closeButtons = modalElement.querySelectorAll('.close, .cancel-btn');
+                    closeButtons.forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            modalElement.style.display = 'none';
+                        });
+                    });
+                    
+                    // Close when clicking outside
+                    modalElement.addEventListener('click', (e) => {
+                        if (e.target === modalElement) {
+                            modalElement.style.display = 'none';
+                        }
+                    });
+                }
+                
+                // Get the container for shipping options
+                const container = modalElement.querySelector('.shipping-options-container, .modal-body');
+                if (!container) {
+                    console.error('ShippingFix: No container found in modal');
+                    return;
+                }
+                
+                // Clear previous options
+                container.innerHTML = '';
+                
+                // If we found quotes, display them
+                if (quotes.length > 0) {
+                    
+                    quotes.forEach(quote => {
+                        const optionEl = document.createElement('div');
+                        optionEl.className = 'shipping-option';
+                        optionEl.style.cssText = 'margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px;cursor:pointer;';
+                        
+                        // Store quote data for later use
+                        optionEl.dataset.quoteId = quote.id || quote.quote_id || '';
+                        
+                        // Format price - may come in different formats
+                        let price = '';
+                        
+                        if (typeof quote.total_charge === 'number') {
+                            price = (quote.total_charge / 100).toFixed(2); // Convert cents to dollars
+                        } else if (quote.price && typeof quote.price.amount === 'number') {
+                            price = (quote.price.amount / 100).toFixed(2);
+                        } else if (quote.amount) {
+                            price = (quote.amount / 100).toFixed(2);
+                        } else if (typeof quote.price === 'number') {
+                            price = (quote.price / 100).toFixed(2);
+                        }
+                        
+                        // Store the price
+                        optionEl.dataset.price = price;
+                        
+                        // Add the HTML content
+                        optionEl.innerHTML = `
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <h4 style="margin:0;font-size:16px;">${quote.carrier_name || quote.carrier} - ${quote.service_name || quote.service}</h4>
+                                <h4 style="margin:0;font-size:16px;">$${price} ${quote.currency || 'CAD'}</h4>
+                            </div>
+                            <div style="font-size:14px;color:#666;margin-top:5px;">
+                                Transit Time: ${quote.transit_days || quote.transit_time || '2-5'} Days
+                            </div>
+                        `;
+                        
+                        // Add click event
+                        optionEl.addEventListener('click', () => {
+                            // Remove selected class from all options
+                            container.querySelectorAll('.shipping-option').forEach(opt => {
+                                opt.classList.remove('selected');
+                                opt.style.border = '1px solid #ddd';
+                            });
+                            
+                            // Add selected class to this option
+                            optionEl.classList.add('selected');
+                            optionEl.style.border = '2px solid #007bff';
+                        });
+                        
+                        container.appendChild(optionEl);
+                    });
+                    
+                    // Add the select button functionality
+                    const selectButton = modalElement.querySelector('.select-option-btn');
+                    if (selectButton) {
+                        selectButton.addEventListener('click', () => {
+                            const selectedOption = container.querySelector('.shipping-option.selected');
+                            if (!selectedOption) {
+                                alert('Please select a shipping option first');
+                                return;
+                            }
+                            
+                            // Create an event to communicate the selected shipping option
+                            const event = new CustomEvent('shipping-option-selected', {
+                                detail: {
+                                    quoteId: selectedOption.dataset.quoteId,
+                                    price: selectedOption.dataset.price,
+                                    option: selectedOption.innerHTML
+                                }
+                            });
+                            document.dispatchEvent(event);
+                            
+                            // Hide the modal
+                            modalElement.style.display = 'none';
+                        });
+                    }
+                } 
+                else {
+                    // If no quotes found, show raw data
+                    container.innerHTML = `
+                        <p>Shipping options received but couldn't be parsed. Please select an option:</p>
+                        <pre style="background:#f4f4f4;padding:10px;overflow:auto;font-size:12px;max-height:400px;">${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+                
+                // Make sure the modal is visible
+                setTimeout(() => {
+                    modalElement.style.display = 'block';
+                    modalElement.style.visibility = 'visible';
+                    modalElement.style.opacity = '1';
+                }, 100);
+                
+                console.log('ShippingFix: Modal should now be visible');
+                
+                // If there was an original submit handler, call it now but prevent form submission
+                if (originalSubmit && typeof originalSubmit === 'function') {
+                    console.log('ShippingFix: Calling original submit handler');
+                    try {
+                        // Create a fake event to pass to the original handler
+                        const fakeEvent = { preventDefault: () => {} };
+                        originalSubmit.call(addressForm, fakeEvent);
+                    } catch (err) {
+                        console.error('ShippingFix: Error calling original handler:', err);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('ShippingFix: Error fetching shipping options:', error);
+                
+                // Remove loading indicator
+                const loadingEl = document.getElementById('sm-loading-indicator');
+                if (loadingEl) loadingEl.remove();
+                
+                // Check for specific errors that might indicate CORS issues
+                if (error.message && error.message.includes('CORS')) {
+                    // Show a helpful error message specifically for CORS issues
+                    const corsErrorDiv = document.createElement('div');
+                    corsErrorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;justify-content:center;align-items:center;color:white;';
+                    corsErrorDiv.innerHTML = `
+                        <div style="background:#f44336;padding:20px;border-radius:5px;max-width:500px;text-align:center;">
+                        <h3 style="margin-top:0;">Connection Error</h3>
+                        <p>We're having trouble connecting to our shipping service due to a security configuration issue.</p>
+                        <p>Our team has been notified and is working on a fix. Please try again later or contact customer service.</p>
+                        <p>Technical details: CORS configuration error</p>
+                        <button onclick="this.parentNode.parentNode.remove()" style="padding:8px 16px;background:#fff;color:#f44336;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">Close</button>
+                        </div>
+                    `;
+                    document.body.appendChild(corsErrorDiv);
+                } else {
+                console.error('ShippingFix: Error fetching shipping options:', error);
+                
+                // Remove loading indicator
+                const loadingEl = document.getElementById('sm-loading-indicator');
+                if (loadingEl) loadingEl.remove();
+                
+                // Show error message
+                alert('Error loading shipping options. Please try again.');
+            }});
+            
+            // Set up global event handler for shipping option selection
+            if (!window._shippingOptionHandlerInstalled) {
+                window._shippingOptionHandlerInstalled = true;
+                document.addEventListener('shipping-option-selected', function(e) {
+                    console.log('ShippingFix: Shipping option selected:', e.detail);
+                    
+                    // Find or create a field to store the selected shipping option
+                    let shippingOptionField = addressForm.querySelector('input[name="selected_shipping_option"]');
+                    if (!shippingOptionField) {
+                        shippingOptionField = document.createElement('input');
+                        shippingOptionField.type = 'hidden';
+                        shippingOptionField.name = 'selected_shipping_option';
+                        addressForm.appendChild(shippingOptionField);
+                    }
+                    shippingOptionField.value = e.detail.quoteId;
+                    
+                    // Find or create a field to store the selected shipping price
+                    let shippingPriceField = addressForm.querySelector('input[name="selected_shipping_price"]');
+                    if (!shippingPriceField) {
+                        shippingPriceField = document.createElement('input');
+                        shippingPriceField.type = 'hidden';
+                        shippingPriceField.name = 'selected_shipping_price';
+                        addressForm.appendChild(shippingPriceField);
+                    }
+                    shippingPriceField.value = e.detail.price;
+                    
+                    // Try to find an element to display the selection
+                    let shippingDisplay = document.querySelector('.shipping-display, .shipping-selection, .selected-option');
+                    
+                    // If no display element exists, create one
+                    if (!shippingDisplay) {
+                        shippingDisplay = document.createElement('div');
+                        shippingDisplay.className = 'shipping-display';
+                        shippingDisplay.style.cssText = 'margin:15px 0;padding:10px;border:1px solid #ddd;border-radius:4px;';
+                        
+                        // Try to find the right place to insert it
+                        const possibleContainers = [
+                            document.querySelector('.shipping-container, .order-summary, .checkout-summary'),
+                            addressForm.querySelector('fieldset:last-of-type, div:last-of-type'),
+                            addressForm
+                        ];
+                        
+                        // Insert into the first container that exists
+                        for (let container of possibleContainers) {
+                            if (container) {
+                                container.appendChild(shippingDisplay);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Update the display
+                    shippingDisplay.innerHTML = `
+                        <h4>Selected Shipping Option</h4>
+                        <div>${e.detail.option}</div>
+                        <button type="button" class="change-shipping-btn" style="margin-top:10px;padding:5px 10px;background:#6c757d;color:white;border:none;border-radius:4px;cursor:pointer;">Change</button>
+                    `;
+                    
+                    // Add event listener to the change button
+                    const changeBtn = shippingDisplay.querySelector('.change-shipping-btn');
+                    if (changeBtn) {
+                        changeBtn.addEventListener('click', () => {
+                            const modal = document.querySelector('#shipping-options-modal, .modal.shipping-modal, .shipping-options-modal');
+                            if (modal) {
+                                modal.style.display = 'block';
+                            }
+                        });
+                    }
+                });
+            }
+        };
+        
+        // Add event handlers for interception
+        addressForm.addEventListener('submit', window._shippingFixHandler);
+        addressForm._hasShippingFix = true;
+        
+        // Auto-trigger the shipping options when going to checkout if appropriate
+        if (document.location.href.includes('checkout') || document.location.href.includes('cart')) {
+            console.log('ShippingFix: On checkout/cart page, setting up auto-trigger');
+            
+            // Set a trigger for later, after all content has loaded
+            setTimeout(() => {
+                const checkoutButtons = document.querySelectorAll('.checkout-button, [id*="checkout"], [class*="checkout"], a[href*="checkout"]');
+                
+                checkoutButtons.forEach(button => {
+                    // Skip if already has event handler
+                    if (button._hasShippingHandler) return;
+                    
+                    // Mark as handled and set up handler
+                    button._hasShippingHandler = true;
+                    
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log('ShippingFix: Checkout button clicked, showing shipping options');
+                        window._shippingFixHandler(new Event('submit'));
+                    });
+                });
+            }, 1000);
+        }
+    }
                 
                 // Look for an existing modal first
                 let modal = document.querySelector('.modal.shipping-modal, #shippingModal, .shipping-options-modal, .modal, [id*="modal"], [class*="modal"]');
@@ -1065,6 +1396,33 @@
                 }
             })
             .catch(error => {
+                console.error('ShippingFix: Error fetching shipping options:', error);
+                
+                // Remove loading indicator
+                const loadingEl = document.getElementById('sm-loading-indicator');
+                if (loadingEl) loadingEl.remove();
+                
+                // Show a user-friendly error message
+                const errorMessage = document.createElement('div');
+                errorMessage.id = 'sm-error-message';
+                errorMessage.style.cssText = 'position:fixed;top:20%;left:50%;transform:translateX(-50%);background:white;padding:20px;border-radius:5px;box-shadow:0 0 10px rgba(0,0,0,0.5);z-index:9999;max-width:80%;';
+                
+                // Check if it's a CORS error
+                const isCorsError = error.message && (
+                    error.message.includes('CORS') || 
+                    error.message.includes('cross-origin') || 
+                    error.message.includes('Access-Control-Allow-Origin')
+                );
+                
+                if (isCorsError) {
+                    errorMessage.innerHTML = `
+                        <h3 style="color:#c00;margin-top:0;">Connection Error</h3>
+                        <p>We're having trouble connecting to our shipping service due to a security configuration issue.</p>
+                        <p>Our team has been notified and is working on a fix. Please try again later or contact customer service.</p>
+                        <p>Technical details: CORS configuration error</p>
+                        <button onclick="this.parentNode.remove()" style="padding:8px 16px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;">Close</button>
+                    `;
+                } else {
                 console.error('ShippingFix: Error fetching shipping options:', error);
                 
                 // Remove loading indicator

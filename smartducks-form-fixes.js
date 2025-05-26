@@ -585,13 +585,13 @@
                         countryCode: formDataObj.fromCountryCode || "CA",
                     },
                     to: {
-                        companyName: formDataObj.companyName || formDataObj.lastName || "Customer",
+                        companyName: formDataObj.companyName || formDataObj.lastName || "",
                         streetAddress: formDataObj.streetAddress || formDataObj.address || "",
                         city: formDataObj.city || "",
                         state: formDataObj.state || "",
                         postalCode: formDataObj.postalCode || "",
                         countryCode: formDataObj.countryCode || "CA",
-                        attention: formDataObj.firstName + " " + formDataObj.lastName || "Customer",
+                        attention: (formDataObj.firstName || "") + (formDataObj.firstName && formDataObj.lastName ? " " : "") + (formDataObj.lastName || ""),
                         email: formDataObj.email || "",
                         phone: formDataObj.phone || ""
                     },

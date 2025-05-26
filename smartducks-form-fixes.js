@@ -1316,8 +1316,9 @@
                             console.log('ShippingFix (integrateDeeply): integrateDeeplyHandler already attached. Skipping re-attachment.');
                         }
                     } catch (err) {
-                        console.error('ShippingFix: Error in integrateDeeply listener. See next log for error object.');
-                        console.log('Error object details:', err);
+                        console.error('ShippingFix: Error in integrateDeeply listener. Error object follows.');
+                        console.log('Error details logged below:'); // Changed this line
+                        console.log(err); // Added this line to log err separately
                     }
                 } else {
                     // Log which elements were not found
@@ -1327,11 +1328,21 @@
                     if (!orderSummary) {
                         console.log('ShippingFix (integrateDeeply): orderSummary not found, will retry.');
                     }
-                    if (!shippingOptionsList) console.log('ShippingFix (integrateDeeply): shippingOptionsList not found, will retry.');
-                    if (!paymentSection) console.log('ShippingFix (integrateDeeply): paymentSection not found, will retry.');
-                    if (!finalActionsSection) console.log('ShippingFix (integrateDeeply): finalActionsSection not found, will retry.');
-                    if (!confirmShippingButtonOriginal) console.log('ShippingFix (integrateDeeply): confirmShippingButtonOriginal (ID: confirmShipping) not found, will retry.');
-                    if (!addressForm) console.log('ShippingFix (integrateDeeply): addressForm not found, will retry.');
+                    if (!shippingOptionsList) { // Added braces
+                        console.log('ShippingFix (integrateDeeply): shippingOptionsList not found, will retry.');
+                    }
+                    if (!paymentSection) { // Added braces
+                        console.log('ShippingFix (integrateDeeply): paymentSection not found, will retry.');
+                    }
+                    if (!finalActionsSection) { // Added braces
+                        console.log('ShippingFix (integrateDeeply): finalActionsSection not found, will retry.');
+                    }
+                    if (!confirmShippingButtonOriginal) { // Added braces
+                        console.log('ShippingFix (integrateDeeply): confirmShippingButtonOriginal (ID: confirmShipping) not found, will retry.');
+                    }
+                    if (!addressForm) { // Added braces
+                        console.log('ShippingFix (integrateDeeply): addressForm not found, will retry.');
+                    }
                     
                     setTimeout(integrateDeeply, 500); // Retry finding elements
                 }

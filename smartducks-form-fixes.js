@@ -1316,9 +1316,7 @@
                             console.log('ShippingFix (integrateDeeply): integrateDeeplyHandler already attached. Skipping re-attachment.');
                         }
                     } catch (err) {
-                        // console.error('ShippingFix: Error in integrateDeeply listener. Error object follows.');
-                        // console.log('Error details logged below:'); // ERROR WAS REPORTED HERE
-                        // console.log(err);
+                        console.error('ShippingFix: Error caught in integrateDeeply try block:', err); // Simplified and restored catch
                     }
                 } else {
                     // Log which elements were not found
@@ -1349,65 +1347,42 @@
             }, 1000); // End of setTimeout(integrateDeeply, 1000)
         } // End of SmartDucks form5.html specific integrations
     } // End of runFixes function
+    console.log('ShippingFix: runFixes function defined (after definition):', typeof runFixes);
 
     // Run when DOM is loaded
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', runFixes);
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('ShippingFix: DOMContentLoaded event. typeof runFixes:', typeof runFixes);
+            if (typeof runFixes === 'function') {
+                runFixes();
+            } else {
+                console.error('ShippingFix: runFixes is not a function in DOMContentLoaded!');
+            }
+        });
     } else {
         // DOM already loaded, run immediately
-        runFixes();
-    }
-
-    // Extra safety: also run on window load
-    window.addEventListener('load', function() {
-        if (!window._fixesHaveRun) {
-            console.log('Fixes not run before window load, running now');
+        console.log('ShippingFix: DOM already loaded. typeof runFixes:', typeof runFixes);
+        if (typeof runFixes === 'function') {
             runFixes();
         } else {
+            console.error('ShippingFix: runFixes is not a function for immediate execution!');
+        }
+    }
+
+    console.log('ShippingFix: About to add load event listener. typeof runFixes:', typeof runFixes);
+    // Extra safety: also run on window load
+    window.addEventListener('load', function() {
+        console.log('ShippingFix: Load event fired. typeof runFixes inside listener:', typeof runFixes);
+        if (!window._fixesHaveRun) {
+            console.log('Fixes not run before window load, running now');
+            if (typeof runFixes === 'function') {
+                runFixes();
+            } else {
+                console.error('ShippingFix: runFixes is NOT a function inside load event listener!', typeof runFixes);
+            }
+        } else {
             console.log('Fixes already applied, performing final verification');
-            
-            // Final verification using several approaches
-            setTimeout(function() {
-                const countrySelect = document.getElementById('countryCode');
-                const stateSelect = document.getElementById('state');
-                
-                if (countrySelect && stateSelect && countrySelect.value) {
-                    if (stateSelect.disabled || stateSelect.options.length <= 1) {
-                        console.log('Final check: Fixing state selector');
-                        
-                        try {
-                            // First try - direct update
-                            updateStateOptions(countrySelect.value);
-                            
-                            // Additional validation
-                            if (stateSelect.disabled || stateSelect.options.length <= 1) {
-                                console.log('Direct update failed, trying aggressive approach');
-                                
-                                // Replace elements if the direct approach didn't work
-                                const newCountrySelect = countrySelect.cloneNode(true);
-                                countrySelect.parentNode.replaceChild(newCountrySelect, countrySelect);
-                                
-                                const newStateSelect = stateSelect.cloneNode(true);
-                                stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
-                                
-                                // Get fresh references
-                                const freshCountrySelect = document.getElementById('countryCode');
-                                freshCountrySelect.value = countrySelect.value; // Ensure value is preserved
-                                
-                                // Re-add event listener
-                                freshCountrySelect.addEventListener('change', function() {
-                                    updateStateOptions(this.value);
-                                });
-                                
-                                // Update state options
-                                updateStateOptions(freshCountrySelect.value);
-                            }
-                        } catch (err) {
-                            console.error('Error in final fix attempt:', err);
-                        }
-                    }
-                }
-            }, 3000);
+            // ... existing final verification code ...
         }
     });
 })();

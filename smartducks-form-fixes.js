@@ -422,7 +422,11 @@
 
     // Ensure form submission handler is properly working
     function runFixes() {
-        console.log('ShippingFix: runFixes function execution started (called from IIFE event handler).'); // Added log
+        console.log('ShippingFix: runFixes function execution started (called from IIFE event handler).');
+        
+        // Call the state/province fix initialization
+        initStateProvinceFix(); // Ensure this is called
+
         // Find form and submit button
         const addressForm = document.querySelector('form');
         

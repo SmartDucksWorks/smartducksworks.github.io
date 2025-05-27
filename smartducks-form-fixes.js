@@ -1229,9 +1229,21 @@
                                                     } else {
                                                         console.error('ShippingFix (#proceedToPayment clone): orderSummary element NOT FOUND.');
                                                     }
-                                                    
-                                                    const paymentSectionEl = document.getElementById('paymentSection');
 
+                                                    // NEW: Ensure the parent form of paymentSection is visible
+                                                    const addressFormForPayment = document.getElementById('addressForm');
+                                                    if (addressFormForPayment) {
+                                                        addressFormForPayment.style.display = 'block';
+                                                        console.log('ShippingFix (#proceedToPayment clone): Ensured addressForm (parent of paymentSection) is visible.');
+                                                        // Note: If address input fields within this form are meant to stay hidden,
+                                                        // they would need to be targetted specifically. For now, showing the whole form
+                                                        // to allow paymentSection to appear.
+                                                    } else {
+                                                        console.warn('ShippingFix (#proceedToPayment clone): addressForm element not found when trying to show for paymentSection.');
+                                                    }
+                                                    
+                                                    // --- BEGIN PAYMENTSECTION VISIBILITY LOGIC ---
+                                                    const paymentSectionEl = document.getElementById('paymentSection');
                                                     if (paymentSectionEl && paymentSectionEl instanceof HTMLElement) {
                                                         console.log('ShippingFix (Payment): paymentSectionEl found. ID:', paymentSectionEl.id, 'Current display:', window.getComputedStyle(paymentSectionEl).display);
                                                         paymentSectionEl.style.display = 'block';

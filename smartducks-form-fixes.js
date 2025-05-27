@@ -1158,6 +1158,36 @@
                                     console.log('ShippingFix (integrateDeeplyHandler): shippingTotal element in form5.html not found.');
                                 }
 
+                                // Update orderSummary with carrier and service name
+                                let summaryCarrierP = orderSummary.querySelector('p.carrier-name-summary');
+                                if (!summaryCarrierP) {
+                                    summaryCarrierP = document.createElement('p');
+                                    summaryCarrierP.className = 'carrier-name-summary';
+                                    orderSummary.appendChild(summaryCarrierP);
+                                }
+                                summaryCarrierP.innerHTML = `<strong>Carrier:</strong> ${e.detail.carrierName || 'N/A'}`;
+
+                                let summaryServiceP = orderSummary.querySelector('p.service-name-summary');
+                                if (!summaryServiceP) {
+                                    summaryServiceP = document.createElement('p');
+                                    summaryServiceP.className = 'service-name-summary';
+                                    orderSummary.appendChild(summaryServiceP);
+                                }
+                                summaryServiceP.innerHTML = `<strong>Service:</strong> ${e.detail.serviceName || 'N/A'}`;
+                                
+                                // Optionally, if you want the price explicitly in orderSummary as well, though shippingTotalEl is updated:
+                                /*
+                                let summaryPriceP = orderSummary.querySelector('p.price-summary');
+                                if (!summaryPriceP) {
+                                    summaryPriceP = document.createElement('p');
+                                    summaryPriceP.className = 'price-summary';
+                                    orderSummary.appendChild(summaryPriceP);
+                                }
+                                summaryPriceP.innerHTML = `<strong>Price:</strong> $${parseFloat(e.detail.price).toFixed(2)}`;
+                                */
+                                console.log('ShippingFix (integrateDeeplyHandler): Updated orderSummary with carrier and service details.');
+
+
                                 if (addressFormForForm5) { // check if addressFormForForm5 exists
                                     addressFormForForm5.style.display = 'none';
                                     console.log('ShippingFix (integrateDeeplyHandler): Hiding addressFormForForm5.');

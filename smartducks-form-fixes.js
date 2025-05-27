@@ -422,6 +422,7 @@
 
     // Ensure form submission handler is properly working
     function runFixes() {
+        console.log('ShippingFix: runFixes function execution started (called from IIFE event handler).'); // Added log
         // Find form and submit button
         const addressForm = document.querySelector('form');
         
@@ -1349,40 +1350,31 @@
     } // End of runFixes function
     console.log('ShippingFix: runFixes function defined (after definition):', typeof runFixes);
 
-    // Run when DOM is loaded
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('ShippingFix: DOMContentLoaded event. typeof runFixes:', typeof runFixes);
-            if (typeof runFixes === 'function') {
-                runFixes();
-            } else {
-                console.error('ShippingFix: runFixes is not a function in DOMContentLoaded!');
-            }
-        });
-    } else {
-        // DOM already loaded, run immediately
-        console.log('ShippingFix: DOM already loaded. typeof runFixes:', typeof runFixes);
-        if (typeof runFixes === 'function') {
-            runFixes();
-        } else {
-            console.error('ShippingFix: runFixes is not a function for immediate execution!');
+    // --- Start: DOM Ready and Load Event Handling ---
+    function tryRunFixes() {
+        if (window._fixesHaveRun) { // Check the flag set by runFixes itself
+            console.log('ShippingFix: tryRunFixes - Fixes appear to have already run.');
+            return;
         }
+        console.log('ShippingFix: tryRunFixes - Attempting to run fixes.');
+        runFixes(); // This function should set window._fixesHaveRun = true
     }
 
-    console.log('ShippingFix: About to add load event listener. typeof runFixes:', typeof runFixes);
-    // Extra safety: also run on window load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('ShippingFix: DOMContentLoaded event fired from IIFE listener.');
+            tryRunFixes();
+        });
+    } else {
+        // DOMContentLoaded has already fired or state is interactive/complete
+        console.log('ShippingFix: DOM already ready, attempting to run fixes from IIFE.');
+        tryRunFixes();
+    }
+
     window.addEventListener('load', function() {
-        console.log('ShippingFix: Load event fired. typeof runFixes inside listener:', typeof runFixes);
-        if (!window._fixesHaveRun) {
-            console.log('Fixes not run before window load, running now');
-            if (typeof runFixes === 'function') {
-                runFixes();
-            } else {
-                console.error('ShippingFix: runFixes is NOT a function inside load event listener!', typeof runFixes);
-            }
-        } else {
-            console.log('Fixes already applied, performing final verification');
-            // ... existing final verification code ...
-        }
+        console.log('ShippingFix: Window load event fired from IIFE listener.');
+        tryRunFixes(); // Ensures fixes run even if they depend on all assets or if DOMContentLoaded was missed
     });
+    // --- End: DOM Ready and Load Event Handling ---
+
 })();

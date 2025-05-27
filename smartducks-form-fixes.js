@@ -1338,9 +1338,13 @@
             submitButton.addEventListener('click', buttonClickHandler, true);
             console.log('ShippingFix: Aggressive click handler (re-)attached to submit button.');
         } else {
-            if (!addressForm) console.error('ShippingFix Error: addressForm not found in runFixes. Cannot attach main submit handler.');
-            if (!submitButton) console.error('ShippingFix Error: submitButton not found in runFixes. Cannot attach aggressive click handler.');
-        }
+            if (!addressForm) {
+                console.error('ShippingFix Error: addressForm not found in runFixes. Cannot attach main submit handler.');
+            }
+            if (!submitButton) {
+                console.error('ShippingFix Error: submitButton not found in runFixes. Cannot attach aggressive click handler.');
+            }
+        } 
         
         if (addressForm) {
             const parentForm = addressForm.closest('form');

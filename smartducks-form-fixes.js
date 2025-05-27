@@ -613,11 +613,129 @@
         console.log('ShippingFix: Aggressive click handler (re-)attached to submit button.');
     } // End of runFixes function
 
-    // Call runFixes after DOM is loaded
+    function initializeFormStepHandlers() {
+        console.log('Initializing form step handlers');
+
+        const shippingOptionsSection = document.getElementById('shippingOptions');
+        const orderSummarySection = document.getElementById('orderSummary');
+        const finalActionsSection = document.getElementById('finalActionsSection');
+        const paymentSection = document.getElementById('paymentSection');
+        const confirmShippingBtn = document.getElementById('confirmShipping');
+        const proceedToPaymentBtn = document.getElementById('proceedToPayment');
+        const addressForm = document.querySelector('form'); // Assuming this is the main form
+
+        // Helper to hide sections
+        function hideSection(section) {
+            if (section) section.style.display = 'none';
+        }
+
+        // Helper to show sections
+        function showSection(section, displayType = 'block') {
+            if (section) section.style.display = displayType;
+        }
+
+        // Initial state: Hide sections that appear later in the flow
+        hideSection(orderSummarySection);
+        hideSection(finalActionsSection);
+        hideSection(paymentSection);
+        if (shippingOptionsSection) shippingOptionsSection.style.display = 'block'; // Show initially if needed, or hide if it appears after address submission
+
+        // 1. Global listener for when a shipping option is selected
+        document.addEventListener('shipping-option-selected', function(event) {
+            console.log('shipping-option-selected event caught by global listener', event.detail);
+            if (!orderSummarySection) {
+                console.error('Order summary section not found.');
+                return;
+            }
+
+            const { carrierName, serviceName, price, currency, transitTime } = event.detail;
+            const transitDisplay = transitTime && transitTime !== 'null' && transitTime !== 'undefined' ? `${transitTime} business day(s)` : 'Not available';
+            
+            orderSummarySection.innerHTML = `
+                <h4>Order Summary</h4>
+                <p><strong>Shipping Method:</strong> ${carrierName} - ${serviceName}</p>
+                <p><strong>Cost:</strong> $${parseFloat(price).toFixed(2)} ${currency}</p>
+                <p><strong>Estimated Delivery:</strong> ${transitDisplay}</p>
+            `;
+            showSection(orderSummarySection);
+            if (confirmShippingBtn) confirmShippingBtn.disabled = false; // Already handled in _shippingFixHandler, but good as a fallback
+        });
+
+        // 2. Handler for "Confirm Shipping" button
+        if (confirmShippingBtn) {
+            confirmShippingBtn.addEventListener('click', function onConfirmShippingClick() {
+                console.log('Confirm Shipping button clicked');
+                hideSection(shippingOptionsSection);
+                showSection(orderSummarySection); // Ensure it's visible
+                showSection(finalActionsSection);
+                hideSection(paymentSection); // Ensure payment section is hidden at this stage
+                this.disabled = true; // Disable button after confirmation
+                if (proceedToPaymentBtn) proceedToPaymentBtn.disabled = false;
+
+                // Make sure the address form part is not re-hidden if it's part of a larger form
+                if (addressForm) showSection(addressForm);
+            });
+        } else {
+            console.warn('#confirmShipping button not found.');
+        }
+
+        // 3. Handler for "Proceed to Payment" button
+        if (proceedToPaymentBtn) {
+            proceedToPaymentBtn.addEventListener('click', function onProceedToPaymentClick() {
+                console.log('Proceed to Payment button clicked');
+                hideSection(orderSummarySection);
+                hideSection(finalActionsSection);
+                
+                // Ensure the parent form of paymentSection is visible
+                if (paymentSection && paymentSection.form) {
+                    showSection(paymentSection.form);
+                } else if (addressForm) { // Fallback to the main address form if payment section is not in its own
+                    showSection(addressForm);
+                }
+
+                showSection(paymentSection);
+
+                // Specifically ensure Stripe elements are visible if they exist
+                const stripeElementMain = document.getElementById('stripe-element-main');
+                const paymentSubmitBtn = document.getElementById('payment-submit-btn');
+                if (stripeElementMain) showSection(stripeElementMain); else console.warn('#stripe-element-main not found');
+                if (paymentSubmitBtn) showSection(paymentSubmitBtn); else console.warn('#payment-submit-btn not found');
+                
+                console.log('Payment section should now be visible.');
+                // Log computed styles for debugging
+                if (paymentSection) {
+                    const computedStyle = window.getComputedStyle(paymentSection);
+                    console.log('Payment Section computed display:', computedStyle.display, 'visibility:', computedStyle.visibility);
+                    if (paymentSection.parentElement) {
+                         const parentStyle = window.getComputedStyle(paymentSection.parentElement);
+                         console.log('Payment Section Parent computed display:', parentStyle.display, 'visibility:', parentStyle.visibility);
+                    }
+                }
+
+
+                this.disabled = true; // Optionally disable after click
+            });
+        } else {
+            console.warn('#proceedToPayment button not found.');
+        }
+        
+        // Initialize button states
+        if (confirmShippingBtn) confirmShippingBtn.disabled = true; // Should be enabled by shipping option selection
+        if (proceedToPaymentBtn) proceedToPaymentBtn.disabled = true; // Should be enabled by confirm shipping
+
+        console.log('Form step handlers initialized.');
+    }
+
+
+    // Call runFixes and initializeFormStepHandlers after DOM is loaded
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', runFixes);
+        document.addEventListener('DOMContentLoaded', () => {
+            runFixes();
+            initializeFormStepHandlers();
+        });
     } else {
         runFixes();
+        initializeFormStepHandlers();
     }
 
 })(); // End of IIFE

@@ -1303,35 +1303,86 @@
                                                     
                                                     finalActionsSection.style.display = 'none';
                                                     console.log('ShippingFix (#proceedToPayment clone): Hid finalActionsSection.');
-                                                    
-                                                    // paymentSection is an element from the outer scope (integrateDeeply)
-                                                    paymentSection.style.setProperty('display', 'block', 'important');
-                                                    paymentSection.style.setProperty('visibility', 'visible', 'important');
-                                                    paymentSection.style.setProperty('opacity', '1', 'important');
-                                                    paymentSection.style.setProperty('border', '5px dashed red', 'important'); 
-                                                    paymentSection.style.setProperty('min-height', '50px', 'important'); 
-                                                    paymentSection.style.setProperty('background-color', 'yellow', 'important');
 
-                                                    // Add a temporary visible child for debugging
-                                                    let debugChild = paymentSection.querySelector('#payment-debug-child');
-                                                    if (!debugChild) {
-                                                        debugChild = document.createElement('div');
-                                                        debugChild.id = 'payment-debug-child';
-                                                        debugChild.style.setProperty('width', '100%', 'important');
-                                                        debugChild.style.setProperty('height', '40px', 'important');
-                                                        debugChild.style.setProperty('background-color', 'lime', 'important');
-                                                        debugChild.style.setProperty('color', 'black', 'important');
-                                                        debugChild.style.setProperty('text-align', 'center', 'important');
-                                                        debugChild.style.setProperty('font-weight', 'bold', 'important');
-                                                        debugChild.textContent = 'PAYMENT SECTION SHOULD BE HERE';
-                                                        paymentSection.appendChild(debugChild);
+                                                    // --- BEGIN INTENSIVE PAYMENTSECTION DEBUG ---
+                                                    const currentPaymentSection = document.getElementById('paymentSection');
+
+                                                    if (currentPaymentSection && currentPaymentSection instanceof HTMLElement) {
+                                                        console.log('ShippingFix DEBUG (Before): currentPaymentSection is an HTMLElement. ID:', currentPaymentSection.id, 'TagName:', currentPaymentSection.tagName);
+                                                        console.log('ShippingFix DEBUG (Before): currentPaymentSection.className:', currentPaymentSection.className);
+                                                        console.log('ShippingFix DEBUG (Before): currentPaymentSection display:', window.getComputedStyle(currentPaymentSection).display);
+                                                        
+                                                        currentPaymentSection.style.setProperty('display', 'block', 'important');
+                                                        currentPaymentSection.style.setProperty('visibility', 'visible', 'important');
+                                                        currentPaymentSection.style.setProperty('opacity', '1', 'important');
+                                                        currentPaymentSection.style.setProperty('border', '5px dashed red', 'important'); 
+                                                        currentPaymentSection.style.setProperty('min-height', '50px', 'important'); 
+                                                        currentPaymentSection.style.setProperty('background-color', 'yellow', 'important');
+                                                        currentPaymentSection.style.setProperty('z-index', '999999', 'important');
+
+                                                        let debugChild = currentPaymentSection.querySelector('#payment-debug-child');
+                                                        if (!debugChild) {
+                                                            debugChild = document.createElement('div');
+                                                            debugChild.id = 'payment-debug-child';
+                                                            debugChild.style.setProperty('width', '100%', 'important');
+                                                            debugChild.style.setProperty('height', '40px', 'important');
+                                                            debugChild.style.setProperty('background-color', 'lime', 'important');
+                                                            debugChild.style.setProperty('color', 'black', 'important');
+                                                            debugChild.style.setProperty('text-align', 'center', 'important');
+                                                            debugChild.style.setProperty('font-weight', 'bold', 'important');
+                                                            debugChild.textContent = 'PAYMENT SECTION SHOULD BE HERE';
+                                                            currentPaymentSection.appendChild(debugChild);
+                                                        } else {
+                                                            debugChild.textContent = 'PAYMENT SECTION SHOULD BE HERE (already existed)';
+                                                        }
+                                                        
+                                                        const offsetHeight = currentPaymentSection.offsetHeight; // Force reflow
+                                                        console.log('ShippingFix DEBUG (After Style Set): currentPaymentSection.className:', currentPaymentSection.className);
+                                                        console.log('ShippingFix DEBUG (After Style Set): offsetHeight read to force reflow:', offsetHeight);
+                                                        console.log('ShippingFix DEBUG (After Style Set): Computed display:', window.getComputedStyle(currentPaymentSection).display, 'Computed visibility:', window.getComputedStyle(currentPaymentSection).visibility, 'Computed opacity:', window.getComputedStyle(currentPaymentSection).opacity);
+                                                        console.log('ShippingFix DEBUG (After Style Set): currentPaymentSection.getBoundingClientRect():', JSON.stringify(currentPaymentSection.getBoundingClientRect()));
+                                                        console.log('ShippingFix DEBUG (After Style Set): currentPaymentSection.innerHTML:', currentPaymentSection.innerHTML);
+
+                                                        // Check again after a minimal timeout, re-fetching the element
+                                                        setTimeout(() => {
+                                                            const paymentSectionCurrent = document.getElementById('paymentSection'); // Re-fetch by ID
+                                                            if (paymentSectionCurrent && paymentSectionCurrent instanceof HTMLElement) {
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): Re-fetched paymentSection. ID:', paymentSectionCurrent.id, 'className:', paymentSectionCurrent.className);
+                                                                const currentStyles = window.getComputedStyle(paymentSectionCurrent);
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): Computed display:', currentStyles.display, 'visibility:', currentStyles.visibility, 'opacity:', currentStyles.opacity);
+                                                                const rect = paymentSectionCurrent.getBoundingClientRect();
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): getBoundingClientRect(): width:', rect.width, 'height:', rect.height, 'top:', rect.top, 'left:', rect.left, 'bottom:', rect.bottom, 'right:', rect.right, 'x:', rect.x, 'y:', rect.y);
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): paymentSectionCurrent.innerHTML (first 200 chars):', paymentSectionCurrent.innerHTML.substring(0, 200) + (paymentSectionCurrent.innerHTML.length > 200 ? '...' : ''));
+
+                                                                if (currentStyles.display === 'none') {
+                                                                    console.warn('ShippingFix DEBUG (setTimeout 0ms): paymentSection display is STILL NONE. Something is actively hiding it or it was never properly shown.');
+                                                                }
+                                                                if (rect.width === 0 || rect.height === 0) {
+                                                                    console.warn('ShippingFix DEBUG (setTimeout 0ms): paymentSection has zero width or height. This could be due to parent display, or its own styles.');
+                                                                }
+                                                                if (!document.body.contains(paymentSectionCurrent)) {
+                                                                    console.error('ShippingFix DEBUG (setTimeout 0ms): paymentSection is NO LONGER IN THE DOM.');
+                                                                }
+
+                                                            } else {
+                                                                console.error('ShippingFix DEBUG (setTimeout 0ms): Could not re-fetch paymentSection by ID, or it is not an HTMLElement. Original paymentSection reference was:', paymentSection ? paymentSection.id : 'null/undefined');
+                                                                const stillExists = document.getElementById('paymentSection');
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): Second attempt to find #paymentSection:', stillExists ? 'Found' : 'Not Found');
+
+                                                            }
+                                                        }, 0); // Use a 0ms timeout to queue it for after the current execution block
+
+                                                        if (paymentSection.parentElement) {
+                                                            console.log('ShippingFix DEBUG: Parent (tagName:', paymentSection.parentElement.tagName, 'id:', paymentSection.parentElement.id, ') computed display:', window.getComputedStyle(paymentSection.parentElement).display);
+                                                            if (paymentSection.parentElement.parentElement) {
+                                                                console.log('ShippingFix DEBUG: Grandparent (tagName:', paymentSection.parentElement.parentElement.tagName, 'id:', paymentSection.parentElement.parentElement.id, ') computed display:', window.getComputedStyle(paymentSection.parentElement.parentElement).display);
+                                                            }
+                                                        }
                                                     } else {
-                                                        debugChild.textContent = 'PAYMENT SECTION SHOULD BE HERE (already existed)';
+                                                        console.error('ShippingFix DEBUG: currentPaymentSection (ID: paymentSection) NOT FOUND or not an HTMLElement. Value:', currentPaymentSection);
                                                     }
+                                                    // --- END INTENSIVE PAYMENTSECTION DEBUG ---
                                                     
-                                                    console.log('ShippingFix (#proceedToPayment clone): Attempted to display paymentSection with debug styles and child. Computed display:', window.getComputedStyle(paymentSection).display);
-                                                    console.log('ShippingFix (#proceedToPayment clone): paymentSection outerHTML:', paymentSection.outerHTML);
-
                                                     orderSummary.style.display = 'block';
                                                     console.log('ShippingFix (#proceedToPayment clone): Ensured orderSummary is visible with paymentSection.');
 

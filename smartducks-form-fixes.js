@@ -1291,8 +1291,14 @@
                                                     finalActionsSection.style.display = 'none';
                                                     console.log('ShippingFix (#proceedToPayment clone): Hid finalActionsSection.');
                                                     
+                                                    // paymentSection is an element from the outer scope (integrateDeeply)
                                                     paymentSection.style.display = 'block';
-                                                    console.log('ShippingFix (#proceedToPayment clone): Displayed paymentSection.');
+                                                    paymentSection.style.visibility = 'visible';
+                                                    paymentSection.style.opacity = '1';
+                                                    // Temporary debugging styles (should be removed after diagnosis):
+                                                    paymentSection.style.border = '3px dotted green'; 
+                                                    paymentSection.style.minHeight = '10px'; 
+                                                    console.log('ShippingFix (#proceedToPayment clone): Attempted to display paymentSection with debug styles.');
                                                     
                                                     orderSummary.style.display = 'block';
                                                     console.log('ShippingFix (#proceedToPayment clone): Ensured orderSummary is visible with paymentSection.');

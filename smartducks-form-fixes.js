@@ -1238,12 +1238,16 @@
                                 console.log('ShippingFix (integrateDeeplyHandler): Showing form5 shippingOptions div.');
 
                                 console.log('ShippingFix (integrateDeeplyHandler): Populating form5 shippingOptionsList.');
+                                // Correctly display carrier, service, price, and transit time
+                                const price = parseFloat(e.detail.price);
+                                const carrier = e.detail.carrierName || 'N/A';
+                                const service = e.detail.serviceName || e.detail.option || 'N/A'; // Use serviceName, fallback to option
+                                const transit = e.detail.transitTime || 'N/A';
+
                                 shippingOptionsList.innerHTML = `
-                                    <p><strong>Selected Shipping:</strong> ${e.detail.option}</p>
-                                    <p><strong>Price:</strong> $${parseFloat(e.detail.price).toFixed(2)}</p>
-                                    <p><strong>Carrier:</strong> ${e.detail.carrierName || 'N/A'}</p>
-                                    <p><strong>Service:</strong> ${e.detail.serviceName || 'N/A'}</p>
-                                    <p><strong>Delivery Time:</strong> ${e.detail.transitTime || 'N/A'}</p>
+                                    <p><strong>Selected Shipping:</strong> ${carrier} - ${service}</p>
+                                    <p><strong>Price:</strong> $${!isNaN(price) ? price.toFixed(2) : 'N/A'}</p>
+                                    <p><strong>Est. Delivery Time:</strong> ${transit}</p>
                                 `;
                                 shippingOptionsList.style.display = 'block'; // Ensure it's visible
 

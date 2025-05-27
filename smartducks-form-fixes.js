@@ -1230,46 +1230,70 @@
                                                         console.error('ShippingFix (#proceedToPayment clone): orderSummary element NOT FOUND.');
                                                     }
                                                     
-                                                    // --- BEGIN PAYMENTSECTION VISIBILITY LOGIC ---
                                                     const paymentSectionEl = document.getElementById('paymentSection');
 
                                                     if (paymentSectionEl && paymentSectionEl instanceof HTMLElement) {
                                                         console.log('ShippingFix (Payment): paymentSectionEl found. ID:', paymentSectionEl.id, 'Current display:', window.getComputedStyle(paymentSectionEl).display);
-                                                        
-                                                        paymentSectionEl.style.display = 'block'; // Main action: Show payment section
-                                                        // Forcing a reflow might help in some edge cases, but often not needed if direct style change works.
-                                                        // const offsetHeight = paymentSectionEl.offsetHeight; 
-                                                        // console.log('ShippingFix (Payment): Forced reflow via offsetHeight:', offsetHeight);
-
+                                                        paymentSectionEl.style.display = 'block';
                                                         console.log('ShippingFix (Payment): Set paymentSectionEl display to "block". New computed display:', window.getComputedStyle(paymentSectionEl).display);
 
-                                                        // Optional: Add a small delay to check if something overrides the display style immediately
                                                         setTimeout(() => {
-                                                            const currentDisplay = window.getComputedStyle(paymentSectionEl).display;
-                                                            console.log('ShippingFix (Payment - 0ms Timeout): paymentSectionEl display is now:', currentDisplay);
-                                                            if (currentDisplay !== 'block') {
-                                                                console.warn('ShippingFix (Payment - 0ms Timeout): paymentSectionEl display was changed from "block" to "' + currentDisplay + '" very quickly. Possible conflicting script or CSS.');
-                                                                // As a fallback, try setting it again with !important if it was overridden
-                                                                // paymentSectionEl.style.setProperty('display', 'block', 'important');
-                                                                // console.log('ShippingFix (Payment - 0ms Timeout): Re-set display to "block !important". New computed display:', window.getComputedStyle(paymentSectionEl).display);
-                                                            }
-                                                            // Add a temporary visual cue for debugging if it's still not visible
-                                                            if (window.getComputedStyle(paymentSectionEl).display === 'none' || paymentSectionEl.offsetHeight === 0) {
-                                                                console.warn('ShippingFix (Payment - 0ms Timeout): paymentSectionEl is not visible or has no height. Adding debug border.');
-                                                                paymentSectionEl.style.setProperty('border', '3px dashed red', 'important');
-                                                                paymentSectionEl.style.setProperty('min-height', '30px', 'important');
-                                                            }
+                                                            console.log('--- ShippingFix (Payment - 0ms Timeout) --- BEGIN ---');
+                                                            const ps = document.getElementById('paymentSection'); // Re-fetch for fresh state
+                                                            if (ps) {
+                                                                const styles = window.getComputedStyle(ps);
+                                                                const rect = ps.getBoundingClientRect();
+                                                                console.log('ShippingFix (Payment - 0ms Timeout): paymentSection ID:', ps.id, 'className:', ps.className);
+                                                                console.log('ShippingFix (Payment - 0ms Timeout): Computed display:', styles.display, 'visibility:', styles.visibility, 'opacity:', styles.opacity);
+                                                                console.log('ShippingFix (Payment - 0ms Timeout): BoundingRect: w:', rect.width, 'h:', rect.height, 't:', rect.top, 'l:', rect.left);
+                                                                console.log('ShippingFix (Payment - 0ms Timeout): offsetHeight:', ps.offsetHeight, 'offsetWidth:', ps.offsetWidth);
 
+                                                                if (styles.display !== 'block') {
+                                                                    console.warn('ShippingFix (Payment - 0ms Timeout): paymentSection display was changed from "block" to "' + styles.display + '". Possible conflict.');
+                                                                }
+                                                                if (ps.offsetHeight === 0 || ps.offsetWidth === 0 || rect.width === 0 || rect.height === 0) {
+                                                                    console.warn('ShippingFix (Payment - 0ms Timeout): paymentSection has zero height or width. It might be practically invisible.');
+                                                                    ps.style.setProperty('border', '3px dashed red', 'important');
+                                                                    ps.style.setProperty('min-height', '50px', 'important');
+                                                                    ps.style.setProperty('background-color', 'yellow', 'important');
+                                                                    console.log('ShippingFix (Payment - 0ms Timeout): Applied debug styles (border, min-height, background).');
+                                                                }
+
+                                                                let parent = ps.parentElement;
+                                                                let level = 1;
+                                                                while (parent && parent !== document.body && level <= 5) {
+                                                                    const parentStyles = window.getComputedStyle(parent);
+                                                                    console.log(`ShippingFix (Payment - Parent L${level}): Tag: ${parent.tagName}, ID: ${parent.id || 'N/A'}, Class: '${parent.className}', Display: ${parentStyles.display}, Visibility: ${parentStyles.visibility}`);
+                                                                    if (parentStyles.display === 'none') {
+                                                                        console.error(`ShippingFix (Payment - Parent L${level}): PARENT IS HIDDEN (display: none). This is preventing paymentSection visibility.`);
+                                                                    }
+                                                                    if (parentStyles.visibility === 'hidden') {
+                                                                        console.warn(`ShippingFix (Payment - Parent L${level}): PARENT IS NOT VISIBLE (visibility: hidden).`);
+                                                                    }
+                                                                    parent = parent.parentElement;
+                                                                    level++;
+                                                                }
+                                                            } else {
+                                                                console.error('ShippingFix (Payment - 0ms Timeout): paymentSection NOT FOUND when re-fetched.');
+                                                            }
+                                                            // Check related elements again
+                                                            const orderSummaryAfter = document.getElementById('orderSummary');
+                                                            if(orderSummaryAfter) console.log('ShippingFix (Payment - 0ms Timeout): orderSummary display:', window.getComputedStyle(orderSummaryAfter).display);
+                                                            else console.error('ShippingFix (Payment - 0ms Timeout): orderSummary NOT FOUND.');
+
+                                                            const shippingListAfter = document.getElementById('shippingOptionsList');
+                                                            if(shippingListAfter) console.log('ShippingFix (Payment - 0ms Timeout): shippingOptionsList display:', window.getComputedStyle(shippingListAfter).display);
+                                                            else console.warn('ShippingFix (Payment - 0ms Timeout): shippingOptionsList NOT FOUND (expected to be hidden).');
+                                                            console.log('--- ShippingFix (Payment - 0ms Timeout) --- END ---');
                                                         }, 0);
 
                                                     } else {
                                                         console.error('ShippingFix (Payment): paymentSectionEl (ID: paymentSection) NOT FOUND or not an HTMLElement. Value:', paymentSectionEl);
                                                     }
-                                                    // --- END PAYMENTSECTION VISIBILITY LOGIC ---
 
-                                                    if (typeof window.recalculateOrderTotal === 'function') {
+                                                    if (typeof window.recalculateOrderTotal === 'function') { // Check if it's a global function
                                                         window.recalculateOrderTotal();
-                                                    } else if (typeof recalculateOrderTotal === 'function') {
+                                                    } else if (typeof recalculateOrderTotal === 'function') { // Check if it's in local scope (less likely here)
                                                          recalculateOrderTotal();
                                                     }
                                                 });

@@ -876,7 +876,7 @@
                                     serviceName: selectedOptionDiv.dataset.serviceName,
                                     transitTime: selectedOptionDiv.dataset.transitTime,
                                 };
-                                console.log('ShippingFix: Dispatching shipping-option-selected event with detail:', eventDetail);
+                                console.log(`ShippingFix: Dispatching shipping-option-selected event with detail: ${JSON.stringify(eventDetail)}`); // Enhanced log
                                 document.dispatchEvent(new CustomEvent('shipping-option-selected', { detail: eventDetail }));
                                 modalElement.style.display = 'none';
                             } else {
@@ -1122,14 +1122,21 @@
                     try {
                         if (!window._integrateDeeplyHandlerAttached) {
                             document.addEventListener('shipping-option-selected', function integrateDeeplyHandler(e) {
-                                console.log('ShippingFix (integrateDeeplyHandler): shipping-option-selected event caught. Detail:', e.detail);
+                                console.log('ShippingFix (integrateDeeplyHandler): shipping-option-selected event caught. Detail:', JSON.stringify(e.detail)); // Enhanced log for received detail
                                 // window._integrateDeeplyHandlerAttached = true; // Mark as attached - This was moved to after successful attachment.
 
-                                // Hide our modal since form5.html has its own UI
+                                // Hide/Remove our modal since form5.html has its own UI
                                 const customModal = document.getElementById('shipping-options-modal');
                                 if (customModal) {
-                                    customModal.style.display = 'none';
-                                    console.log('ShippingFix (integrateDeeplyHandler): Hiding custom modal.');
+                                    if (customModal.parentNode) {
+                                        customModal.parentNode.removeChild(customModal);
+                                        console.log('ShippingFix (integrateDeeplyHandler): Removed custom modal from DOM.');
+                                    } else {
+                                        customModal.style.display = 'none'; 
+                                        console.log('ShippingFix (integrateDeeplyHandler): Hid custom modal (no parentNode).');
+                                    }
+                                } else {
+                                    console.log('ShippingFix (integrateDeeplyHandler): Custom modal not found to hide/remove.');
                                 }
 
                                 // Use the elements from the integrateDeeply scope

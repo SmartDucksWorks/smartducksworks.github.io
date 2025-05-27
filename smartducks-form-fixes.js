@@ -904,92 +904,105 @@
                 if (quotes && Array.isArray(quotes) && quotes.length > 0) {
                     console.log('ShippingFix: Displaying shipping options. Actual count being looped:', quotes.length);
                     
-                    quotes.forEach(quote => {
-                        const optionEl = document.createElement('div');
-                        optionEl.className = 'shipping-option';
-                        optionEl.style.cssText = 'margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px;cursor:pointer;';
-                        
-                        // Store quote data for later use
-                        optionEl.dataset.quoteId = quote.id || quote.quote_id || '';
-                        
-                        // Format price
-                        let priceString = 'N/A';
-                        if (typeof quote.cost === 'number') {
-                            priceString = quote.cost.toFixed(2); // Use quote.cost and ensure two decimal places
-                        } else {
-                            // Fallback or log error if cost is not a number as expected
-                            console.warn('ShippingFix: quote.cost is not a number or missing:', quote.cost, quote);
+                    quotes.forEach(quote => { // Ensure quote is defined and has properties
+                        if (!quote || typeof quote !== 'object') {
+                            console.warn('ShippingFix: Invalid quote object encountered:', quote);
+                            return; // Skip this iteration
                         }
-                        
-                        // Store the price
-                        optionEl.dataset.price = priceString; // Store as string
-                        
-                        // Add the HTML content
-                        optionEl.innerHTML = `
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <h4 style="margin:0;font-size:16px;">${quote.carrier_name || quote.carrier} - ${quote.service_name || quote.service}</h4>
-                                <h4 style="margin:0;font-size:16px;">$${priceString} ${quote.currency || 'CAD'}</h4>
-                            </div>
-                            <div style="font-size:14px;color:#666;margin-top:5px;">
-                                Transit Time: ${quote.delivery_days || 'N/A'} Days
-                            </div>
+                        // Define a default structure for quote details
+                        const serviceName = quote.service_name || quote.serviceName || 'N/A';
+                        const transitTime = quote.transit_time || quote.transitTime || 'N/A';
+                        const cost = quote.cost || quote.total_charge || quote.price || 'N/A'; // Added quote.price
+                        const currency = quote.currency || 'CAD'; // Default to CAD if not specified
+                        const quoteId = quote.id || quote.quoteId || serviceName + '_' + cost; // Ensure a unique ID
+
+                        // Check if cost is a valid number for formatting
+                        const displayCost = (typeof cost === 'number' && !isNaN(cost)) ? `$${cost.toFixed(2)} ${currency}` : 'Price N/A';
+
+                        const optionDiv = document.createElement('div');
+                        optionDiv.className = 'shipping-option';
+                        optionDiv.style.cssText = 'padding: 10px; border: 1px solid #eee; margin-bottom: 10px; border-radius: 4px; cursor: pointer;';
+                        optionDiv.innerHTML = `
+                            <strong class="service-name">${serviceName}</strong> - ${displayCost}
+                            <em class="transit-time" style="display: block; font-size: 0.9em; color: #555;">Est. Transit: ${transitTime}</em>
                         `;
+                        optionDiv.dataset.quoteId = quoteId;
+                        optionDiv.dataset.price = (typeof cost === 'number' && !isNaN(cost)) ? cost.toFixed(2) : '0';
+                        optionDiv.dataset.option = serviceName;
+                        optionDiv.dataset.carrierName = quote.carrier_name || quote.carrierName || 'N/A';
+                        optionDiv.dataset.serviceName = serviceName;
+                        optionDiv.dataset.transitTime = transitTime;
                         
-                        // Add click event
-                        optionEl.addEventListener('click', () => {
-                            // Remove selected class from all options
-                            container.querySelectorAll('.shipping-option').forEach(opt => {
-                                opt.classList.remove('selected');
-                                opt.style.border = '1px solid #ddd';
-                            });
-                            
-                            // Add selected class to this option
-                            optionEl.classList.add('selected');
-                            optionEl.style.border = '2px solid #007bff';
+                        optionDiv.addEventListener('click', () => {
+                            // Remove 'selected' style from currently selected option
+                            const currentlySelected = container.querySelector('.shipping-option.selected');
+                            if (currentlySelected) {
+                                currentlySelected.classList.remove('selected');
+                                currentlySelected.style.borderColor = '#eee'; // Reset border color
+                            }
+                            // Add 'selected' style to clicked option
+                            optionDiv.classList.add('selected');
+                            optionDiv.style.borderColor = '#007bff'; // Highlight selected
+
+                            // Enable select button if it exists
+                            const selectBtn = modalElement.querySelector('.select-option-btn');
+                            if (selectBtn) selectBtn.disabled = false;
                         });
-                        
-                        container.appendChild(optionEl);
+                        container.appendChild(optionDiv);
                     });
                     
                     // Add the select button functionality
                     const selectButton = modalElement.querySelector('.select-option-btn');
                     if (selectButton) {
-                        selectButton.addEventListener('click', () => {
-                            const selectedOption = container.querySelector('.shipping-option.selected');
-                            if (!selectedOption) {
-                                alert('Please select a shipping option first');
-                                return;
+                        // Ensure button is initially disabled if no option is pre-selected
+                        // selectButton.disabled = !container.querySelector('.shipping-option.selected');
+                        
+                        // Clone and replace to remove old listeners
+                        const newSelectButton = selectButton.cloneNode(true);
+                        selectButton.parentNode.replaceChild(newSelectButton, selectButton);
+                        newSelectButton.disabled = true; // Should be disabled until an option is clicked
+
+                        newSelectButton.addEventListener('click', () => {
+                            const selectedOptionDiv = container.querySelector('.shipping-option.selected');
+                            if (selectedOptionDiv) {
+                                const eventDetail = {
+                                    quoteId: selectedOptionDiv.dataset.quoteId,
+                                    price: selectedOptionDiv.dataset.price,
+                                    option: selectedOptionDiv.dataset.option,
+                                    carrierName: selectedOptionDiv.dataset.carrierName,
+                                    serviceName: selectedOptionDiv.dataset.serviceName,
+                                    transitTime: selectedOptionDiv.dataset.transitTime,
+                                };
+                                console.log('ShippingFix: Dispatching shipping-option-selected event with detail:', eventDetail);
+                                document.dispatchEvent(new CustomEvent('shipping-option-selected', { detail: eventDetail }));
+                                modalElement.style.display = 'none'; // Hide modal on selection
+                            } else {
+                                console.log('ShippingFix: Select button clicked but no option selected.');
+                                // Optionally, provide feedback to the user (e.g., an alert or message in the modal)
                             }
-                            
-                            // Create an event to communicate the selected shipping option
-                            const event = new CustomEvent('shipping-option-selected', {
-                                detail: {
-                                    quoteId: selectedOption.dataset.quoteId,
-                                    price: selectedOption.dataset.price,
-                                    option: selectedOption.innerHTML
-                                }
-                            });
-                            document.dispatchEvent(event);
-                            
-                            // Hide the modal
-                            modalElement.style.display = 'none';
                         });
                     }
                 } 
                 else { // This block executes if quotes.length is 0 or quotes is not a valid array
-                    console.log('ShippingFix: Fallback - quotes array is empty, not an array, or length is zero. Actual length:', (quotes ? quotes.length : 'N/A'), 'Is Array:', Array.isArray(quotes));
-                    let messageHTML = "<p>Could not display shipping options at this time.</p>";
+                    console.log('ShippingFix: Fallback - quotes array is empty, not an array, or length is zero. Actual length:', (quotes ? quotes.length : 'N/A'), 'Is Array:', Array.isArray(quotes), 'Data received:', data);
+                    let messageHTML = ""; // Initialize empty
 
-                    if (data && data.rates && Array.isArray(data.rates) && data.rates.length > 0 && !(quotes && Array.isArray(quotes) && quotes.length > 0)) {
-                        messageHTML += "<p>However, we received some data from the server. It seems there was an issue processing the shipping options.</p>";
-                        messageHTML += `<pre style="background:#f4f4f4;padding:10px;overflow:auto;font-size:12px;max-height:400px;">${JSON.stringify(data.rates, null, 2)}</pre>`;
-                    } else if (data && data.quotes && Array.isArray(data.quotes) && data.quotes.length > 0) {
-                        messageHTML += "<p>Note: Some default quotes were found, but they may not be accurate.</p>";
-                        messageHTML += `<pre style="background:#f4f4f4;padding:10px;overflow:auto;font-size:12px;max-height:400px;">${JSON.stringify(data.quotes, null, 2)}</pre>`;
+                    if (data && data.success === false && data.error) {
+                        messageHTML = `<p><strong>An error occurred:</strong> ${data.error}</p>`;
+                        if (data.error.toLowerCase().includes("empty response from server") || data.error.toLowerCase().includes("no data received")) {
+                            messageHTML += "<p>The shipping service did not return any data. This might be a temporary issue or a problem with the address provided. Please ensure all address fields are correct and try again.</p>";
+                        } else if (data.error.toLowerCase().includes("json parse error") || data.error.toLowerCase().includes("unexpected eof")) {
+                            messageHTML += "<p>There was a problem understanding the response from the shipping service. Please try again. If the issue persists, contact support.</p>";
+                        } else {
+                            messageHTML += "<p>Please check your address details and try again. If the problem persists, contact support.</p>";
+                        }
+                    } else if (data && data.message && (!quotes || quotes.length === 0)) { 
+                         messageHTML = `<p>${data.message}</p>`; // Display message from server if rates are empty but message exists
                     } else {
+                        // Default generic message if no specific error info is available in 'data'
+                        messageHTML = "<p>Could not display shipping options at this time.</p>";
                         messageHTML += "<p>No shipping data was received. Please check your address and try again.</p>";
                     }
-
                     container.innerHTML = messageHTML;
                 }
                 

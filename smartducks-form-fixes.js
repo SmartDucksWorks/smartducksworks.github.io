@@ -53,44 +53,39 @@
         return checkElement();
     }
     
-    // Format postal code based on country selection
+    // Ensure this function is robust for Canadian and US postal codes
     function formatPostalCode(country, value) {
-        if (!value) return '';
-        
-        // First, clean up the value to remove non-alphanumeric characters
-        const cleanValue = value.replace(/[^a-zA-Z0-9]/g, '');
-        
+        if (typeof value !== 'string') {
+            return '';
+        }
+
+        let originalValue = value;
+        value = value.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Keep only alphanumeric
+
         if (country === 'CA') {
-            // For Canadian postal codes: A1A 1A1 format
-            // Simple approach: just uppercase and ensure max 6 chars with space after 3rd char
-            const upperValue = cleanValue.toUpperCase();
-            
-            // Take the first 6 characters only (excluding spaces)
-            const sixChars = upperValue.substring(0, 6);
-            
-            // Insert space after the 3rd character if it doesn't exist and we have more than 3 chars
-            if (sixChars.length <= 3) {
-                return sixChars;
-            } else {
-                // Add space after first 3 characters
-                const formatted = `${sixChars.substring(0, 3)} ${sixChars.substring(3)}`.trim();
-                return formatted;
+            // Canadian Postal Code: A1A 1A1
+            if (value.length > 3) {
+                value = value.substring(0, 3) + ' ' + value.substring(3);
+            }
+            if (value.length > 7) { // Max length "A1A 1A1"
+                value = value.substring(0, 7);
             }
         } else if (country === 'US') {
-            // For US zip codes: 12345 or 12345-6789 format
-            if (cleanValue.length <= 5) {
-                return cleanValue;
-            } else {
-                // Insert hyphen after 5th digit
-                return `${cleanValue.substring(0, 5)}-${cleanValue.substring(5, 9)}`.trim();
+            // US ZIP Code: 12345 or 12345-6789
+            if (value.length > 5) {
+                value = value.substring(0, 5) + '-' + value.substring(5);
             }
+            if (value.length > 10) { // Max length "12345-6789"
+                value = value.substring(0, 10);
+            }
+        } else {
+            // For other countries, just return the cleaned alphanumeric value or original if preferred
+            return originalValue.replace(/[^A-Z0-9\\s-]/gi, ''); // Allow spaces and hyphens for others
         }
-        
-        // Default for other countries or no country selected
-        return cleanValue;
+        return value;
     }
 
-    // Update state options when country changes
+    // Function to update state/province options based on selected country
     function updateStateOptions(country) {
         console.log('Updating state options for country:', country);
         
@@ -131,83 +126,25 @@
         // Update postal code input pattern
         const postalInput = document.getElementById('postalCode');
         if (postalInput) {
-            postalInput.pattern = isCanada ? '[A-Za-z][0-9][A-Za-z] [0-9][A-Za-z][0-9]' : '\\d{5}(-\\d{4})?';
+            postalInput.pattern = isCanada ? '[A-Za-z][0-9][A-Za-z] [0-9][A-Za-z][0-9]' : '\\\\d{5}(-\\\\d{4})?';
             postalInput.placeholder = isCanada ? 'A1A 1A1' : '12345 or 12345-6789';
-            // Clear postal code when country changes
-            postalInput.value = '';
+            // Do not clear postalInput.value here automatically, allow user to re-format if country changes back and forth
             
-            // Remove any existing input event handlers and add the new one
-            postalInput.removeEventListener('input', window.handlePostalInput);
-            window.handlePostalInput = function() {
-                const countrySelect = document.getElementById('countryCode');
-                const country = countrySelect ? countrySelect.value : '';
-                
-                // Get cursor position and content before update
-                const currentValue = this.value;
-                const cursorPos = this.selectionStart;
-                
-                // Calculate if we're adding or removing a space character
-                const willAddSpace = country === 'CA' && 
-                                    currentValue.length === 3 && 
-                                    !currentValue.includes(' ') && 
-                                    cursorPos === 3;
-                
-                const formattedValue = formatPostalCode(country, currentValue);
-                
-                // Only update if the formatted value is different
-                if (formattedValue !== currentValue) {
-                    // Get cursor position before update
-                    const start = this.selectionStart;
-                    const end = this.selectionEnd;
-                    
-                    // Save the old value to compare
-                    const oldValue = this.value;
-                    this.value = formattedValue;
-                    
-                    // Adjust cursor position if needed
-                    if (document.activeElement === this) {
-                        let newPos = start;
-                        
-                        // If adding a space after typing the first 3 characters, move cursor after space
-                        if (willAddSpace) {
-                            newPos = 4; // Position after the space
-                        }
-                        // If cursor was at or after a space that was added/removed, adjust position
-                        else if (formattedValue.length !== oldValue.length) {
-                            // Check if cursor was after position where space is added in Canadian postal code
-                            if (country === 'CA' && cursorPos > 3) {
-                                // If space was added, move cursor forward
-                                if (formattedValue.length > oldValue.length) {
-                                    newPos = cursorPos + 1;
-                                } 
-                                // If space was removed, move cursor backward
-                                else if (formattedValue.length < oldValue.length) {
-                                    newPos = Math.max(3, cursorPos - 1);
-                                }
-                            }
-                        }
-                        
-                        // Make sure we're not beyond the end of the string
-                        newPos = Math.min(newPos, formattedValue.length);
-                        
-                        if (start === end) {
-                            // If no selection, use calculated position
-                            this.setSelectionRange(newPos, newPos);
-                        } else {
-                            // If there was a selection, adjust the selection
-                            const selectionLength = end - start;
-                            this.setSelectionRange(newPos, newPos + selectionLength);
-                        }
-                    }
-                }
-            };
+            // Ensure the input event handler is correctly set up
+            // Remove existing to prevent duplicates if this function is called multiple times
+            postalInput.removeEventListener('input', window.handlePostalInput); 
             postalInput.addEventListener('input', window.handlePostalInput);
+
+            // Also re-format the current value if any
+            if(postalInput.value){
+                postalInput.value = formatPostalCode(country, postalInput.value);
+            }
         }
         
         console.log(`Updated state select with ${Object.keys(statesData[country]).length} options`);
     }
 
-    // Main function to initialize the fix
+    // Main function to initialize the state/province and postal code fixes
     function initStateProvinceFix() {
         console.log('Initializing state/province selector fix');
         
@@ -265,80 +202,48 @@
                 // Initialize postal code formatting handlers
                 const postalInput = document.getElementById('postalCode');
                 if (postalInput) {
-                    // Simplified event handling for production
-                    
-                    postalInput.removeEventListener('input', window.handlePostalInput);
+                    // Define or redefine window.handlePostalInput to ensure it's correct
                     window.handlePostalInput = function(event) {
                         const countrySelect = document.getElementById('countryCode');
-                        const country = countrySelect ? countrySelect.value : '';
+                        const country = countrySelect ? countrySelect.value : 'CA'; // Default to CA if not found
                         
-                        // Get cursor position and content before update
-                        const currentValue = this.value;
-                        const cursorPos = this.selectionStart;
+                        let cursorPos = this.selectionStart;
+                        const originalValue = this.value;
+                        const formattedValue = formatPostalCode(country, originalValue);
                         
-                        // Calculate if we're adding or removing a space character
-                        const willAddSpace = country === 'CA' && 
-                                            currentValue.length === 3 && 
-                                            !currentValue.includes(' ') && 
-                                            cursorPos === 3;
-                        
-                        const formattedValue = formatPostalCode(country, currentValue);
-                        
-                        // Only update if the formatted value is different
-                        if (formattedValue !== currentValue) {
-                            // Get cursor position before update
-                            const start = this.selectionStart;
-                            const end = this.selectionEnd;
-                            
-                            // Save the old value to compare
-                            const oldValue = this.value;
+                        if (formattedValue !== originalValue) {
                             this.value = formattedValue;
-                            
-                            // Adjust cursor position if needed
-                            if (document.activeElement === this) {
-                                let newPos = start;
-                                
-                                // If adding a space after typing the first 3 characters, move cursor after space
-                                if (willAddSpace) {
-                                    newPos = 4; // Position after the space
-                                }
-                                // If cursor was at or after a space that was added/removed, adjust position
-                                else if (formattedValue.length !== oldValue.length) {
-                                    // Check if cursor was after position where space is added in Canadian postal code
-                                    if (country === 'CA' && cursorPos > 3) {
-                                        // If space was added, move cursor forward
-                                        if (formattedValue.length > oldValue.length) {
-                                            newPos = cursorPos + 1;
-                                        } 
-                                        // If space was removed, move cursor backward
-                                        else if (formattedValue.length < oldValue.length) {
-                                            newPos = Math.max(3, cursorPos - 1);
-                                        }
-                                    }
-                                }
-                                
-                                // Make sure we're not beyond the end of the string
-                                newPos = Math.min(newPos, formattedValue.length);
-                                
-                                if (start === end) {
-                                    // If no selection, use calculated position
-                                    this.setSelectionRange(newPos, newPos);
-                                } else {
-                                    // If there was a selection, adjust the selection
-                                    const selectionLength = end - start;
-                                    this.setSelectionRange(newPos, newPos + selectionLength);
-                                }
+                            // Adjust cursor position carefully
+                            // If a space was added (e.g., A1A1A1 -> A1A 1A1) and cursor was after 3rd char
+                            if (country === 'CA' && originalValue.length === 6 && formattedValue.length === 7 && cursorPos > 3) {
+                                cursorPos++;
                             }
+                            // If a hyphen was added (e.g., 123456789 -> 12345-6789) and cursor was after 5th char
+                            else if (country === 'US' && originalValue.length === 9 && formattedValue.length === 10 && cursorPos > 5) {
+                                cursorPos++;
+                            }
+                            // Basic adjustment: if length changed, try to maintain relative position
+                            else if (formattedValue.length !== originalValue.length) {
+                                // This is a simplified adjustment, might need refinement for all cases
+                                cursorPos = Math.max(0, cursorPos + (formattedValue.length - originalValue.length));
+                            }
+                            
+                            // Ensure cursor is not out of bounds
+                            cursorPos = Math.min(cursorPos, formattedValue.length);
+                            this.setSelectionRange(cursorPos, cursorPos);
                         }
                     };
-                    postalInput.addEventListener('input', window.handlePostalInput);
-                    console.log('Postal code formatting handlers applied');
                     
-                    // Make sure form submission handlers aren't affected
-                    const addressForm = document.getElementById('addressForm');
-                    if (addressForm) {
-                        console.log('Re-verifying form submission handler is working');
-                        // We don't need to do anything here, just ensuring it's checked
+                    // Remove any old listener and add the (potentially new) one
+                    postalInput.removeEventListener('input', window.handlePostalInput);
+                    postalInput.addEventListener('input', window.handlePostalInput);
+                    
+                    console.log('ShippingFix: Postal code formatting handlers (re)applied.');
+
+                    // Initial format if a value already exists
+                    if (postalInput.value) {
+                        const currentCountry = document.getElementById('countryCode') ? document.getElementById('countryCode').value : 'CA';
+                        postalInput.value = formatPostalCode(currentCountry, postalInput.value);
                     }
                 }
                 
@@ -1300,7 +1205,7 @@
                                                 proceedToPaymentClone.addEventListener('click', function onProceedToPaymentClick(ev) {
                                                     ev.preventDefault();
                                                     console.log('ShippingFix (#proceedToPayment clone): Clicked.');
-                                                    
+
                                                     finalActionsSection.style.display = 'none';
                                                     console.log('ShippingFix (#proceedToPayment clone): Hid finalActionsSection.');
 
@@ -1336,23 +1241,41 @@
                                                             debugChild.textContent = 'PAYMENT SECTION SHOULD BE HERE (already existed)';
                                                         }
                                                         
-                                                        const offsetHeight = currentPaymentSection.offsetHeight; // Force reflow
+                                                        const offsetHeight = currentPaymentSection.offsetHeight; 
                                                         console.log('ShippingFix DEBUG (After Style Set): currentPaymentSection.className:', currentPaymentSection.className);
                                                         console.log('ShippingFix DEBUG (After Style Set): offsetHeight read to force reflow:', offsetHeight);
                                                         console.log('ShippingFix DEBUG (After Style Set): Computed display:', window.getComputedStyle(currentPaymentSection).display, 'Computed visibility:', window.getComputedStyle(currentPaymentSection).visibility, 'Computed opacity:', window.getComputedStyle(currentPaymentSection).opacity);
                                                         console.log('ShippingFix DEBUG (After Style Set): currentPaymentSection.getBoundingClientRect():', JSON.stringify(currentPaymentSection.getBoundingClientRect()));
-                                                        console.log('ShippingFix DEBUG (After Style Set): currentPaymentSection.innerHTML:', currentPaymentSection.innerHTML);
+                                                        console.log('ShippingFix DEBUG (After Style Set): currentPaymentSection.innerHTML (first 200 chars):', currentPaymentSection.innerHTML.substring(0, 200) + (currentPaymentSection.innerHTML.length > 200 ? '...' : ''));
 
-                                                        // Check again after a minimal timeout, re-fetching the element
                                                         setTimeout(() => {
-                                                            const paymentSectionCurrent = document.getElementById('paymentSection'); // Re-fetch by ID
-                                                            if (paymentSectionCurrent && paymentSectionCurrent instanceof HTMLElement) {
-                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): Re-fetched paymentSection. ID:', paymentSectionCurrent.id, 'className:', paymentSectionCurrent.className);
-                                                                const currentStyles = window.getComputedStyle(paymentSectionCurrent);
-                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): Computed display:', currentStyles.display, 'visibility:', currentStyles.visibility, 'opacity:', currentStyles.opacity);
-                                                                const rect = paymentSectionCurrent.getBoundingClientRect();
-                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): getBoundingClientRect(): width:', rect.width, 'height:', rect.height, 'top:', rect.top, 'left:', rect.left, 'bottom:', rect.bottom, 'right:', rect.right, 'x:', rect.x, 'y:', rect.y);
-                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): paymentSectionCurrent.innerHTML (first 200 chars):', paymentSectionCurrent.innerHTML.substring(0, 200) + (paymentSectionCurrent.innerHTML.length > 200 ? '...' : ''));
+                                                            const paymentSectionInTimeout = document.getElementById('paymentSection'); 
+                                                            const orderSummaryInTimeout = document.getElementById('orderSummary');
+                                                            const shippingOptionsListInTimeout = document.getElementById('shippingOptionsList');
+
+                                                            console.log('--- ShippingFix DEBUG (setTimeout 0ms) --- BEGIN ---');
+
+                                                            if (orderSummaryInTimeout) {
+                                                                orderSummaryInTimeout.style.display = 'block'; 
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): orderSummaryInTimeout.id:', orderSummaryInTimeout.id, 'className:', orderSummaryInTimeout.className, 'Computed display:', window.getComputedStyle(orderSummaryInTimeout).display);
+                                                            } else {
+                                                                console.error('ShippingFix DEBUG (setTimeout 0ms): orderSummaryInTimeout NOT FOUND');
+                                                            }
+
+                                                            if (shippingOptionsListInTimeout) {
+                                                                shippingOptionsListInTimeout.style.display = 'block'; 
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): shippingOptionsListInTimeout.id:', shippingOptionsListInTimeout.id, 'className:', shippingOptionsListInTimeout.className, 'Computed display:', window.getComputedStyle(shippingOptionsListInTimeout).display);
+                                                            } else {
+                                                                console.error('ShippingFix DEBUG (setTimeout 0ms): shippingOptionsListInTimeout NOT FOUND');
+                                                            }
+                                                            
+                                                            if (paymentSectionInTimeout && paymentSectionInTimeout instanceof HTMLElement) {
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): Re-fetched paymentSection. ID:', paymentSectionInTimeout.id, 'className:', paymentSectionInTimeout.className);
+                                                                const currentStyles = window.getComputedStyle(paymentSectionInTimeout);
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): paymentSection Computed display:', currentStyles.display, 'visibility:', currentStyles.visibility, 'opacity:', currentStyles.opacity, 'z-index:', currentStyles.zIndex);
+                                                                const rect = paymentSectionInTimeout.getBoundingClientRect();
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): paymentSection getBoundingClientRect(): width:', rect.width, 'height:', rect.height, 'top:', rect.top, 'left:', rect.left, 'bottom:', rect.bottom, 'right:', rect.right, 'x:', rect.x, 'y:', rect.y);
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): paymentSection.innerHTML (first 200 chars):', paymentSectionInTimeout.innerHTML.substring(0, 200) + (paymentSectionInTimeout.innerHTML.length > 200 ? '...' : ''));
 
                                                                 if (currentStyles.display === 'none') {
                                                                     console.warn('ShippingFix DEBUG (setTimeout 0ms): paymentSection display is STILL NONE. Something is actively hiding it or it was never properly shown.');
@@ -1360,22 +1283,38 @@
                                                                 if (rect.width === 0 || rect.height === 0) {
                                                                     console.warn('ShippingFix DEBUG (setTimeout 0ms): paymentSection has zero width or height. This could be due to parent display, or its own styles.');
                                                                 }
-                                                                if (!document.body.contains(paymentSectionCurrent)) {
+                                                                
+                                                                if (document.body.contains(paymentSectionInTimeout)) {
+                                                                    console.log('ShippingFix DEBUG (setTimeout 0ms): paymentSection IS IN THE DOM.');
+                                                                    let parent = paymentSectionInTimeout.parentElement;
+                                                                    let level = 1;
+                                                                    while (parent && parent !== document.body) {
+                                                                        const parentStyles = window.getComputedStyle(parent);
+                                                                        console.log(`ShippingFix DEBUG (setTimeout 0ms): Parent L${level} - Tag: ${parent.tagName}, ID: ${parent.id || 'N/A'}, Class: '${parent.className}', Display: ${parentStyles.display}, Visibility: ${parentStyles.visibility}`);
+                                                                        parent = parent.parentElement;
+                                                                        level++;
+                                                                    }
+                                                                    if (parent === document.body) {
+                                                                        console.log('ShippingFix DEBUG (setTimeout 0ms): Reached document.body.');
+                                                                    } else {
+                                                                        console.warn('ShippingFix DEBUG (setTimeout 0ms): Traversal stopped before reaching document.body. Last parent:', parent);
+                                                                    }
+                                                                } else {
                                                                     console.error('ShippingFix DEBUG (setTimeout 0ms): paymentSection is NO LONGER IN THE DOM.');
                                                                 }
 
                                                             } else {
-                                                                console.error('ShippingFix DEBUG (setTimeout 0ms): Could not re-fetch paymentSection by ID, or it is not an HTMLElement. Original paymentSection reference was:', paymentSection ? paymentSection.id : 'null/undefined');
+                                                                console.error('ShippingFix DEBUG (setTimeout 0ms): Could not re-fetch paymentSection by ID, or it is not an HTMLElement. Original currentPaymentSection reference was:', currentPaymentSection ? currentPaymentSection.id : 'null/undefined');
                                                                 const stillExists = document.getElementById('paymentSection');
-                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): Second attempt to find #paymentSection:', stillExists ? 'Found' : 'Not Found');
-
+                                                                console.log('ShippingFix DEBUG (setTimeout 0ms): Second attempt to find #paymentSection:', stillExists ? 'Found (' + stillExists.tagName + ')' : 'Not Found');
                                                             }
-                                                        }, 0); // Use a 0ms timeout to queue it for after the current execution block
+                                                            console.log('--- ShippingFix DEBUG (setTimeout 0ms) --- END ---');
+                                                        }, 0); 
 
-                                                        if (paymentSection.parentElement) {
-                                                            console.log('ShippingFix DEBUG: Parent (tagName:', paymentSection.parentElement.tagName, 'id:', paymentSection.parentElement.id, ') computed display:', window.getComputedStyle(paymentSection.parentElement).display);
-                                                            if (paymentSection.parentElement.parentElement) {
-                                                                console.log('ShippingFix DEBUG: Grandparent (tagName:', paymentSection.parentElement.parentElement.tagName, 'id:', paymentSection.parentElement.parentElement.id, ') computed display:', window.getComputedStyle(paymentSection.parentElement.parentElement).display);
+                                                        if (currentPaymentSection.parentElement) { 
+                                                            console.log('ShippingFix DEBUG: Parent (tagName:', currentPaymentSection.parentElement.tagName, 'id:', currentPaymentSection.parentElement.id, ') computed display:', window.getComputedStyle(currentPaymentSection.parentElement).display);
+                                                            if (currentPaymentSection.parentElement.parentElement) {
+                                                                console.log('ShippingFix DEBUG: Grandparent (tagName:', currentPaymentSection.parentElement.parentElement.tagName, 'id:', currentPaymentSection.parentElement.parentElement.id, ') computed display:', window.getComputedStyle(currentPaymentSection.parentElement.parentElement).display);
                                                             }
                                                         }
                                                     } else {
@@ -1383,91 +1322,226 @@
                                                     }
                                                     // --- END INTENSIVE PAYMENTSECTION DEBUG ---
                                                     
-                                                    orderSummary.style.display = 'block';
-                                                    console.log('ShippingFix (#proceedToPayment clone): Ensured orderSummary is visible with paymentSection.');
+                                                    const orderSummaryElement = document.getElementById('orderSummary'); 
+                                                    if (orderSummaryElement) {
+                                                        orderSummaryElement.style.display = 'block';
+                                                        console.log('ShippingFix (#proceedToPayment clone): Ensured orderSummary is visible with paymentSection. Display:', window.getComputedStyle(orderSummaryElement).display);
+                                                    } else {
+                                                        console.error('ShippingFix (#proceedToPayment clone): orderSummary element NOT FOUND when trying to ensure visibility.');
+                                                    }
 
-                                                    shippingOptionsList.style.display = 'block';
-                                                    console.log('ShippingFix (#proceedToPayment clone): Ensured shippingOptionsList is visible with paymentSection.');
+                                                    const shippingOptionsListElement = document.getElementById('shippingOptionsList'); 
+                                                    if (shippingOptionsListElement) {
+                                                        shippingOptionsListElement.style.display = 'block';
+                                                        console.log('ShippingFix (#proceedToPayment clone): Ensured shippingOptionsList is visible with paymentSection. Display:', window.getComputedStyle(shippingOptionsListElement).display);
+                                                    } else {
+                                                        console.error('ShippingFix (#proceedToPayment clone): shippingOptionsList element NOT FOUND when trying to ensure visibility.');
+                                                    }
 
                                                     if (typeof recalculateOrderTotal === 'function') {
                                                         recalculateOrderTotal();
                                                     }
-                                                });
-                                                console.log('ShippingFix (confirmShippingButton clone): Event listener added to #proceedToPayment clone.');
+                                                }
+                                            });
+                                        } 
+                                        else { // This block executes if quotes.length is 0 or quotes is not a valid array
+                                            console.log('ShippingFix: Fallback - quotes array is empty, not an array, or length is zero. Actual length:', (quotes ? quotes.length : 'N/A'), 'Is Array:', Array.isArray(quotes), 'Data received:', data);
+                                            let messageHTML = ""; // Initialize empty
+
+                                            if (data && data.success === false && data.error) {
+                                                messageHTML = `<p><strong>An error occurred:</strong> ${data.error}</p>`;
+                                                if (data.error.toLowerCase().includes("empty response from server") || data.error.toLowerCase().includes("no data received")) {
+                                                    messageHTML += "<p>The shipping service did not return any data. This might be a temporary issue or a problem with the address provided. Please ensure all address fields are correct and try again.</p>";
+                                                } else if (data.error.toLowerCase().includes("json parse error") || data.error.toLowerCase().includes("unexpected eof")) {
+                                                    messageHTML += "<p>There was a problem understanding the response from the shipping service. Please try again. If the issue persists, contact support.</p>";
+                                                } else {
+                                                    messageHTML += "<p>Please check your address details and try again. If the problem persists, contact support.</p>";
+                                                }
+                                            } else if (data && data.message && (!quotes || quotes.length === 0)) { 
+                                                 messageHTML = `<p>${data.message}</p>`; // Display message from server if rates are empty but message exists
                                             } else {
-                                                console.error('ShippingFix (confirmShippingButton clone): #proceedToPayment has no parentNode.');
+                                                // Default generic message if no specific error info is available in 'data'
+                                                messageHTML = "<p>Could not display shipping options at this time.</p>";
+                                                messageHTML += "<p>No shipping data was received. Please check your address and try again.</p>";
                                             }
-                                        } else {
-                                            console.log('ShippingFix (confirmShippingButton clone): #proceedToPayment button not found in finalActionsSection.');
+                                            container.innerHTML = messageHTML;
                                         }
-                                    });
-                                    console.log('ShippingFix (integrateDeeplyHandler): Event listener added to confirmShippingButtonClone.');
-                                } else {
-                                    console.error('ShippingFix (integrateDeeplyHandler): confirmShippingButtonOriginal found, but it has no parentNode.');
-                                }
-                            }); // End of integrateDeeplyHandler
-                        } else {
-                            console.log('ShippingFix (integrateDeeply): integrateDeeplyHandler already attached. Skipping re-attachment.');
+                                        
+                                        // Make sure the modal is visible
+                                        setTimeout(() => {
+                                            modalElement.style.display = 'block';
+                                            modalElement.style.visibility = 'visible';
+                                            modalElement.style.opacity = '1';
+                                        }, 100);
+                                        
+                                        console.log('ShippingFix: Modal should now be visible');
+                                        
+                                        // If there was an original submit handler, call it now but prevent form submission
+                                        if (originalSubmit && typeof originalSubmit === 'function') {
+                                            console.log('ShippingFix: Calling original submit handler');
+                                            try {
+                                                // Create a fake event to pass to the original handler
+                                                const fakeEvent = { preventDefault: () => {} };
+                                                originalSubmit.call(addressForm, fakeEvent);
+                                            } catch (err) {
+                                                console.error('ShippingFix: Error calling original handler:', err);
+                                            }
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('ShippingFix: Error fetching shipping options:', error);
+                                        const loadingEl = document.getElementById('sm-loading-indicator');
+                                        if (loadingEl) loadingEl.remove();
+                                        
+                                        if (error.message && error.message.includes('CORS')) {
+                                            const corsErrorDiv = document.createElement('div');
+                                            corsErrorDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;justify-content:center;align-items:center;color:white;';
+                                            corsErrorDiv.innerHTML = `
+                                                <div style="background:#f44336;padding:20px;border-radius:5px;max-width:500px;text-align:center;">
+                                                <h3 style="margin-top:0;">Connection Error</h3>
+                                                <p>We\\'re having trouble connecting to our shipping service due to a security configuration issue.</p>
+                                                <p>Our team has been notified and is working on a fix. Please try again later or contact customer service.</p>
+                                                <p>Technical details: CORS configuration error</p>
+                                                <button onclick="this.parentNode.parentNode.remove()" style="padding:8px 16px;background:#fff;color:#f44336;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">Close</button>
+                                                </div>
+                                            `;
+                                            document.body.appendChild(corsErrorDiv);
+                                        } else {
+                                            alert('Error loading shipping options. Please try again. If the problem persists, contact support.');
+                                        }
+                                    }); // End of .catch() for fetch
+                }; // End of window._shippingFixHandler = function(e) { ... }
+
+                // Ensure addressForm and submitButton are defined in the scope of runFixes
+                // (They are expected to be found by ID at the beginning of runFixes)
+                if (addressForm && submitButton) {
+                    addressForm._hasShippingFix = true;
+                    addressForm.removeEventListener('submit', window._shippingFixHandler); // Remove if already there
+                    addressForm.addEventListener('submit', window._shippingFixHandler);
+                    console.log('ShippingFix: Main submit handler (re-)attached to form.');
+
+                    const buttonClickHandler = function(e) {
+                        console.log('ShippingFix: Submit Button clicked directly (aggressive handler)');
+                        e.preventDefault();
+                        e.stopPropagation(); 
+
+                        if (addressForm._isSubmitting) {
+                            console.log('ShippingFix: Form already submitting, ignoring click.');
+                            return;
                         }
-                    } catch (err) {
-                        console.error('ShippingFix: Error caught in integrateDeeply try block:', err); // Simplified and restored catch
+                        addressForm._isSubmitting = true;
+                        console.log('ShippingFix: Manually triggering submission handler via button click.');
+                        
+                        window._shippingFixHandler({
+                            preventDefault: () => {},
+                            stopPropagation: () => {},
+                            submitter: submitButton 
+                        });
+                        
+                        setTimeout(() => {
+                            addressForm._isSubmitting = false;
+                        }, 2000); 
+                    };
+
+                    if (submitButton._clickHandler) {
+                        submitButton.removeEventListener('click', submitButton._clickHandler, true);
                     }
+                    submitButton._clickHandler = buttonClickHandler;
+                    submitButton.addEventListener('click', buttonClickHandler, true);
+                    console.log('ShippingFix: Aggressive click handler (re-)attached to submit button.');
                 } else {
-                    // Log which elements were not found
-                    if (!shippingOptionsDiv) {
-                        console.log('ShippingFix Log: shippingOptionsDiv not found, will retry.');
-                    }
-                    if (!orderSummary) {
-                        console.log('ShippingFix (integrateDeeply): orderSummary not found, will retry.');
-                    }
-                    if (!shippingOptionsList) { // Added braces
-                        console.log('ShippingFix (integrateDeeply): shippingOptionsList not found, will retry.');
-                    }
-                    if (!paymentSection) { // Added braces
-                        console.log('ShippingFix (integrateDeeply): paymentSection not found, will retry.');
-                    }
-                    if (!finalActionsSection) { // Added braces
-                        console.log('ShippingFix (integrateDeeply): finalActionsSection not found, will retry.');
-                    }
-                    if (!confirmShippingButtonOriginal) { // Added braces
-                        console.log('ShippingFix (integrateDeeply): confirmShippingButtonOriginal (ID: confirmShipping) not found, will retry.');
-                    }
-                    if (!addressForm) { // Added braces
-                        console.log('ShippingFix (integrateDeeply): addressForm not found, will retry.');
-                    }
-                    
-                    setTimeout(integrateDeeply, 500); // Retry finding elements
+                    if (!addressForm) console.error('ShippingFix Error: addressForm not found in runFixes. Cannot attach main submit handler.');
+                    if (!submitButton) console.error('ShippingFix Error: submitButton not found in runFixes. Cannot attach aggressive click handler.');
                 }
-            }, 1000); // End of setTimeout(integrateDeeply, 1000)
-        } // End of SmartDucks form5.html specific integrations
-    } // End of runFixes function
-    console.log('ShippingFix: runFixes function defined (after definition):', typeof runFixes);
+                
+                if (addressForm) {
+                    const parentForm = addressForm.closest('form');
+                    if (parentForm && parentForm !== addressForm) {
+                        console.log('ShippingFix: Detected nested form, applying special fix to parent form.');
+                        parentForm.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('ShippingFix: Parent form submission intercepted, dispatching to our addressForm.');
+                            const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                            addressForm.dispatchEvent(submitEvent);
+                        });
+                    }
+                }
 
-    // --- Start: DOM Ready and Load Event Handling ---
-    function tryRunFixes() {
-        if (window._fixesHaveRun) { // Check the flag set by runFixes itself
-            console.log('ShippingFix: tryRunFixes - Fixes appear to have already run.');
-            return;
-        }
-        console.log('ShippingFix: tryRunFixes - Attempting to run fixes.');
-        runFixes(); // This function should set window._fixesHaveRun = true
-    }
+                // Set up global event handler for shipping option selection
+                if (!window._shippingOptionHandlerInstalled) {
+                    window._shippingOptionHandlerInstalled = true;
+                    document.addEventListener('shipping-option-selected', function(e) {
+                        console.log('ShippingFix (Global Listener): Shipping option selected:', e.detail);
+                        const currentAddressForm = document.getElementById('addressForm'); 
+                        if (!currentAddressForm) {
+                            console.error("ShippingFix (Global Listener): addressForm not found. Cannot store shipping details.");
+                            return;
+                        }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('ShippingFix: DOMContentLoaded event fired from IIFE listener.');
-            tryRunFixes();
-        });
-    } else {
-        // DOMContentLoaded has already fired or state is interactive/complete
-        console.log('ShippingFix: DOM already ready, attempting to run fixes from IIFE.');
-        tryRunFixes();
-    }
+                        let shippingOptionField = currentAddressForm.querySelector('input[name="selected_shipping_option"]');
+                        if (!shippingOptionField) {
+                            shippingOptionField = document.createElement('input');
+                            shippingOptionField.type = 'hidden';
+                            shippingOptionField.name = 'selected_shipping_option';
+                            currentAddressForm.appendChild(shippingOptionField);
+                        }
+                        shippingOptionField.value = e.detail.quoteId;
 
-    window.addEventListener('load', function() {
-        console.log('ShippingFix: Window load event fired from IIFE listener.');
-        tryRunFixes(); // Ensures fixes run even if they depend on all assets or if DOMContentLoaded was missed
-    });
-    // --- End: DOM Ready and Load Event Handling ---
+                        let shippingPriceField = currentAddressForm.querySelector('input[name="selected_shipping_price"]');
+                        if (!shippingPriceField) {
+                            shippingPriceField = document.createElement('input');
+                            shippingPriceField.type = 'hidden';
+                            shippingPriceField.name = 'selected_shipping_price';
+                            currentAddressForm.appendChild(shippingPriceField);
+                        }
+                        shippingPriceField.value = e.detail.price;
+                        console.log('ShippingFix (Global Listener): Stored shipping option and price in hidden fields on addressForm.');
+                        
+                        let shippingDisplay = document.querySelector('.shipping-display-fix'); 
+                        if (!shippingDisplay) {
+                            shippingDisplay = document.createElement('div');
+                            shippingDisplay.className = 'shipping-display-fix'; 
+                            shippingDisplay.style.cssText = 'margin:15px 0;padding:10px;border:1px solid #ddd;border-radius:4px;background:#f9f9f9;';
+                            const submitBtnEl = currentAddressForm.querySelector('button[type="submit"], input[type="submit"], .submit-button');
+                            if (submitBtnEl && submitBtnEl.parentNode) {
+                                submitBtnEl.parentNode.insertBefore(shippingDisplay, submitBtnEl);
+                            } else {
+                                currentAddressForm.appendChild(shippingDisplay); 
+                            }
+                        }
+                        shippingDisplay.innerHTML = `
+                            <p style="margin:0 0 5px 0;font-weight:bold;">Selected Shipping:</p>
+                            <p style="margin:0 0 8px 0;">${e.detail.option} ($${parseFloat(e.detail.price).toFixed(2)})</p>
+                            <button type="button" class="change-shipping-btn-fix" style="padding:6px 12px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.9em;">Change Shipping</button>
+                        `;
+                        const changeBtn = shippingDisplay.querySelector('.change-shipping-btn-fix');
+                        if (changeBtn) {
+                            changeBtn.addEventListener('click', () => {
+                                const modal = document.getElementById('shipping-options-modal'); 
+                                if (modal) {
+                                    modal.style.display = 'block';
+                                    console.log('ShippingFix: "Change Shipping" clicked, showing modal.');
+                                } else {
+                                    console.warn("ShippingFix: Modal 'shipping-options-modal' not found for change button.");
+                                    if(submitButton) submitButton.click(); // Fallback: try to re-trigger original process
+                                }
+                            });
+                        }
+                    });
+                    console.log('ShippingFix: Global shipping-option-selected listener installed.');
+                }
+            } // End of runFixes function
 
-})();
+            // Initialize the fixes when the DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('ShippingFix: DOMContentLoaded, now running fixes.');
+                    runFixes();
+                });
+            } else {
+                console.log('ShippingFix: DOM already ready, running fixes immediately.');
+                runFixes();
+            }
+
+        })(); // End of IIFE

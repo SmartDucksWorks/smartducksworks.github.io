@@ -1305,14 +1305,33 @@
                                                     console.log('ShippingFix (#proceedToPayment clone): Hid finalActionsSection.');
                                                     
                                                     // paymentSection is an element from the outer scope (integrateDeeply)
-                                                    paymentSection.style.display = 'block';
-                                                    paymentSection.style.visibility = 'visible';
-                                                    paymentSection.style.opacity = '1';
-                                                    // Temporary debugging styles (should be removed after diagnosis):
-                                                    paymentSection.style.border = '3px dotted green'; 
-                                                    paymentSection.style.minHeight = '10px'; 
-                                                    console.log('ShippingFix (#proceedToPayment clone): Attempted to display paymentSection with debug styles.');
+                                                    paymentSection.style.setProperty('display', 'block', 'important');
+                                                    paymentSection.style.setProperty('visibility', 'visible', 'important');
+                                                    paymentSection.style.setProperty('opacity', '1', 'important');
+                                                    paymentSection.style.setProperty('border', '5px dashed red', 'important'); 
+                                                    paymentSection.style.setProperty('min-height', '50px', 'important'); 
+                                                    paymentSection.style.setProperty('background-color', 'yellow', 'important');
+
+                                                    // Add a temporary visible child for debugging
+                                                    let debugChild = paymentSection.querySelector('#payment-debug-child');
+                                                    if (!debugChild) {
+                                                        debugChild = document.createElement('div');
+                                                        debugChild.id = 'payment-debug-child';
+                                                        debugChild.style.setProperty('width', '100%', 'important');
+                                                        debugChild.style.setProperty('height', '40px', 'important');
+                                                        debugChild.style.setProperty('background-color', 'lime', 'important');
+                                                        debugChild.style.setProperty('color', 'black', 'important');
+                                                        debugChild.style.setProperty('text-align', 'center', 'important');
+                                                        debugChild.style.setProperty('font-weight', 'bold', 'important');
+                                                        debugChild.textContent = 'PAYMENT SECTION SHOULD BE HERE';
+                                                        paymentSection.appendChild(debugChild);
+                                                    } else {
+                                                        debugChild.textContent = 'PAYMENT SECTION SHOULD BE HERE (already existed)';
+                                                    }
                                                     
+                                                    console.log('ShippingFix (#proceedToPayment clone): Attempted to display paymentSection with debug styles and child. Computed display:', window.getComputedStyle(paymentSection).display);
+                                                    console.log('ShippingFix (#proceedToPayment clone): paymentSection outerHTML:', paymentSection.outerHTML);
+
                                                     orderSummary.style.display = 'block';
                                                     console.log('ShippingFix (#proceedToPayment clone): Ensured orderSummary is visible with paymentSection.');
 

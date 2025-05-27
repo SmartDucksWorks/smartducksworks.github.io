@@ -2,6 +2,27 @@
 // Version: 2024-05-24
 // Focus: Properly handling state/province selection and postal code formatting
 
+/***************************************************************************************************
+ * IMPORTANT NOTE FOR DEBUGGING:
+ * 
+ * The browser logs indicate that a function named `integrateDeeplyHandler` is active and
+ * that `_shippingFixHandler` might be creating a modal (around line 756 of the executed script).
+ * 
+ * 1. `integrateDeeplyHandler` IS CONFLICTING with `initializeFormStepHandlers`.
+ *    `integrateDeeplyHandler` and all its calls MUST BE REMOVED from your script.
+ *    It appears to be cloning buttons and adding its own event listeners, which breaks
+ *    the listeners set up by `initializeFormStepHandlers`.
+ * 
+ * 2. `_shippingFixHandler` MUST NOT create any dynamic modal for shipping options.
+ *    It should ONLY populate the existing HTML element `div#shippingOptionsList`.
+ *    The version of `_shippingFixHandler` below (lines 370-700 approx.) does this correctly.
+ *    Ensure the version in your executed script matches this behavior and removes any
+ *    modal creation logic (e.g., what might be at line 756 in your logs).
+ * 
+ * The `initializeFormStepHandlers` function (defined below) is intended to be the
+ * SOLE controller for form progression steps after a shipping option is selected.
+ ***************************************************************************************************/
+
 (function() {
     console.log('SmartDucks form fixes loaded - Fresh implementation');
     
@@ -491,9 +512,12 @@
 
                 if (!shippingOptionsDiv || !shippingOptionsListEl) {
                     console.error('ShippingFix: #shippingOptions or #shippingOptionsList element not found. Cannot display rates.');
+                    // CRITICAL: DO NOT CREATE A MODAL HERE. This was a source of issues.
+                    // If these elements are not found, it's an HTML structure problem.
+                    alert('Error: Required shipping display elements are missing from the page.');
                     return;
                 }
-                shippingOptionsListEl.innerHTML = '';
+                shippingOptionsListEl.innerHTML = ''; // Clear previous options
 
                 if (quotes.length > 0) {
                     const ul = document.createElement('ul');
@@ -503,7 +527,7 @@
 
                     quotes.forEach((quote, index) => {
                         const li = document.createElement('li');
-                        li.className = 'shipping-option';
+                        li.className = 'shipping-option'; // Ensure this class matches CSS for styling/selection
 
                         li.dataset.quoteId = quote.id || `quote-${index}-${Date.now()}`;
                         li.dataset.price = quote.cost;
@@ -517,7 +541,12 @@
                         const service = quote.service || 'N/A';
                         const cost = quote.cost ? `$${parseFloat(quote.cost).toFixed(2)}` : 'Price N/A';
                         const currency = quote.currency || 'CAD';
-                        const deliveryDays = quote.delivery_days ? `${quote.delivery_days} business day(s)` : 'Not available';
+                        // Ensure delivery_days is handled correctly, even if null or undefined from API
+                        const transitTimeValue = quote.delivery_days;
+                        const deliveryDays = (transitTimeValue !== null && transitTimeValue !== undefined && transitTimeValue !== 'null' && transitTimeValue !== 'undefined') 
+                                           ? `${transitTimeValue} business day(s)` 
+                                           : 'Not available';
+
 
                         li.innerHTML = `
                             <div class="shipping-option-header">
@@ -530,20 +559,24 @@
                         `;
 
                         li.addEventListener('click', function() {
+                            // Visually mark selection
                             const currentlySelected = ul.querySelector('.shipping-option.selected');
                             if (currentlySelected) {
                                 currentlySelected.classList.remove('selected');
+                                // You might also want to remove any specific styling applied directly for selection
                             }
                             this.classList.add('selected');
+                            // Add specific styling if needed, e.g., this.style.backgroundColor = '#f0f0f0';
+
 
                             const eventDetail = {
                                 quoteId: this.dataset.quoteId,
                                 price: this.dataset.price,
-                                option: this.dataset.option,
+                                option: this.dataset.option, // carrier - service
                                 carrierName: this.dataset.carrierName,
                                 serviceName: this.dataset.serviceName,
                                 currency: this.dataset.currency,
-                                transitTime: this.dataset.deliveryDays,
+                                transitTime: this.dataset.deliveryDays, // Pass the raw delivery_days value
                             };
                             console.log(`ShippingFix: Dispatching shipping-option-selected event with detail: ${JSON.stringify(eventDetail)}`);
                             document.dispatchEvent(new CustomEvent('shipping-option-selected', { detail: eventDetail }));
@@ -554,13 +587,14 @@
                         ul.appendChild(li);
                     });
                     shippingOptionsListEl.appendChild(ul);
-                    shippingOptionsDiv.style.display = 'block';
+                    if (shippingOptionsDiv) shippingOptionsDiv.style.display = 'block'; // Show the container
 
+                    // Ensure confirm button is initially disabled until a selection is made
                     const confirmBtn = document.getElementById('confirmShipping');
-                    if (confirmBtn) confirmBtn.disabled = true;
+                    if (confirmBtn) confirmBtn.disabled = true; 
                 } else {
                     shippingOptionsListEl.innerHTML = '<p>No shipping options available for the provided address. Please check your details and try again.</p>';
-                    shippingOptionsDiv.style.display = 'block';
+                    if (shippingOptionsDiv) shippingOptionsDiv.style.display = 'block';
                 }
             })
             .catch(error => {
@@ -570,7 +604,6 @@
 
                 const shippingOptionsListEl = document.getElementById('shippingOptionsList');
                 if (shippingOptionsListEl) {
-                    // Corrected template literal for the error message
                     shippingOptionsListEl.innerHTML = `<p style="color: red;">Error loading shipping options: ${error.message}. Please try again.</p>`;
                     const shippingOptionsDiv = document.getElementById('shippingOptions');
                     if (shippingOptionsDiv) shippingOptionsDiv.style.display = 'block';
@@ -731,11 +764,11 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             runFixes();
-            initializeFormStepHandlers();
+            initializeFormStepHandlers(); // This should be the main controller for form progression
         });
     } else {
         runFixes();
-        initializeFormStepHandlers();
+        initializeFormStepHandlers(); // This should be the main controller for form progression
     }
 
 })(); // End of IIFE

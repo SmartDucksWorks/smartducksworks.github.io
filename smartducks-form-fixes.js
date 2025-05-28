@@ -26,6 +26,8 @@
 (function() {
     console.log('SmartDucks form fixes loaded - Fresh implementation');
     
+    let isFetchingRates = false; // Guard for shipping rate fetches
+
     // Define our states data (US states and Canadian provinces)
     const statesData = {
         US: {
@@ -331,10 +333,17 @@
         }
         
         window._shippingFixHandler = function(e) {
-            console.log('ShippingFix: Form submission intercepted');
+            console.log('ShippingFix: Form submission intercepted - SFH_V11_FETCH_GUARD');
             
-            e.preventDefault();
-            e.stopPropagation();
+            // Prevent default form submission and stop event bubbling immediately
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+
+            if (isFetchingRates) {
+                console.warn('ShippingFix: Already fetching rates. Ignoring redundant call.');
+                return;
+            }
+            isFetchingRates = true;
             
             const loadingEl = document.createElement('div');
             loadingEl.id = 'sm-loading-indicator';
@@ -445,37 +454,36 @@
                 const contentType = response.headers.get('content-type');
                 let headerMap = {};
                 response.headers.forEach((value, name) => {
-                    name = name.toLowerCase();
-                    if (name.startsWith('access-control-')) {
-                        if (headerMap[name]) {
-                            headerMap[name].isDuplicate = true;
-                            headerMap[name].values.push(value);
-                        } else {
-                            headerMap[name] = { value: value, isDuplicate: false, values: [value] };
-                        }
+                    if (!headerMap[name.toLowerCase()]) {
+                        headerMap[name.toLowerCase()] = { value: value, count: 1, isDuplicate: false };
+                    } else {
+                        headerMap[name.toLowerCase()].count++;
+                        headerMap[name.toLowerCase()].isDuplicate = true;
                     }
                 });
                 const duplicateHeaders = Object.keys(headerMap).filter(key => headerMap[key].isDuplicate);
                 if (duplicateHeaders.length > 0) {
-                    console.error('ShippingFix: Duplicate CORS headers found:', duplicateHeaders.join(', '));
-                    return { success: false, error: 'CORS configuration issue on server', cors_error: true, duplicate_headers: duplicateHeaders };
+                    console.warn('ShippingFix: Duplicate headers found in response:', duplicateHeaders.join(', '));
                 }
 
                 return response.text().then(text => {
+                    console.log('ShippingFix: Raw text from server:', text); // Log raw text
+                    if (text === null || text.trim() === "") {
+                        console.warn('ShippingFix: Empty response text received from server. Proceeding with empty data.');
+                        return { success: false, error: "Empty response from server", rates: [], quotes: [], isEmptyResponse: true };
+                    }
                     try {
                         return JSON.parse(text);
-                    } catch (e) {
-                        console.error('ShippingFix: JSON parse error:', e, 'Raw text:', text.substring(0,500));
-                        if (!text.trim()) return { success: false, error: 'Empty response from server' };
-                        if (text.includes('<html') || text.includes('<!DOCTYPE')) return { html: text, success: false, error: 'Server returned HTML instead of JSON' };
-                        return { success: false, error: 'Failed to parse server response as JSON', rawResponse: text };
+                    } catch (parseError) {
+                        console.error('ShippingFix: JSON parse error:', parseError);
+                        console.error('ShippingFix: Original raw text that failed parsing:', text);
+                        return { success: false, error: `JSON parse error: ${parseError.message}`, rawText: text, rates: [], quotes: [] };
                     }
                 });
             })
             .then(data => {
-                console.log('ShippingFix: Received data:', data);
-                const loadingElExisting = document.getElementById('sm-loading-indicator');
-                if (loadingElExisting && loadingElExisting.parentNode) loadingElExisting.parentNode.removeChild(loadingElExisting);
+                console.log('ShippingFix: Received data after parsing attempt:', data); 
+                // Note: loading indicator is now removed in .finally()
 
                 if (!data) {
                     alert('Could not retrieve shipping options. No data received.');
@@ -608,8 +616,7 @@
             })
             .catch(error => {
                 console.error('ShippingFix: Error fetching shipping options:', error);
-                const loadingElExistingCatch = document.getElementById('sm-loading-indicator');
-                if (loadingElExistingCatch && loadingElExistingCatch.parentNode) loadingElExistingCatch.parentNode.removeChild(loadingElExistingCatch);
+                // Note: loading indicator is now removed in .finally()
 
                 const shippingOptionsListEl = document.getElementById('shippingOptionsList');
                 if (shippingOptionsListEl) {
@@ -618,6 +625,16 @@
                     if (shippingOptionsDiv) shippingOptionsDiv.style.display = 'block';
                 } else {
                     alert('Error loading shipping options. Please try again.');
+                }
+            })
+            .finally(() => {
+                isFetchingRates = false;
+                const loadingElExisting = document.getElementById('sm-loading-indicator');
+                if (loadingElExisting && loadingElExisting.parentNode) {
+                    loadingElExisting.parentNode.removeChild(loadingElExisting);
+                    console.log('ShippingFix: Loading indicator removed in finally block.');
+                } else {
+                    console.log('ShippingFix: Loading indicator not found or already removed in finally block.');
                 }
             });
         }; // End of window._shippingFixHandler

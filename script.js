@@ -60,7 +60,7 @@ setInterval(updateTestimonials, 2000);
 
 
 // Initialize Formspree button (this requires Formspree script to be loaded first)
-window.formbutton = window.formbutton || function() {
+/* window.formbutton = window.formbutton || function() {
   (formbutton.q = formbutton.q || []).push(arguments);
 };
 formbutton("create", {
@@ -110,4 +110,4 @@ formbutton("create", {
       }
   },
   initiallyVisible: ""
-});
+});*/

@@ -518,29 +518,15 @@
                     return;
                 }
 
-                console.log('DEBUG_MARKER_1: Entered point for SFH Diag Logs'); // New simple marker
-
-                if (document && document.body && typeof document.body.outerHTML === 'string') {
-                    console.log('[Diag SFH Pre-Clear V2] About to modify shippingOptionsListEl.innerHTML.');
-                    console.log('[Diag SFH Pre-Clear V2] Checking for finalActions in document.body.outerHTML:', document.body.outerHTML.includes('id="finalActions"'));
-                    const tempFinalActionsBefore = document.getElementById('finalActions');
-                    console.log('[Diag SFH Pre-Clear V2] document.getElementById("finalActions") result:', tempFinalActionsBefore ? 'Found' : 'NOT FOUND');
-                } else {
-                    console.error('[Diag SFH Pre-Clear V2] document.body.outerHTML not available for diagnostics.');
-                }
-
+                // Replace previous diagnostic logs (DEBUG_MARKER_1, [Diag SFH Pre-Clear V2], etc.)
+                console.log('SFH_DEBUG_V4: shippingOptionsListEl is:', shippingOptionsListEl ? 'Found' : 'NOT FOUND');
+                console.log('SFH_DEBUG_V4: PRE-CLEAR: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
+                console.log('SFH_DEBUG_V4: PRE-CLEAR: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
+                
                 shippingOptionsListEl.innerHTML = ''; // Clear previous options
 
-                console.log('DEBUG_MARKER_2: After clearing innerHTML'); // New simple marker
-
-                if (document && document.body && typeof document.body.outerHTML === 'string') {
-                    console.log('[Diag SFH Post-Clear V2] Just cleared shippingOptionsListEl.innerHTML.');
-                    console.log('[Diag SFH Post-Clear V2] Checking for finalActions in document.body.outerHTML:', document.body.outerHTML.includes('id="finalActions"'));
-                    const tempFinalActionsAfter = document.getElementById('finalActions');
-                    console.log('[Diag SFH Post-Clear V2] document.getElementById("finalActions") result:', tempFinalActionsAfter ? 'Found' : 'NOT FOUND');
-                } else {
-                    console.error('[Diag SFH Post-Clear V2] document.body.outerHTML not available for diagnostics.');
-                }
+                console.log('SFH_DEBUG_V4: POST-CLEAR: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
+                console.log('SFH_DEBUG_V4: POST-CLEAR: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
 
                 if (quotes.length > 0) {
                     const ul = document.createElement('ul');
@@ -670,17 +656,12 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 27 2025 - 10:00AM'); // Unique Checkpoint Log
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - Diagnostic V4'); // Updated Checkpoint Log
         console.log('Initializing form step handlers');
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
         const orderSummarySection = document.getElementById('orderSummary');
-        // Corrected ID from finalActionsSection to finalActions
-        const finalActionsDiv = document.getElementById('finalActions'); 
-        const paymentSection = document.getElementById('paymentSection');
         const confirmShippingBtn = document.getElementById('confirmShipping');
-        const proceedToPaymentBtn = document.getElementById('proceedToPayment');
-        const addressForm = document.querySelector('form'); // Assuming this is the main form
 
         // Helper to hide sections
         function hideSection(section) {
@@ -692,17 +673,20 @@
             if (section) section.style.display = displayType;
         }
 
-        // Initial state: Hide sections that appear later in the flow
         hideSection(orderSummarySection);
-        hideSection(finalActionsDiv);
-        hideSection(paymentSection);
-        if (shippingOptionsSection) shippingOptionsSection.style.display = 'block'; // Show initially if needed, or hide if it appears after address submission
+        
+        const initialFinalActionsDiv = document.getElementById('finalActions');
+        hideSection(initialFinalActionsDiv);
+        const initialPaymentSection = document.getElementById('paymentSection');
+        hideSection(initialPaymentSection);
+
+        if (shippingOptionsSection) shippingOptionsSection.style.display = 'block';
 
         // 1. Global listener for when a shipping option is selected
         document.addEventListener('shipping-option-selected', function(event) {
             console.log('shipping-option-selected event caught by global listener', event.detail);
             if (!orderSummarySection) {
-                console.error('Order summary section not found.');
+                console.error('Order summary section not found by shipping-option-selected listener.');
                 return;
             }
 
@@ -716,26 +700,24 @@
                 <p><strong>Estimated Delivery:</strong> ${transitDisplay}</p>
             `;
             showSection(orderSummarySection);
-            if (confirmShippingBtn) confirmShippingBtn.disabled = false; // Already handled in _shippingFixHandler, but good as a fallback
+            if (confirmShippingBtn) confirmShippingBtn.disabled = false;
         });
 
         // 2. Handler for "Confirm Shipping" button
         if (confirmShippingBtn) {
             confirmShippingBtn.addEventListener('click', function onConfirmShippingClick() {
-                // --- Start of new onConfirmShippingClick body ---
-                console.log('Confirm Shipping button clicked (Updated Logic V2)'); // Identify this version
+                console.log('Confirm Shipping button clicked (Updated Logic V3 - elements queried on demand)');
 
-                // --- BEGIN NEW SIMPLIFIED DIAGNOSTIC LOGGING ---
                 console.log('[Diag V2] Checking document body for element IDs...');
                 if (document && document.body && typeof document.body.outerHTML === 'string') {
                     console.log('[Diag V2] document.body.outerHTML length:', document.body.outerHTML.length);
                     const finalActionsHTMLCheck = document.body.outerHTML.includes('id="finalActions"');
                     const proceedToPaymentHTMLCheck = document.body.outerHTML.includes('id="proceedToPayment"');
+                    // Corrected template literal usage below
                     console.log(`[Diag V2] In document.body.outerHTML: id="finalActions" present: ${finalActionsHTMLCheck}, id="proceedToPayment" present: ${proceedToPaymentHTMLCheck}`);
 
                     if (!finalActionsHTMLCheck) {
                         console.log('[Diag V2] #finalActions was NOT found in document.body.outerHTML.');
-                        // You can add more detailed search here if needed, e.g. searching for parts of the ID or related classes
                     }
                     if (!proceedToPaymentHTMLCheck) {
                         console.log('[Diag V2] #proceedToPayment was NOT found in document.body.outerHTML.');
@@ -743,87 +725,82 @@
                 } else {
                     console.error('[Diag V2] document.body.outerHTML is not available or not a string.');
                 }
-                // --- END NEW SIMPLIFIED DIAGNOSTIC LOGGING ---
 
-                const shippingOptionsSection = document.getElementById('shippingOptions');
-                const orderSummarySection = document.getElementById('orderSummary');
+                const currentShippingOptionsSection = document.getElementById('shippingOptions');
+                const currentOrderSummarySection = document.getElementById('orderSummary');
                 const finalActionsDiv = document.getElementById('finalActions'); 
                 const proceedToPaymentButton = document.getElementById('proceedToPayment');
-                // 'this' refers to confirmShippingButton inside this event listener
+                
+                console.log('[Diag CSC] --- Element States Before Changes (queried on demand) ---');
+                // Corrected template literal usage below
+                console.log('[Diag CSC] currentShippingOptionsSection:', currentShippingOptionsSection ? `Found, display: ${getComputedStyle(currentShippingOptionsSection).display}` : 'NOT FOUND');
+                console.log('[Diag CSC] currentOrderSummarySection:', currentOrderSummarySection ? `Found, display: ${getComputedStyle(currentOrderSummarySection).display}` : 'NOT FOUND');
+                console.log('[Diag CSC] finalActionsDiv:', finalActionsDiv ? `Found, display: ${getComputedStyle(finalActionsDiv).display}` : 'NOT FOUND'); 
+                console.log('[Diag CSC] proceedToPaymentButton:', proceedToPaymentButton ? `Found, display: ${getComputedStyle(proceedToPaymentButton).display}, disabled: ${proceedToPaymentButton.disabled}` : 'NOT FOUND');
+                console.log('[Diag CSC] confirmShippingButton (this):', this ? `Found, disabled: ${this.disabled}` : 'NOT FOUND (this is unexpected)');
 
-                console.log('[Diag] --- Element States Before Changes ---');
-                console.log('[Diag] shippingOptionsSection:', shippingOptionsSection ? `Found, display: ${getComputedStyle(shippingOptionsSection).display}` : 'NOT FOUND');
-                console.log('[Diag] orderSummarySection:', orderSummarySection ? `Found, display: ${getComputedStyle(orderSummarySection).display}` : 'NOT FOUND');
-                // Corrected: Log the state of finalActionsDiv
-                console.log('[Diag] finalActionsDiv:', finalActionsDiv ? `Found, display: ${getComputedStyle(finalActionsDiv).display}` : 'NOT FOUND'); 
-                console.log('[Diag] proceedToPaymentButton:', proceedToPaymentButton ? `Found, display: ${getComputedStyle(proceedToPaymentButton).display}, disabled: ${proceedToPaymentButton.disabled}` : 'NOT FOUND');
-                console.log('[Diag] confirmShippingButton (this):', this ? `Found, disabled: ${this.disabled}` : 'NOT FOUND (this is unexpected)');
-
-                if (shippingOptionsSection) {
-                    shippingOptionsSection.style.display = 'none';
-                    console.log('[Diag] shippingOptionsSection: set to display:none. New computed display:', getComputedStyle(shippingOptionsSection).display);
+                if (currentShippingOptionsSection) {
+                    currentShippingOptionsSection.style.display = 'none';
                 } else {
-                    console.error('[Diag] shippingOptionsSection NOT FOUND, cannot hide.');
+                    console.error('[Diag CSC] currentShippingOptionsSection NOT FOUND, cannot hide.');
                 }
 
-                if (orderSummarySection) {
-                    orderSummarySection.style.display = 'block';
-                    console.log('[Diag] orderSummarySection: set to display:block. New computed display:', getComputedStyle(orderSummarySection).display);
+                if (currentOrderSummarySection) {
+                    currentOrderSummarySection.style.display = 'block';
                 } else {
-                    console.error('[Diag] orderSummarySection NOT FOUND, cannot show.');
+                    console.error('[Diag CSC] currentOrderSummarySection NOT FOUND, cannot show.');
                 }
 
-                // Corrected: Use finalActionsDiv to show the section
                 if (finalActionsDiv) {
-                    finalActionsDiv.style.display = 'block'; // Or 'flex' if it's a flex container
-                    console.log('[Diag] finalActionsDiv: set to display:block. New computed display:', getComputedStyle(finalActionsDiv).display);
-
-                    // Now, also ensure the proceedToPaymentButton *within* finalActionsDiv is visible
+                    finalActionsDiv.style.display = 'block'; 
                     if (proceedToPaymentButton) {
-                        proceedToPaymentButton.style.display = 'inline-block'; // Or 'block', depending on desired layout
+                        proceedToPaymentButton.style.display = 'inline-block'; 
                         proceedToPaymentButton.disabled = false;
-                        console.log('[Diag] proceedToPaymentButton: set to display:inline-block, disabled:false. New computed display:', getComputedStyle(proceedToPaymentButton).display, 'New disabled state:', proceedToPaymentButton.disabled);
                     } else {
-                        console.error('[Diag] proceedToPaymentButton NOT FOUND within finalActionsDiv logic, cannot show/enable.');
+                        console.error('[Diag CSC] proceedToPaymentButton NOT FOUND within finalActionsDiv logic, cannot show/enable.');
                     }
                 } else {
-                    // Corrected: Log for finalActionsDiv
-                    console.error('[Diag] finalActionsDiv NOT FOUND, cannot show.'); 
+                    console.error('[Diag CSC] finalActionsDiv NOT FOUND, cannot show.'); 
                 }
-
-                // Disable the confirm shipping button itself
                 this.disabled = true;
-                console.log('[Diag] confirmShippingButton (this): set to disabled:true. New disabled state:', this.disabled);
-                // --- End of new onConfirmShippingClick body ---
             });
         } else {
-            console.warn('#confirmShipping button not found.');
+            console.warn('#confirmShipping button not found at init.');
         }
 
         // 3. Handler for "Proceed to Payment" button
-        if (proceedToPaymentBtn) {
-            proceedToPaymentBtn.addEventListener('click', function onProceedToPaymentClick() {
+        // We need to ensure proceedToPaymentBtn is queried at the time of setup if we want to attach a listener to it.
+        // However, if it's NOT FOUND at init, this listener won't be attached.
+        // A better approach if it's dynamically added is event delegation, or querying it inside onConfirmShippingClick and attaching listener there.
+        // For now, let's try to get it at init, but be aware it might be null.
+        const proceedToPaymentBtnInitial = document.getElementById('proceedToPayment');
+
+        if (proceedToPaymentBtnInitial) {
+            proceedToPaymentBtnInitial.addEventListener('click', function onProceedToPaymentClick() {
                 console.log('[Log] Proceed to Payment button clicked.');
-                if (orderSummarySection) orderSummarySection.style.display = 'none';
-                // Corrected ID from finalActionsSection to finalActions
-                if (finalActionsDiv) finalActionsDiv.style.display = 'none'; 
+                // Query elements on demand
+                const currentOrderSummarySection = document.getElementById('orderSummary');
+                const currentFinalActionsDiv = document.getElementById('finalActions');
+                const paymentSection = document.getElementById('paymentSection');
+
+                if (currentOrderSummarySection) currentOrderSummarySection.style.display = 'none';
+                if (currentFinalActionsDiv) currentFinalActionsDiv.style.display = 'none'; 
                 if (paymentSection) {
                     paymentSection.style.display = 'block';
                     console.log('[Log] Payment section displayed.');
-                    // Any additional logic to initialize Stripe or payment elements would go here
                 } else {
-                    console.log('[Log] Payment section: - "NOT FOUND"');
+                    console.error('[Log] Payment section NOT FOUND on proceedToPaymentClick.');
                 }
             });
         } else {
-            console.warn('#proceedToPayment button not found.');
+            console.warn('#proceedToPayment button not found at init, listener not attached.');
         }
         
         // Initialize button states
-        if (confirmShippingBtn) confirmShippingBtn.disabled = true; // Should be enabled by shipping option selection
-        if (proceedToPaymentBtn) proceedToPaymentBtn.disabled = true; // Should be enabled by confirm shipping
+        if (confirmShippingBtn) confirmShippingBtn.disabled = true;
+        if (proceedToPaymentBtnInitial) proceedToPaymentBtnInitial.disabled = true;
 
-        console.log('Form step handlers initialized.');
+        console.log('Form step handlers initialized (V3).');
     }
 
 

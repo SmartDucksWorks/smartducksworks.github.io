@@ -333,11 +333,6 @@
         }
         
         window._shippingFixHandler = function(e) {
-            // (Reverted from conditional in V11 to match original structure more closely)
-            if (e && typeof e.preventDefault === 'function') {
-                // console.log('ShippingFix: e.preventDefault() called.'); // DEBUG
-                e.preventDefault();
-            } else
             // console.log('ShippingFix: e.preventDefault() NOT called.'); // DEBUG
             if (e && typeof e.stopPropagation === 'function') {
                 // console.log('ShippingFix: e.stopPropagation() called.'); // DEBUG
@@ -345,14 +340,10 @@
             }
             // console.log('ShippingFix: e.stopPropagation() NOT called.'); // DEBUG
 
-            console.log('ShippingFix: Form submission intercepted - SFH_V13_ENHANCED_LOGS'); // Updated Version Marker
+            console.log('ShippingFix: Form submission intercepted - SFH_V14_REVERTED'); // Updated Version Marker
 
-            if (isFetchingRates) {
-                console.warn('ShippingFix: Already fetching rates. Ignoring redundant call.');
-                return;
-            }
-            isFetchingRates = true;
-            
+            // Removed isFetchingRates flag and logic
+
             const loadingEl = document.createElement('div');
             loadingEl.id = 'sm-loading-indicator';
             loadingEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;justify-content:center;align-items:center;';
@@ -465,47 +456,20 @@
             fetch(actionUrl, fetchOptions)
             .then(response => {
                 console.log('ShippingFix: Got response:', response.status, 'Content-Type:', response.headers.get('content-type'));
-                const contentType = response.headers.get('content-type');
-                let headerMap = {};
-                response.headers.forEach((value, name) => {
-                    if (!headerMap[name.toLowerCase()]) {
-                        headerMap[name.toLowerCase()] = { value: value, count: 1, isDuplicate: false };
-                    } else {
-                        headerMap[name.toLowerCase()].count++;
-                        headerMap[name.toLowerCase()].isDuplicate = true;
-                    }
-                });
-                const duplicateHeaders = Object.keys(headerMap).filter(key => headerMap[key].isDuplicate);
-                if (duplicateHeaders.length > 0) {
-                    console.warn('ShippingFix: Duplicate headers found in response:', duplicateHeaders.join(', '));
+                // Reverted to direct response.json()
+                if (!response.ok) {
+                    // Attempt to get text for error context, then throw
+                    return response.text().then(text => {
+                        console.error('ShippingFix: Server error response text:', text);
+                        throw new Error(`Network response was not ok: ${response.status} ${response.statusText}. Server message: ${text}`);
+                    }).catch(() => { // Catch if .text() also fails
+                        throw new Error(`Network response was not ok: ${response.status} ${response.statusText}. Unable to retrieve server message.`);
+                    });
                 }
-
-                return response.text().then(text => {
-                    // Enhanced diagnostic logging for response text parsing
-                    console.log('ShippingFix: Raw text from server. Type: ' + typeof text + ', Length: ' + (text ? text.length : 'N/A') + ', Value: [' + text + ']');
-                    let isTextEmptyOrNull = (text === null || (typeof text === 'string' && text.trim() === ""));
-                    console.log('ShippingFix: Evaluating condition "(text === null || (typeof text === \'string\' && text.trim() === "")): "' + isTextEmptyOrNull);
-
-                    if (isTextEmptyOrNull) {
-                        console.warn('ShippingFix: Path A - Empty/null text detected. Returning structured error.');
-                        return { success: false, error: "Empty response from server", rates: [], quotes: [], isEmptyResponse: true };
-                    } else {
-                        console.log('ShippingFix: Path B - Text not considered empty/null by initial check. Attempting JSON.parse.');
-                        try {
-                            const parsedJson = JSON.parse(text);
-                            console.log('ShippingFix: Path B.1 - JSON.parse successful.');
-                            return parsedJson;
-                        } catch (parseError) {
-                            console.error('ShippingFix: Path B.2 - JSON.parse error:', parseError);
-                            console.error('ShippingFix: Path B.2 - Original raw text that failed parsing. Type: ' + typeof text + ', Length: ' + (text ? text.length : 'N/A') + ', Value: [' + text + ']');
-                            return { success: false, error: `JSON parse error: ${parseError.message}`, rawText: text, rates: [], quotes: [] };
-                        }
-                    }
-                });
+                return response.json(); 
             })
             .then(data => {
                 console.log('ShippingFix: Received data after parsing attempt:', data); 
-                // Note: loading indicator is now removed in .finally()
 
                 if (!data) {
                     alert('Could not retrieve shipping options. No data received.');
@@ -650,7 +614,7 @@
                 }
             })
             .finally(() => {
-                isFetchingRates = false;
+                // Removed isFetchingRates = false;
                 const loadingElExisting = document.getElementById('sm-loading-indicator');
                 if (loadingElExisting && loadingElExisting.parentNode) {
                     loadingElExisting.parentNode.removeChild(loadingElExisting);
@@ -695,8 +659,8 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_V10_SYNC_WITH_SFH_V13'); // Updated Version Marker
-        console.log('Initializing form step handlers (V10 - Synced with SFH_V13)'); // Updated Version Marker
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_V11_REVERTED_SFH'); // Updated Version Marker
+        console.log('Initializing form step handlers (V11 - Reverted SFH)'); // Updated Version Marker
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
         const orderSummarySection = document.getElementById('orderSummary');
@@ -916,19 +880,7 @@
         }
 
 
-        console.log('Form step handlers initialized (V9).');
+        console.log('Form step handlers initialized (V11 - Reverted SFH).'); // Corrected Version
     }
 
-
-    // Call runFixes and initializeFormStepHandlers after DOM is loaded
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            runFixes();
-            initializeFormStepHandlers(); // This should be the main controller for form progression
-        });
-    } else {
-        runFixes();
-        initializeFormStepHandlers(); // This should be the main controller for form progression
-    }
-
-})(); // End of IIFE
+})();

@@ -656,7 +656,7 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V5_DEFER_LISTENER'); 
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V6_EVENT_DETAILS_ONCE'); 
         console.log('Initializing form step handlers');
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
@@ -736,8 +736,16 @@
         });
 
         // Define the handler function for "Proceed to Payment"
-        function onProceedToPaymentClick() {
+        // Moved definition before onConfirmShippingClickHandler for clarity
+        function onProceedToPaymentClick(event) { // Added event parameter
             console.log('[PROCEED_TO_PAYMENT] Click handler fired.');
+            if (event) {
+                console.log(`[PROCEED_TO_PAYMENT] Event details: type=${event.type}, isTrusted=${event.isTrusted}, timeStamp=${event.timeStamp}`);
+                console.log(`[PROCEED_TO_PAYMENT] Event target:`, event.target);
+                console.log(`[PROCEED_TO_PAYMENT] Event currentTarget:`, event.currentTarget);
+            } else {
+                console.log('[PROCEED_TO_PAYMENT] Event object was not received by handler.');
+            }
             
             const currentFinalActions = document.getElementById('finalActions');
             const paymentSection = document.getElementById('paymentSection');
@@ -764,8 +772,8 @@
 
         // 2. Handler for "Confirm Shipping" button
         if (confirmShippingBtn) {
-            confirmShippingBtn.addEventListener('click', function onConfirmShippingClickHandler(event) { // Renamed for clarity
-                console.log('Confirm Shipping button clicked (Updated Logic V5 - deferred listener attach)');
+            confirmShippingBtn.addEventListener('click', function onConfirmShippingClickHandler(event) { 
+                console.log('Confirm Shipping button clicked (Updated Logic V6 - event details, once)');
                 event.stopPropagation(); 
                 event.preventDefault();  
 
@@ -817,9 +825,9 @@
                             
                             // Remove listener first to prevent duplicates if this somehow runs multiple times (defensive)
                             proceedToPaymentButton.removeEventListener('click', onProceedToPaymentClick);
-                            // Add the event listener now
-                            proceedToPaymentButton.addEventListener('click', onProceedToPaymentClick);
-                            console.log(`[CONFIRM_SHIPPING_DEFERRED] Event listener attached to proceedToPaymentButton.`);
+                            // Add the event listener now with { once: true }
+                            proceedToPaymentButton.addEventListener('click', onProceedToPaymentClick, { once: true });
+                            console.log(`[CONFIRM_SHIPPING_DEFERRED] Event listener attached to proceedToPaymentButton with { once: true }.`);
                         } else {
                             console.error('[CONFIRM_SHIPPING_DEFERRED] proceedToPaymentButton was NOT FOUND when trying to enable and attach listener.');
                         }
@@ -845,15 +853,13 @@
         const ptpButtonForInitialDisable = document.getElementById('proceedToPayment');
         if (ptpButtonForInitialDisable) {
             ptpButtonForInitialDisable.disabled = true;
-            // Ensure no orphaned listeners from previous versions/reloads if script is re-executed without full page reload
-            // However, onProceedToPaymentClick is defined in this scope, so direct removal is fine.
-            // For safety, especially during debugging, explicitly remove any potential old listener.
-            // This is more of a safeguard than a strict necessity if the IIFE structure is respected on loads.
-            // ptpButtonForInitialDisable.removeEventListener('click', onProceedToPaymentClick); // Not strictly needed if onProceedToPaymentClick is not in global scope
+            // Explicitly remove any potential old listener for onProceedToPaymentClick, especially if it might have been added without {once: true}
+            // This is a safeguard.
+            ptpButtonForInitialDisable.removeEventListener('click', onProceedToPaymentClick);
         }
 
 
-        console.log('Form step handlers initialized (V5).');
+        console.log('Form step handlers initialized (V6).');
     }
 
 

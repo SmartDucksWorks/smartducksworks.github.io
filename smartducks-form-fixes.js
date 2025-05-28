@@ -656,7 +656,7 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V3_VISIBILITY_FIX'); 
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V4_DEFER_FINAL_ACTIONS'); 
         console.log('Initializing form step handlers');
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
@@ -741,8 +741,10 @@
 
         // 2. Handler for "Confirm Shipping" button
         if (confirmShippingBtn) {
-            confirmShippingBtn.addEventListener('click', function onConfirmShippingClick() {
-                console.log('Confirm Shipping button clicked (Updated Logic V3 - elements queried on demand)');
+            confirmShippingBtn.addEventListener('click', function onConfirmShippingClick(event) { // Added event parameter
+                console.log('Confirm Shipping button clicked (Updated Logic V4 - deferred final actions)');
+                event.stopPropagation(); // Prevent event bubbling
+                event.preventDefault();  // Prevent any default action (though less critical for a non-submit button)
 
                 console.log('[Diag V2] Checking document body for element IDs...');
                 if (document && document.body && typeof document.body.outerHTML === 'string') {
@@ -787,22 +789,25 @@
                     console.error('[Diag CSC] currentOrderSummarySection NOT FOUND, cannot show.');
                 }
 
-                // --- MODIFIED BLOCK ---
-                console.log(`[CONFIRM_SHIPPING] finalActionsDiv found: ${!!finalActionsDiv}, proceedToPaymentButton found: ${!!proceedToPaymentButton}`);
-                if (finalActionsDiv) {
-                    finalActionsDiv.style.display = 'block'; // Or 'flex' if that's more appropriate for its layout
-                    console.log(`[CONFIRM_SHIPPING] finalActionsDiv.style.display set to 'block'. Actual style: ${finalActionsDiv.style.display}. Computed style: ${getComputedStyle(finalActionsDiv).display}`);
-                    if (proceedToPaymentButton) {
-                        proceedToPaymentButton.disabled = false;
-                        console.log(`[CONFIRM_SHIPPING] proceedToPaymentButton.disabled set to false. Actual state: ${proceedToPaymentButton.disabled}`);
+                this.disabled = true; // Disable confirmShippingBtn immediately
+
+                // Use setTimeout to decouple the next step from the current event cycle
+                setTimeout(() => {
+                    console.log(`[CONFIRM_SHIPPING_DEFERRED] About to modify finalActions and proceedToPaymentButton.`);
+                    console.log(`[CONFIRM_SHIPPING_DEFERRED] finalActionsDiv found: ${!!finalActionsDiv}, proceedToPaymentButton found: ${!!proceedToPaymentButton}`);
+                    if (finalActionsDiv) {
+                        finalActionsDiv.style.display = 'block'; // Or 'flex' if that's more appropriate for its layout
+                        console.log(`[CONFIRM_SHIPPING_DEFERRED] finalActionsDiv.style.display set to 'block'. Actual style: ${finalActionsDiv.style.display}. Computed style: ${getComputedStyle(finalActionsDiv).display}`);
+                        if (proceedToPaymentButton) {
+                            proceedToPaymentButton.disabled = false;
+                            console.log(`[CONFIRM_SHIPPING_DEFERRED] proceedToPaymentButton.disabled set to false. Actual state: ${proceedToPaymentButton.disabled}`);
+                        } else {
+                            console.error('[CONFIRM_SHIPPING_DEFERRED] proceedToPaymentButton was NOT FOUND when trying to enable it (unexpected).');
+                        }
                     } else {
-                        console.error('[CONFIRM_SHIPPING] proceedToPaymentButton was NOT FOUND when trying to enable it (unexpected).');
+                        console.error('[CONFIRM_SHIPPING_DEFERRED] finalActionsDiv was NOT FOUND when trying to show it.');
                     }
-                } else {
-                    console.error('[CONFIRM_SHIPPING] finalActionsDiv was NOT FOUND when trying to show it.');
-                }
-                // --- END MODIFIED BLOCK ---
-                this.disabled = true;
+                }, 0); // 0ms delay defers execution until after the current call stack clears
             });
         } else {
             console.warn('#confirmShipping button not found at init.');

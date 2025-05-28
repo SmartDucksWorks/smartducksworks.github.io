@@ -702,9 +702,38 @@
                 // --- Start of new onConfirmShippingClick body ---
                 console.log('Confirm Shipping button clicked (Updated Logic)'); // Identify this version
 
+                // --- BEGIN NEW DIAGNOSTIC LOGGING ---
+                const mainFormElement = document.querySelector('form'); // Assuming this is the address form
+                let commonAncestor = mainFormElement ? mainFormElement.parentNode : document.body;
+                if (commonAncestor) {
+                    console.log('[Diag] Common ancestor for form sections found. Type:', commonAncestor.tagName);
+                    // Log a portion of the common ancestor's HTML to see if #finalActions is there
+                    // Be cautious with logging entire outerHTML if it's huge.
+                    // We're looking for the presence of id="finalActions" and id="proceedToPayment"
+                    let relevantHTMLSnippet = '';
+                    if (commonAncestor.outerHTML) {
+                        const finalActionsIndex = commonAncestor.outerHTML.indexOf('id="finalActions"');
+                        const proceedToPaymentIndex = commonAncestor.outerHTML.indexOf('id="proceedToPayment"');
+                        relevantHTMLSnippet = `finalActions present: ${finalActionsIndex > -1}, proceedToPayment present: ${proceedToPaymentIndex > -1}. Snippet (approx 1k around first found or start): `;
+                        
+                        let startIndexForSnippet = 0;
+                        if (finalActionsIndex > -1) {
+                            startIndexForSnippet = Math.max(0, finalActionsIndex - 500);
+                        } else if (proceedToPaymentIndex > -1) {
+                            startIndexForSnippet = Math.max(0, proceedToPaymentIndex - 500);
+                        }
+                        relevantHTMLSnippet += commonAncestor.outerHTML.substring(startIndexForSnippet, startIndexForSnippet + 1000);
+                    } else {
+                        relevantHTMLSnippet = "commonAncestor.outerHTML is not available.";
+                    }
+                    console.log('[Diag] HTML context check:', relevantHTMLSnippet);
+                } else {
+                    console.error('[Diag] Could not determine a common ancestor for diagnostic logging.');
+                }
+                // --- END NEW DIAGNOSTIC LOGGING ---
+
                 const shippingOptionsSection = document.getElementById('shippingOptions');
                 const orderSummarySection = document.getElementById('orderSummary');
-                // Corrected: Use 'finalActions' for the ID and 'finalActionsDiv' for the variable
                 const finalActionsDiv = document.getElementById('finalActions'); 
                 const proceedToPaymentButton = document.getElementById('proceedToPayment');
                 // 'this' refers to confirmShippingButton inside this event listener

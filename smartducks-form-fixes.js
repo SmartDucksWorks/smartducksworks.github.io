@@ -1,5 +1,5 @@
 // Consolidated fixes for SmartDucks payment form - Fresh implementation
-// Version: 2024-05-24
+// Version: 2024-05-24 Jason test
 // Focus: Properly handling state/province selection and postal code formatting
 
 /***************************************************************************************************
@@ -647,6 +647,7 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 27 2025 - 10:00AM'); // Unique Checkpoint Log
         console.log('Initializing form step handlers');
 
         const shippingOptionsSection = document.getElementById('shippingOptions');

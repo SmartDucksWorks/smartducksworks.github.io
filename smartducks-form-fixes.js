@@ -518,22 +518,29 @@
                     return;
                 }
 
-                // --- BEGIN NEW DIAGNOSTIC LOGGING for _shippingFixHandler ---
-                console.log('[Diag SFH Pre-Clear] About to modify shippingOptionsListEl.innerHTML.');
-                console.log('[Diag SFH Pre-Clear] Checking for finalActions in document.body.outerHTML:', document.body.outerHTML.includes('id="finalActions"'));
-                const tempFinalActionsBefore = document.getElementById('finalActions');
-                console.log('[Diag SFH Pre-Clear] document.getElementById("finalActions") result:', tempFinalActionsBefore ? 'Found' : 'NOT FOUND');
-                // --- END NEW DIAGNOSTIC LOGGING ---
+                console.log('DEBUG_MARKER_1: Entered point for SFH Diag Logs'); // New simple marker
+
+                if (document && document.body && typeof document.body.outerHTML === 'string') {
+                    console.log('[Diag SFH Pre-Clear V2] About to modify shippingOptionsListEl.innerHTML.');
+                    console.log('[Diag SFH Pre-Clear V2] Checking for finalActions in document.body.outerHTML:', document.body.outerHTML.includes('id="finalActions"'));
+                    const tempFinalActionsBefore = document.getElementById('finalActions');
+                    console.log('[Diag SFH Pre-Clear V2] document.getElementById("finalActions") result:', tempFinalActionsBefore ? 'Found' : 'NOT FOUND');
+                } else {
+                    console.error('[Diag SFH Pre-Clear V2] document.body.outerHTML not available for diagnostics.');
+                }
 
                 shippingOptionsListEl.innerHTML = ''; // Clear previous options
 
-                // --- BEGIN NEW DIAGNOSTIC LOGGING for _shippingFixHandler ---
-                console.log('[Diag SFH Post-Clear] Just cleared shippingOptionsListEl.innerHTML.');
-                console.log('[Diag SFH Post-Clear] Checking for finalActions in document.body.outerHTML:', document.body.outerHTML.includes('id="finalActions"'));
-                const tempFinalActionsAfter = document.getElementById('finalActions');
-                console.log('[Diag SFH Post-Clear] document.getElementById("finalActions") result:', tempFinalActionsAfter ? 'Found' : 'NOT FOUND');
-                // --- END NEW DIAGNOSTIC LOGGING ---
+                console.log('DEBUG_MARKER_2: After clearing innerHTML'); // New simple marker
 
+                if (document && document.body && typeof document.body.outerHTML === 'string') {
+                    console.log('[Diag SFH Post-Clear V2] Just cleared shippingOptionsListEl.innerHTML.');
+                    console.log('[Diag SFH Post-Clear V2] Checking for finalActions in document.body.outerHTML:', document.body.outerHTML.includes('id="finalActions"'));
+                    const tempFinalActionsAfter = document.getElementById('finalActions');
+                    console.log('[Diag SFH Post-Clear V2] document.getElementById("finalActions") result:', tempFinalActionsAfter ? 'Found' : 'NOT FOUND');
+                } else {
+                    console.error('[Diag SFH Post-Clear V2] document.body.outerHTML not available for diagnostics.');
+                }
 
                 if (quotes.length > 0) {
                     const ul = document.createElement('ul');

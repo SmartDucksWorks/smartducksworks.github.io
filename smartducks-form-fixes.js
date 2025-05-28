@@ -656,7 +656,7 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V2_DOM_MANIP'); // Updated Checkpoint Log
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V3_VISIBILITY_FIX'); 
         console.log('Initializing form step handlers');
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
@@ -787,45 +787,53 @@
                     console.error('[Diag CSC] currentOrderSummarySection NOT FOUND, cannot show.');
                 }
 
+                // --- MODIFIED BLOCK ---
+                console.log(`[CONFIRM_SHIPPING] finalActionsDiv found: ${!!finalActionsDiv}, proceedToPaymentButton found: ${!!proceedToPaymentButton}`);
                 if (finalActionsDiv) {
-                    finalActionsDiv.style.display = 'block'; 
+                    finalActionsDiv.style.display = 'block'; // Or 'flex' if that's more appropriate for its layout
+                    console.log(`[CONFIRM_SHIPPING] finalActionsDiv.style.display set to 'block'. Actual style: ${finalActionsDiv.style.display}. Computed style: ${getComputedStyle(finalActionsDiv).display}`);
                     if (proceedToPaymentButton) {
-                        proceedToPaymentButton.style.display = 'inline-block'; 
                         proceedToPaymentButton.disabled = false;
+                        console.log(`[CONFIRM_SHIPPING] proceedToPaymentButton.disabled set to false. Actual state: ${proceedToPaymentButton.disabled}`);
                     } else {
-                        console.error('[Diag CSC] proceedToPaymentButton NOT FOUND within finalActionsDiv logic, cannot show/enable.');
+                        console.error('[CONFIRM_SHIPPING] proceedToPaymentButton was NOT FOUND when trying to enable it (unexpected).');
                     }
                 } else {
-                    console.error('[Diag CSC] finalActionsDiv NOT FOUND, cannot show.'); 
+                    console.error('[CONFIRM_SHIPPING] finalActionsDiv was NOT FOUND when trying to show it.');
                 }
+                // --- END MODIFIED BLOCK ---
                 this.disabled = true;
             });
         } else {
             console.warn('#confirmShipping button not found at init.');
         }
 
-        // 3. Handler for "Proceed to Payment" button
-        // We need to ensure proceedToPaymentBtn is queried at the time of setup if we want to attach a listener to it.
-        // However, if it's NOT FOUND at init, this listener won't be attached.
-        // A better approach if it's dynamically added is event delegation, or querying it inside onConfirmShippingClick and attaching listener there.
-        // For now, let's try to get it at init, but be aware it might be null.
         const proceedToPaymentBtnInitial = document.getElementById('proceedToPayment');
 
         if (proceedToPaymentBtnInitial) {
             proceedToPaymentBtnInitial.addEventListener('click', function onProceedToPaymentClick() {
-                console.log('[Log] Proceed to Payment button clicked.');
-                // Query elements on demand
-                const currentOrderSummarySection = document.getElementById('orderSummary');
-                const currentFinalActionsDiv = document.getElementById('finalActions');
+                console.log('[PROCEED_TO_PAYMENT] Click handler fired.'); // Existing log, updated for clarity
+                
+                const currentFinalActions = document.getElementById('finalActions');
                 const paymentSection = document.getElementById('paymentSection');
+                const thisButton = document.getElementById('proceedToPayment'); // Could also use 'this'
 
-                if (currentOrderSummarySection) currentOrderSummarySection.style.display = 'none';
-                if (currentFinalActionsDiv) currentFinalActionsDiv.style.display = 'none'; 
-                if (paymentSection) {
-                    paymentSection.style.display = 'block';
-                    console.log('[Log] Payment section displayed.');
+                console.log(`[PROCEED_TO_PAYMENT] finalActions current display: ${currentFinalActions ? getComputedStyle(currentFinalActions).display : 'NOT FOUND'}`);
+                console.log(`[PROCEED_TO_PAYMENT] proceedToPaymentButton current disabled state: ${thisButton ? thisButton.disabled : 'NOT FOUND'}`);
+                console.log(`[PROCEED_TO_PAYMENT] paymentSection current display: ${paymentSection ? getComputedStyle(paymentSection).display : 'NOT FOUND'}`);
+
+                if (currentFinalActions) {
+                    currentFinalActions.style.display = 'none';
+                    console.log(`[PROCEED_TO_PAYMENT] currentFinalActions.style.display set to 'none'. Actual: ${currentFinalActions.style.display}. Computed: ${getComputedStyle(currentFinalActions).display}`);
                 } else {
-                    console.error('[Log] Payment section NOT FOUND on proceedToPaymentClick.');
+                    console.warn('[PROCEED_TO_PAYMENT] Final actions section not found when trying to hide for payment.');
+                }
+
+                if (paymentSection) {
+                    paymentSection.style.display = 'block'; // Or 'flex' if appropriate
+                    console.log(`[PROCEED_TO_PAYMENT] paymentSection.style.display set to 'block'. Actual: ${paymentSection.style.display}. Computed: ${getComputedStyle(paymentSection).display}`);
+                } else {
+                    console.error('[PROCEED_TO_PAYMENT] Payment section not found, cannot show.');
                 }
             });
         } else {

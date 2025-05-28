@@ -656,8 +656,8 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V7_DELAYED_ENABLE');
-        console.log('Initializing form step handlers (V7 - delayed enable)');
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V8_CLONE_BUTTON');
+        console.log('Initializing form step handlers (V8 - clone button)');
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
         const orderSummarySection = document.getElementById('orderSummary');
@@ -772,8 +772,8 @@
 
         // 2. Handler for "Confirm Shipping" button
         if (confirmShippingBtn) {
-            confirmShippingBtn.addEventListener('click', function onConfirmShippingClickHandler(event) {
-                console.log('Confirm Shipping button clicked (Updated Logic V7 - delayed enable)');
+            confirmShippingBtn.addEventListener('click', function onConfirmShippingClickHandler(event) { 
+                console.log('Confirm Shipping button clicked (Updated Logic V8 - clone button)');
                 event.stopPropagation();
                 event.preventDefault();  
 
@@ -812,44 +812,48 @@
 
                 setTimeout(() => {
                     const finalActionsDiv = document.getElementById('finalActions');
-                    const proceedToPaymentButton = document.getElementById('proceedToPayment');
+                    let originalProceedToPaymentButton = document.getElementById('proceedToPayment'); 
 
-                    console.log(`[CONFIRM_SHIPPING_DEFERRED_V7] About to modify finalActions and proceedToPaymentButton.`);
-                    console.log(`[CONFIRM_SHIPPING_DEFERRED_V7] finalActionsDiv found: ${!!finalActionsDiv}, proceedToPaymentButton found: ${!!proceedToPaymentButton}`);
+                    console.log(`[CONFIRM_SHIPPING_DEFERRED_V8_CLONE] About to modify finalActions and proceedToPaymentButton.`);
+                    console.log(`[CONFIRM_SHIPPING_DEFERRED_V8_CLONE] finalActionsDiv found: ${!!finalActionsDiv}, original proceedToPaymentButton found: ${!!originalProceedToPaymentButton}`);
                     
                     if (finalActionsDiv) {
                         finalActionsDiv.style.display = 'block';
-                        console.log(`[CONFIRM_SHIPPING_DEFERRED_V7] finalActionsDiv.style.display set to 'block'. Actual style: ${finalActionsDiv.style.display}. Computed style: ${getComputedStyle(finalActionsDiv).display}`);
+                        console.log(`[CONFIRM_SHIPPING_DEFERRED_V8_CLONE] finalActionsDiv.style.display set to 'block'. Actual style: ${finalActionsDiv.style.display}. Computed style: ${getComputedStyle(finalActionsDiv).display}`);
                         
-                        if (proceedToPaymentButton) {
-                            // Ensure it's disabled before attaching listener
-                            proceedToPaymentButton.disabled = true;
-                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V7] proceedToPaymentButton explicitly disabled before attaching listener. Current state: ${proceedToPaymentButton.disabled}`);
+                        if (originalProceedToPaymentButton && originalProceedToPaymentButton.parentNode) {
+                            const newProceedToPaymentButton = originalProceedToPaymentButton.cloneNode(true);
+                            newProceedToPaymentButton.disabled = true; // Ensure clone is disabled initially
+                            
+                            originalProceedToPaymentButton.removeEventListener('click', onProceedToPaymentClick); // From original, just in case
 
-                            // Remove listener first to prevent duplicates (defensive)
-                            proceedToPaymentButton.removeEventListener('click', onProceedToPaymentClick);
-                            // Add the event listener now with { once: true } while button is still disabled
-                            proceedToPaymentButton.addEventListener('click', onProceedToPaymentClick, { once: true });
-                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V7] Event listener attached to proceedToPaymentButton with { once: true } while it is disabled.`);
+                            originalProceedToPaymentButton.parentNode.replaceChild(newProceedToPaymentButton, originalProceedToPaymentButton);
+                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V8_CLONE] Original proceedToPaymentButton replaced with a clone.`);
+                            
+                            newProceedToPaymentButton.addEventListener('click', onProceedToPaymentClick, { once: true });
+                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V8_CLONE] Event listener attached to NEW proceedToPaymentButton with { once: true } while it is disabled.`);
 
-                            // After another short delay, enable the button
                             setTimeout(() => {
-                                if (document.getElementById('proceedToPayment')) { // Re-check if button still exists
-                                    proceedToPaymentButton.disabled = false;
-                                    console.log(`[CONFIRM_SHIPPING_DEFERRED_ENABLE_V7] proceedToPaymentButton.disabled set to false. Actual state: ${proceedToPaymentButton.disabled}`);
+                                const currentButtonInDom = document.getElementById('proceedToPayment');
+                                if (currentButtonInDom === newProceedToPaymentButton) {
+                                    newProceedToPaymentButton.disabled = false;
+                                    console.log(`[CONFIRM_SHIPPING_DEFERRED_ENABLE_V8_CLONE] NEW proceedToPaymentButton.disabled set to false. Actual state: ${newProceedToPaymentButton.disabled}`);
                                 } else {
-                                    console.error('[CONFIRM_SHIPPING_DEFERRED_ENABLE_V7] proceedToPaymentButton was NOT FOUND when trying to enable it after delay.');
+                                    console.error('[CONFIRM_SHIPPING_DEFERRED_ENABLE_V8_CLONE] NEW proceedToPaymentButton was NOT FOUND or changed in DOM when trying to enable it after delay.');
+                                    if (currentButtonInDom) {
+                                        console.log('[CONFIRM_SHIPPING_DEFERRED_ENABLE_V8_CLONE] A different button was found with ID proceedToPayment.');
+                                    }
                                 }
                             }, 100); // 100ms delay
 
                         } else {
-                            console.error('[CONFIRM_SHIPPING_DEFERRED_V7] proceedToPaymentButton was NOT FOUND when trying to attach listener.');
+                            console.error('[CONFIRM_SHIPPING_DEFERRED_V8_CLONE] Original proceedToPaymentButton was NOT FOUND or has no parentNode when trying to clone.');
                         }
                     } else {
-                        console.error('[CONFIRM_SHIPPING_DEFERRED_V7] finalActionsDiv was NOT FOUND when trying to show it.');
+                        console.error('[CONFIRM_SHIPPING_DEFERRED_V8_CLONE] finalActionsDiv was NOT FOUND when trying to show it.');
                     }
-                }, 0);
-            });
+                }, 0); // End of main setTimeout
+            }); // End of confirmShippingBtn event listener
         } else {
             console.warn('#confirmShipping button not found at init.');
         }
@@ -873,7 +877,7 @@
         }
 
 
-        console.log('Form step handlers initialized (V7).');
+        console.log('Form step handlers initialized (V8).');
     }
 
 

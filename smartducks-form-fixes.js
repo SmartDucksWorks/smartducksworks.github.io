@@ -1,5 +1,5 @@
 // Consolidated fixes for SmartDucks payment form - Fresh implementation
-// Version: 2024-05-24 Jason test
+// Version: 2024-05-24 Jason test2
 // Focus: Properly handling state/province selection and postal code formatting
 
 /***************************************************************************************************
@@ -652,7 +652,8 @@
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
         const orderSummarySection = document.getElementById('orderSummary');
-        const finalActionsSection = document.getElementById('finalActionsSection');
+        // Corrected ID from finalActionsSection to finalActions
+        const finalActionsDiv = document.getElementById('finalActions'); 
         const paymentSection = document.getElementById('paymentSection');
         const confirmShippingBtn = document.getElementById('confirmShipping');
         const proceedToPaymentBtn = document.getElementById('proceedToPayment');
@@ -670,7 +671,7 @@
 
         // Initial state: Hide sections that appear later in the flow
         hideSection(orderSummarySection);
-        hideSection(finalActionsSection);
+        hideSection(finalActionsDiv);
         hideSection(paymentSection);
         if (shippingOptionsSection) shippingOptionsSection.style.display = 'block'; // Show initially if needed, or hide if it appears after address submission
 
@@ -756,38 +757,17 @@
         // 3. Handler for "Proceed to Payment" button
         if (proceedToPaymentBtn) {
             proceedToPaymentBtn.addEventListener('click', function onProceedToPaymentClick() {
-                console.log('Proceed to Payment button clicked');
-                hideSection(orderSummarySection);
-                hideSection(finalActionsSection);
-                
-                // Ensure the parent form of paymentSection is visible
-                if (paymentSection && paymentSection.form) {
-                    showSection(paymentSection.form);
-                } else if (addressForm) { // Fallback to the main address form if payment section is not in its own
-                    showSection(addressForm);
-                }
-
-                showSection(paymentSection);
-
-                // Specifically ensure Stripe elements are visible if they exist
-                const stripeElementMain = document.getElementById('stripe-element-main');
-                const paymentSubmitBtn = document.getElementById('payment-submit-btn');
-                if (stripeElementMain) showSection(stripeElementMain); else console.warn('#stripe-element-main not found');
-                if (paymentSubmitBtn) showSection(paymentSubmitBtn); else console.warn('#payment-submit-btn not found');
-                
-                console.log('Payment section should now be visible.');
-                // Log computed styles for debugging
+                console.log('[Log] Proceed to Payment button clicked.');
+                if (orderSummarySection) orderSummarySection.style.display = 'none';
+                // Corrected ID from finalActionsSection to finalActions
+                if (finalActionsDiv) finalActionsDiv.style.display = 'none'; 
                 if (paymentSection) {
-                    const computedStyle = window.getComputedStyle(paymentSection);
-                    console.log('Payment Section computed display:', computedStyle.display, 'visibility:', computedStyle.visibility);
-                    if (paymentSection.parentElement) {
-                         const parentStyle = window.getComputedStyle(paymentSection.parentElement);
-                         console.log('Payment Section Parent computed display:', parentStyle.display, 'visibility:', parentStyle.visibility);
-                    }
+                    paymentSection.style.display = 'block';
+                    console.log('[Log] Payment section displayed.');
+                    // Any additional logic to initialize Stripe or payment elements would go here
+                } else {
+                    console.log('[Log] Payment section: - "NOT FOUND"');
                 }
-
-
-                this.disabled = true; // Optionally disable after click
             });
         } else {
             console.warn('#proceedToPayment button not found.');

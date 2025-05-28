@@ -517,7 +517,23 @@
                     alert('Error: Required shipping display elements are missing from the page.');
                     return;
                 }
+
+                // --- BEGIN NEW DIAGNOSTIC LOGGING for _shippingFixHandler ---
+                console.log('[Diag SFH Pre-Clear] About to modify shippingOptionsListEl.innerHTML.');
+                console.log('[Diag SFH Pre-Clear] Checking for finalActions in document.body.outerHTML:', document.body.outerHTML.includes('id="finalActions"'));
+                const tempFinalActionsBefore = document.getElementById('finalActions');
+                console.log('[Diag SFH Pre-Clear] document.getElementById("finalActions") result:', tempFinalActionsBefore ? 'Found' : 'NOT FOUND');
+                // --- END NEW DIAGNOSTIC LOGGING ---
+
                 shippingOptionsListEl.innerHTML = ''; // Clear previous options
+
+                // --- BEGIN NEW DIAGNOSTIC LOGGING for _shippingFixHandler ---
+                console.log('[Diag SFH Post-Clear] Just cleared shippingOptionsListEl.innerHTML.');
+                console.log('[Diag SFH Post-Clear] Checking for finalActions in document.body.outerHTML:', document.body.outerHTML.includes('id="finalActions"'));
+                const tempFinalActionsAfter = document.getElementById('finalActions');
+                console.log('[Diag SFH Post-Clear] document.getElementById("finalActions") result:', tempFinalActionsAfter ? 'Found' : 'NOT FOUND');
+                // --- END NEW DIAGNOSTIC LOGGING ---
+
 
                 if (quotes.length > 0) {
                     const ul = document.createElement('ul');

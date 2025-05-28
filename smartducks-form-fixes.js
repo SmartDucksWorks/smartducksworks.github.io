@@ -333,18 +333,19 @@
         }
         
         window._shippingFixHandler = function(e) {
-            console.log('ShippingFix: Form submission intercepted - SFH_V12_LOG_PAYLOAD');
-            
-            // Unconditionally prevent default form submission and stop event bubbling
             // (Reverted from conditional in V11 to match original structure more closely)
-            if (e && typeof e.preventDefault === 'function') { // Still good practice to check if functions exist
+            if (e && typeof e.preventDefault === 'function') {
+                // console.log('ShippingFix: e.preventDefault() called.'); // DEBUG
                 e.preventDefault();
-            } else if (e && e.target && typeof e.target.submit === 'function') {
-                // Fallback for older event models or custom events if needed, though less likely here
-            }
+            } else
+            // console.log('ShippingFix: e.preventDefault() NOT called.'); // DEBUG
             if (e && typeof e.stopPropagation === 'function') {
+                // console.log('ShippingFix: e.stopPropagation() called.'); // DEBUG
                 e.stopPropagation();
             }
+            // console.log('ShippingFix: e.stopPropagation() NOT called.'); // DEBUG
+
+            console.log('ShippingFix: Form submission intercepted - SFH_V13_ENHANCED_LOGS'); // Updated Version Marker
 
             if (isFetchingRates) {
                 console.warn('ShippingFix: Already fetching rates. Ignoring redundant call.');
@@ -694,8 +695,8 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V9_LONGER_DELAY');
-        console.log('Initializing form step handlers (V9 - longer delay)');
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_V10_SYNC_WITH_SFH_V13'); // Updated Version Marker
+        console.log('Initializing form step handlers (V10 - Synced with SFH_V13)'); // Updated Version Marker
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
         const orderSummarySection = document.getElementById('orderSummary');

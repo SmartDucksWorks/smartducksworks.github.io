@@ -697,16 +697,56 @@
         // 2. Handler for "Confirm Shipping" button
         if (confirmShippingBtn) {
             confirmShippingBtn.addEventListener('click', function onConfirmShippingClick() {
-                console.log('Confirm Shipping button clicked');
-                hideSection(shippingOptionsSection);
-                showSection(orderSummarySection); // Ensure it's visible
-                showSection(finalActionsSection);
-                hideSection(paymentSection); // Ensure payment section is hidden at this stage
-                this.disabled = true; // Disable button after confirmation
-                if (proceedToPaymentBtn) proceedToPaymentBtn.disabled = false;
+                // --- Start of new onConfirmShippingClick body ---
+                console.log('Confirm Shipping button clicked (Updated Logic)'); // Identify this version
 
-                // Make sure the address form part is not re-hidden if it's part of a larger form
-                if (addressForm) showSection(addressForm);
+                const shippingOptionsSection = document.getElementById('shippingOptions');
+                const orderSummarySection = document.getElementById('orderSummary');
+                const finalActionsSection = document.getElementById('finalActionsSection');
+                const proceedToPaymentButton = document.getElementById('proceedToPayment');
+                // 'this' refers to confirmShippingButton inside this event listener
+
+                console.log('[Diag] --- Element States Before Changes ---');
+                console.log('[Diag] shippingOptionsSection:', shippingOptionsSection ? `Found, display: ${getComputedStyle(shippingOptionsSection).display}` : 'NOT FOUND');
+                console.log('[Diag] orderSummarySection:', orderSummarySection ? `Found, display: ${getComputedStyle(orderSummarySection).display}` : 'NOT FOUND');
+                console.log('[Diag] finalActionsSection:', finalActionsSection ? `Found, display: ${getComputedStyle(finalActionsSection).display}` : 'NOT FOUND');
+                console.log('[Diag] proceedToPaymentButton:', proceedToPaymentButton ? `Found, display: ${getComputedStyle(proceedToPaymentButton).display}, disabled: ${proceedToPaymentButton.disabled}` : 'NOT FOUND');
+                console.log('[Diag] confirmShippingButton (this):', this ? `Found, disabled: ${this.disabled}` : 'NOT FOUND (this is unexpected)');
+
+                if (shippingOptionsSection) {
+                    shippingOptionsSection.style.display = 'none';
+                    console.log('[Diag] shippingOptionsSection: set to display:none. New computed display:', getComputedStyle(shippingOptionsSection).display);
+                } else {
+                    console.error('[Diag] shippingOptionsSection NOT FOUND, cannot hide.');
+                }
+
+                if (orderSummarySection) {
+                    orderSummarySection.style.display = 'block';
+                    console.log('[Diag] orderSummarySection: set to display:block. New computed display:', getComputedStyle(orderSummarySection).display);
+                } else {
+                    console.error('[Diag] orderSummarySection NOT FOUND, cannot show.');
+                }
+
+                if (finalActionsSection) {
+                    finalActionsSection.style.display = 'block'; // Or 'flex' if it's a flex container
+                    console.log('[Diag] finalActionsSection: set to display:block. New computed display:', getComputedStyle(finalActionsSection).display);
+
+                    // Now, also ensure the proceedToPaymentButton *within* finalActionsSection is visible
+                    if (proceedToPaymentButton) {
+                        proceedToPaymentButton.style.display = 'inline-block'; // Or 'block', depending on desired layout
+                        proceedToPaymentButton.disabled = false;
+                        console.log('[Diag] proceedToPaymentButton: set to display:inline-block, disabled:false. New computed display:', getComputedStyle(proceedToPaymentButton).display, 'New disabled state:', proceedToPaymentButton.disabled);
+                    } else {
+                        console.error('[Diag] proceedToPaymentButton NOT FOUND within finalActionsSection logic, cannot show/enable.');
+                    }
+                } else {
+                    console.error('[Diag] finalActionsSection NOT FOUND, cannot show.');
+                }
+
+                // Disable the confirm shipping button itself
+                this.disabled = true;
+                console.log('[Diag] confirmShippingButton (this): set to disabled:true. New disabled state:', this.disabled);
+                // --- End of new onConfirmShippingClick body ---
             });
         } else {
             console.warn('#confirmShipping button not found.');

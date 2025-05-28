@@ -656,7 +656,7 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V4_DEFER_FINAL_ACTIONS'); 
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V5_DEFER_LISTENER'); 
         console.log('Initializing form step handlers');
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
@@ -693,11 +693,9 @@
             const { carrierName, serviceName, price, currency, transitTime } = event.detail;
             const transitDisplay = transitTime && transitTime !== 'null' && transitTime !== 'undefined' ? `${transitTime} business day(s)` : 'Not available';
             
-            // ---- NEW DIAGNOSTICS SOS_DEBUG_V1 ----
             console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
             console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
             console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: orderSummarySection.outerHTML (first 100 chars):', orderSummarySection && orderSummarySection.outerHTML ? orderSummarySection.outerHTML.substring(0,100) : 'orderSummarySection NOT FOUND or no outerHTML');
-            // ---- END NEW DIAGNOSTICS ----
 
             // Clear existing content
             while (orderSummarySection.firstChild) {
@@ -730,126 +728,132 @@
             pDelivery.appendChild(document.createTextNode(transitDisplay));
             orderSummarySection.appendChild(pDelivery);
 
-            // ---- NEW DIAGNOSTICS SOS_DEBUG_V1 ----
             console.log('SOS_DEBUG_V2_DOM_MANIP: POST-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
             console.log('SOS_DEBUG_V2_DOM_MANIP: POST-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
-            // ---- END NEW DIAGNOSTICS ----
             
             showSection(orderSummarySection);
             if (confirmShippingBtn) confirmShippingBtn.disabled = false;
         });
 
+        // Define the handler function for "Proceed to Payment"
+        function onProceedToPaymentClick() {
+            console.log('[PROCEED_TO_PAYMENT] Click handler fired.');
+            
+            const currentFinalActions = document.getElementById('finalActions');
+            const paymentSection = document.getElementById('paymentSection');
+            const thisButton = document.getElementById('proceedToPayment'); 
+
+            console.log(`[PROCEED_TO_PAYMENT] finalActions current display: ${currentFinalActions ? getComputedStyle(currentFinalActions).display : 'NOT FOUND'}`);
+            console.log(`[PROCEED_TO_PAYMENT] proceedToPaymentButton current disabled state: ${thisButton ? thisButton.disabled : 'NOT FOUND'}`); // 'this' would refer to the button here
+            console.log(`[PROCEED_TO_PAYMENT] paymentSection current display: ${paymentSection ? getComputedStyle(paymentSection).display : 'NOT FOUND'}`);
+
+            if (currentFinalActions) {
+                currentFinalActions.style.display = 'none';
+                console.log(`[PROCEED_TO_PAYMENT] currentFinalActions.style.display set to 'none'. Actual: ${currentFinalActions.style.display}. Computed: ${getComputedStyle(currentFinalActions).display}`);
+            } else {
+                console.warn('[PROCEED_TO_PAYMENT] Final actions section not found when trying to hide for payment.');
+            }
+
+            if (paymentSection) {
+                paymentSection.style.display = 'block';
+                console.log(`[PROCEED_TO_PAYMENT] paymentSection.style.display set to 'block'. Actual: ${paymentSection.style.display}. Computed: ${getComputedStyle(paymentSection).display}`);
+            } else {
+                console.error('[PROCEED_TO_PAYMENT] Payment section not found, cannot show.');
+            }
+        }
+
         // 2. Handler for "Confirm Shipping" button
         if (confirmShippingBtn) {
-            confirmShippingBtn.addEventListener('click', function onConfirmShippingClick(event) { // Added event parameter
-                console.log('Confirm Shipping button clicked (Updated Logic V4 - deferred final actions)');
-                event.stopPropagation(); // Prevent event bubbling
-                event.preventDefault();  // Prevent any default action (though less critical for a non-submit button)
+            confirmShippingBtn.addEventListener('click', function onConfirmShippingClickHandler(event) { // Renamed for clarity
+                console.log('Confirm Shipping button clicked (Updated Logic V5 - deferred listener attach)');
+                event.stopPropagation(); 
+                event.preventDefault();  
 
                 console.log('[Diag V2] Checking document body for element IDs...');
                 if (document && document.body && typeof document.body.outerHTML === 'string') {
                     console.log('[Diag V2] document.body.outerHTML length:', document.body.outerHTML.length);
                     const finalActionsHTMLCheck = document.body.outerHTML.includes('id="finalActions"');
                     const proceedToPaymentHTMLCheck = document.body.outerHTML.includes('id="proceedToPayment"');
-                    // Corrected template literal usage below
                     console.log(`[Diag V2] In document.body.outerHTML: id="finalActions" present: ${finalActionsHTMLCheck}, id="proceedToPayment" present: ${proceedToPaymentHTMLCheck}`);
-
-                    if (!finalActionsHTMLCheck) {
-                        console.log('[Diag V2] #finalActions was NOT found in document.body.outerHTML.');
-                    }
-                    if (!proceedToPaymentHTMLCheck) {
-                        console.log('[Diag V2] #proceedToPayment was NOT found in document.body.outerHTML.');
-                    }
+                    if (!finalActionsHTMLCheck) console.log('[Diag V2] #finalActions was NOT found in document.body.outerHTML.');
+                    if (!proceedToPaymentHTMLCheck) console.log('[Diag V2] #proceedToPayment was NOT found in document.body.outerHTML.');
                 } else {
                     console.error('[Diag V2] document.body.outerHTML is not available or not a string.');
                 }
 
                 const currentShippingOptionsSection = document.getElementById('shippingOptions');
                 const currentOrderSummarySection = document.getElementById('orderSummary');
-                const finalActionsDiv = document.getElementById('finalActions'); 
-                const proceedToPaymentButton = document.getElementById('proceedToPayment');
                 
                 console.log('[Diag CSC] --- Element States Before Changes (queried on demand) ---');
-                // Corrected template literal usage below
                 console.log('[Diag CSC] currentShippingOptionsSection:', currentShippingOptionsSection ? `Found, display: ${getComputedStyle(currentShippingOptionsSection).display}` : 'NOT FOUND');
                 console.log('[Diag CSC] currentOrderSummarySection:', currentOrderSummarySection ? `Found, display: ${getComputedStyle(currentOrderSummarySection).display}` : 'NOT FOUND');
-                console.log('[Diag CSC] finalActionsDiv:', finalActionsDiv ? `Found, display: ${getComputedStyle(finalActionsDiv).display}` : 'NOT FOUND'); 
-                console.log('[Diag CSC] proceedToPaymentButton:', proceedToPaymentButton ? `Found, display: ${getComputedStyle(proceedToPaymentButton).display}, disabled: ${proceedToPaymentButton.disabled}` : 'NOT FOUND');
+                // Query finalActionsDiv and proceedToPaymentButton here for logging, before the setTimeout
+                const finalActionsDivForLog = document.getElementById('finalActions'); 
+                const proceedToPaymentButtonForLog = document.getElementById('proceedToPayment');
+                console.log('[Diag CSC] finalActionsDiv (for log):', finalActionsDivForLog ? `Found, display: ${getComputedStyle(finalActionsDivForLog).display}` : 'NOT FOUND'); 
+                console.log('[Diag CSC] proceedToPaymentButton (for log):', proceedToPaymentButtonForLog ? `Found, display: ${getComputedStyle(proceedToPaymentButtonForLog).display}, disabled: ${proceedToPaymentButtonForLog.disabled}` : 'NOT FOUND');
                 console.log('[Diag CSC] confirmShippingButton (this):', this ? `Found, disabled: ${this.disabled}` : 'NOT FOUND (this is unexpected)');
 
-                if (currentShippingOptionsSection) {
-                    currentShippingOptionsSection.style.display = 'none';
-                } else {
-                    console.error('[Diag CSC] currentShippingOptionsSection NOT FOUND, cannot hide.');
-                }
+                if (currentShippingOptionsSection) currentShippingOptionsSection.style.display = 'none';
+                else console.error('[Diag CSC] currentShippingOptionsSection NOT FOUND, cannot hide.');
 
-                if (currentOrderSummarySection) {
-                    currentOrderSummarySection.style.display = 'block';
-                } else {
-                    console.error('[Diag CSC] currentOrderSummarySection NOT FOUND, cannot show.');
-                }
+                if (currentOrderSummarySection) currentOrderSummarySection.style.display = 'block';
+                else console.error('[Diag CSC] currentOrderSummarySection NOT FOUND, cannot show.');
 
-                this.disabled = true; // Disable confirmShippingBtn immediately
+                this.disabled = true; 
 
-                // Use setTimeout to decouple the next step from the current event cycle
                 setTimeout(() => {
+                    const finalActionsDiv = document.getElementById('finalActions');
+                    const proceedToPaymentButton = document.getElementById('proceedToPayment');
+
                     console.log(`[CONFIRM_SHIPPING_DEFERRED] About to modify finalActions and proceedToPaymentButton.`);
                     console.log(`[CONFIRM_SHIPPING_DEFERRED] finalActionsDiv found: ${!!finalActionsDiv}, proceedToPaymentButton found: ${!!proceedToPaymentButton}`);
                     if (finalActionsDiv) {
-                        finalActionsDiv.style.display = 'block'; // Or 'flex' if that's more appropriate for its layout
+                        finalActionsDiv.style.display = 'block'; 
                         console.log(`[CONFIRM_SHIPPING_DEFERRED] finalActionsDiv.style.display set to 'block'. Actual style: ${finalActionsDiv.style.display}. Computed style: ${getComputedStyle(finalActionsDiv).display}`);
                         if (proceedToPaymentButton) {
                             proceedToPaymentButton.disabled = false;
                             console.log(`[CONFIRM_SHIPPING_DEFERRED] proceedToPaymentButton.disabled set to false. Actual state: ${proceedToPaymentButton.disabled}`);
+                            
+                            // Remove listener first to prevent duplicates if this somehow runs multiple times (defensive)
+                            proceedToPaymentButton.removeEventListener('click', onProceedToPaymentClick);
+                            // Add the event listener now
+                            proceedToPaymentButton.addEventListener('click', onProceedToPaymentClick);
+                            console.log(`[CONFIRM_SHIPPING_DEFERRED] Event listener attached to proceedToPaymentButton.`);
                         } else {
-                            console.error('[CONFIRM_SHIPPING_DEFERRED] proceedToPaymentButton was NOT FOUND when trying to enable it (unexpected).');
+                            console.error('[CONFIRM_SHIPPING_DEFERRED] proceedToPaymentButton was NOT FOUND when trying to enable and attach listener.');
                         }
                     } else {
                         console.error('[CONFIRM_SHIPPING_DEFERRED] finalActionsDiv was NOT FOUND when trying to show it.');
                     }
-                }, 0); // 0ms delay defers execution until after the current call stack clears
+                }, 0); 
             });
         } else {
             console.warn('#confirmShipping button not found at init.');
         }
 
-        const proceedToPaymentBtnInitial = document.getElementById('proceedToPayment');
-
-        if (proceedToPaymentBtnInitial) {
-            proceedToPaymentBtnInitial.addEventListener('click', function onProceedToPaymentClick() {
-                console.log('[PROCEED_TO_PAYMENT] Click handler fired.'); // Existing log, updated for clarity
-                
-                const currentFinalActions = document.getElementById('finalActions');
-                const paymentSection = document.getElementById('paymentSection');
-                const thisButton = document.getElementById('proceedToPayment'); // Could also use 'this'
-
-                console.log(`[PROCEED_TO_PAYMENT] finalActions current display: ${currentFinalActions ? getComputedStyle(currentFinalActions).display : 'NOT FOUND'}`);
-                console.log(`[PROCEED_TO_PAYMENT] proceedToPaymentButton current disabled state: ${thisButton ? thisButton.disabled : 'NOT FOUND'}`);
-                console.log(`[PROCEED_TO_PAYMENT] paymentSection current display: ${paymentSection ? getComputedStyle(paymentSection).display : 'NOT FOUND'}`);
-
-                if (currentFinalActions) {
-                    currentFinalActions.style.display = 'none';
-                    console.log(`[PROCEED_TO_PAYMENT] currentFinalActions.style.display set to 'none'. Actual: ${currentFinalActions.style.display}. Computed: ${getComputedStyle(currentFinalActions).display}`);
-                } else {
-                    console.warn('[PROCEED_TO_PAYMENT] Final actions section not found when trying to hide for payment.');
-                }
-
-                if (paymentSection) {
-                    paymentSection.style.display = 'block'; // Or 'flex' if appropriate
-                    console.log(`[PROCEED_TO_PAYMENT] paymentSection.style.display set to 'block'. Actual: ${paymentSection.style.display}. Computed: ${getComputedStyle(paymentSection).display}`);
-                } else {
-                    console.error('[PROCEED_TO_PAYMENT] Payment section not found, cannot show.');
-                }
-            });
-        } else {
-            console.warn('#proceedToPayment button not found at init, listener not attached.');
+        // 3. Handler for "Proceed to Payment" button - Listener is now attached dynamically.
+        // We can still check if the button exists at init for a warning if it's missing from HTML.
+        const proceedToPaymentBtnForWarning = document.getElementById('proceedToPayment');
+        if (!proceedToPaymentBtnForWarning) {
+            console.warn('#proceedToPayment button not found in HTML at initial script load. Listener will be attached dynamically if button appears.');
         }
         
         // Initialize button states
         if (confirmShippingBtn) confirmShippingBtn.disabled = true;
-        if (proceedToPaymentBtnInitial) proceedToPaymentBtnInitial.disabled = true;
+        
+        const ptpButtonForInitialDisable = document.getElementById('proceedToPayment');
+        if (ptpButtonForInitialDisable) {
+            ptpButtonForInitialDisable.disabled = true;
+            // Ensure no orphaned listeners from previous versions/reloads if script is re-executed without full page reload
+            // However, onProceedToPaymentClick is defined in this scope, so direct removal is fine.
+            // For safety, especially during debugging, explicitly remove any potential old listener.
+            // This is more of a safeguard than a strict necessity if the IIFE structure is respected on loads.
+            // ptpButtonForInitialDisable.removeEventListener('click', onProceedToPaymentClick); // Not strictly needed if onProceedToPaymentClick is not in global scope
+        }
 
-        console.log('Form step handlers initialized (V3).');
+
+        console.log('Form step handlers initialized (V5).');
     }
 
 

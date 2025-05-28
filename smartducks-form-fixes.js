@@ -656,7 +656,7 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V1'); // Updated Checkpoint Log
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V2_DOM_MANIP'); // Updated Checkpoint Log
         console.log('Initializing form step handlers');
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
@@ -694,21 +694,45 @@
             const transitDisplay = transitTime && transitTime !== 'null' && transitTime !== 'undefined' ? `${transitTime} business day(s)` : 'Not available';
             
             // ---- NEW DIAGNOSTICS SOS_DEBUG_V1 ----
-            console.log('SOS_DEBUG_V1: PRE-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
-            console.log('SOS_DEBUG_V1: PRE-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
-            console.log('SOS_DEBUG_V1: PRE-SUMMARY-UPDATE: orderSummarySection.outerHTML (first 100 chars):', orderSummarySection && orderSummarySection.outerHTML ? orderSummarySection.outerHTML.substring(0,100) : 'orderSummarySection NOT FOUND or no outerHTML');
+            console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
+            console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
+            console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: orderSummarySection.outerHTML (first 100 chars):', orderSummarySection && orderSummarySection.outerHTML ? orderSummarySection.outerHTML.substring(0,100) : 'orderSummarySection NOT FOUND or no outerHTML');
             // ---- END NEW DIAGNOSTICS ----
 
-            orderSummarySection.innerHTML = `
-                <h4>Order Summary</h4>
-                <p><strong>Shipping Method:</strong> ${carrierName} - ${serviceName}</p>
-                <p><strong>Cost:</strong> $${parseFloat(price).toFixed(2)} ${currency}</p>
-                <p><strong>Estimated Delivery:</strong> ${transitDisplay}</p>
-            `;
+            // Clear existing content
+            while (orderSummarySection.firstChild) {
+                orderSummarySection.removeChild(orderSummarySection.firstChild);
+            }
+
+            // Create and append new content
+            const h4 = document.createElement('h4');
+            h4.textContent = 'Order Summary';
+            orderSummarySection.appendChild(h4);
+
+            const pMethod = document.createElement('p');
+            const strongMethod = document.createElement('strong');
+            strongMethod.textContent = 'Shipping Method: ';
+            pMethod.appendChild(strongMethod);
+            pMethod.appendChild(document.createTextNode(`${carrierName} - ${serviceName}`));
+            orderSummarySection.appendChild(pMethod);
+
+            const pCost = document.createElement('p');
+            const strongCost = document.createElement('strong');
+            strongCost.textContent = 'Cost: ';
+            pCost.appendChild(strongCost);
+            pCost.appendChild(document.createTextNode(`$${parseFloat(price).toFixed(2)} ${currency}`));
+            orderSummarySection.appendChild(pCost);
+
+            const pDelivery = document.createElement('p');
+            const strongDelivery = document.createElement('strong');
+            strongDelivery.textContent = 'Estimated Delivery: ';
+            pDelivery.appendChild(strongDelivery);
+            pDelivery.appendChild(document.createTextNode(transitDisplay));
+            orderSummarySection.appendChild(pDelivery);
 
             // ---- NEW DIAGNOSTICS SOS_DEBUG_V1 ----
-            console.log('SOS_DEBUG_V1: POST-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
-            console.log('SOS_DEBUG_V1: POST-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
+            console.log('SOS_DEBUG_V2_DOM_MANIP: POST-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
+            console.log('SOS_DEBUG_V2_DOM_MANIP: POST-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
             // ---- END NEW DIAGNOSTICS ----
             
             showSection(orderSummarySection);

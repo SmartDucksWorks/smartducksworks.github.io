@@ -333,11 +333,18 @@
         }
         
         window._shippingFixHandler = function(e) {
-            console.log('ShippingFix: Form submission intercepted - SFH_V11_FETCH_GUARD');
+            console.log('ShippingFix: Form submission intercepted - SFH_V12_LOG_PAYLOAD');
             
-            // Prevent default form submission and stop event bubbling immediately
-            if (e && typeof e.preventDefault === 'function') e.preventDefault();
-            if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+            // Unconditionally prevent default form submission and stop event bubbling
+            // (Reverted from conditional in V11 to match original structure more closely)
+            if (e && typeof e.preventDefault === 'function') { // Still good practice to check if functions exist
+                e.preventDefault();
+            } else if (e && e.target && typeof e.target.submit === 'function') {
+                // Fallback for older event models or custom events if needed, though less likely here
+            }
+            if (e && typeof e.stopPropagation === 'function') {
+                e.stopPropagation();
+            }
 
             if (isFetchingRates) {
                 console.warn('ShippingFix: Already fetching rates. Ignoring redundant call.');
@@ -375,6 +382,9 @@
                 console.error('ShippingFix: Error with FormData:', err);
             }
             
+            // DEBUG: Log formDataObj
+            console.log('ShippingFix: formDataObj:', JSON.stringify(formDataObj, null, 2));
+
             let actionUrl = 'https://duckpond.smartducks.works/webhook/shiptime-rates';
             console.log('ShippingFix: Using direct webhook URL:', actionUrl);
             
@@ -417,6 +427,9 @@
                     insuranceType: "NONE"
                 }
             };
+
+            // DEBUG: Log n8nFormattedData
+            console.log('ShippingFix: n8nFormattedData (request payload):', JSON.stringify(n8nFormattedData, null, 2));
 
             function generateCSRFToken() {
                 const timestamp = Date.now();
@@ -467,17 +480,25 @@
                 }
 
                 return response.text().then(text => {
-                    console.log('ShippingFix: Raw text from server:', text); // Log raw text
-                    if (text === null || text.trim() === "") {
-                        console.warn('ShippingFix: Empty response text received from server. Proceeding with empty data.');
+                    // Enhanced diagnostic logging for response text parsing
+                    console.log('ShippingFix: Raw text from server. Type: ' + typeof text + ', Length: ' + (text ? text.length : 'N/A') + ', Value: [' + text + ']');
+                    let isTextEmptyOrNull = (text === null || (typeof text === 'string' && text.trim() === ""));
+                    console.log('ShippingFix: Evaluating condition "(text === null || (typeof text === \'string\' && text.trim() === "")): "' + isTextEmptyOrNull);
+
+                    if (isTextEmptyOrNull) {
+                        console.warn('ShippingFix: Path A - Empty/null text detected. Returning structured error.');
                         return { success: false, error: "Empty response from server", rates: [], quotes: [], isEmptyResponse: true };
-                    }
-                    try {
-                        return JSON.parse(text);
-                    } catch (parseError) {
-                        console.error('ShippingFix: JSON parse error:', parseError);
-                        console.error('ShippingFix: Original raw text that failed parsing:', text);
-                        return { success: false, error: `JSON parse error: ${parseError.message}`, rawText: text, rates: [], quotes: [] };
+                    } else {
+                        console.log('ShippingFix: Path B - Text not considered empty/null by initial check. Attempting JSON.parse.');
+                        try {
+                            const parsedJson = JSON.parse(text);
+                            console.log('ShippingFix: Path B.1 - JSON.parse successful.');
+                            return parsedJson;
+                        } catch (parseError) {
+                            console.error('ShippingFix: Path B.2 - JSON.parse error:', parseError);
+                            console.error('ShippingFix: Path B.2 - Original raw text that failed parsing. Type: ' + typeof text + ', Length: ' + (text ? text.length : 'N/A') + ', Value: [' + text + ']');
+                            return { success: false, error: `JSON parse error: ${parseError.message}`, rawText: text, rates: [], quotes: [] };
+                        }
                     }
                 });
             })

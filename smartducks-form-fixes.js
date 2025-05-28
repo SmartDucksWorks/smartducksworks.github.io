@@ -700,37 +700,27 @@
         if (confirmShippingBtn) {
             confirmShippingBtn.addEventListener('click', function onConfirmShippingClick() {
                 // --- Start of new onConfirmShippingClick body ---
-                console.log('Confirm Shipping button clicked (Updated Logic)'); // Identify this version
+                console.log('Confirm Shipping button clicked (Updated Logic V2)'); // Identify this version
 
-                // --- BEGIN NEW DIAGNOSTIC LOGGING ---
-                const mainFormElement = document.querySelector('form'); // Assuming this is the address form
-                let commonAncestor = mainFormElement ? mainFormElement.parentNode : document.body;
-                if (commonAncestor) {
-                    console.log('[Diag] Common ancestor for form sections found. Type:', commonAncestor.tagName);
-                    // Log a portion of the common ancestor's HTML to see if #finalActions is there
-                    // Be cautious with logging entire outerHTML if it's huge.
-                    // We're looking for the presence of id="finalActions" and id="proceedToPayment"
-                    let relevantHTMLSnippet = '';
-                    if (commonAncestor.outerHTML) {
-                        const finalActionsIndex = commonAncestor.outerHTML.indexOf('id="finalActions"');
-                        const proceedToPaymentIndex = commonAncestor.outerHTML.indexOf('id="proceedToPayment"');
-                        relevantHTMLSnippet = `finalActions present: ${finalActionsIndex > -1}, proceedToPayment present: ${proceedToPaymentIndex > -1}. Snippet (approx 1k around first found or start): `;
-                        
-                        let startIndexForSnippet = 0;
-                        if (finalActionsIndex > -1) {
-                            startIndexForSnippet = Math.max(0, finalActionsIndex - 500);
-                        } else if (proceedToPaymentIndex > -1) {
-                            startIndexForSnippet = Math.max(0, proceedToPaymentIndex - 500);
-                        }
-                        relevantHTMLSnippet += commonAncestor.outerHTML.substring(startIndexForSnippet, startIndexForSnippet + 1000);
-                    } else {
-                        relevantHTMLSnippet = "commonAncestor.outerHTML is not available.";
+                // --- BEGIN NEW SIMPLIFIED DIAGNOSTIC LOGGING ---
+                console.log('[Diag V2] Checking document body for element IDs...');
+                if (document && document.body && typeof document.body.outerHTML === 'string') {
+                    console.log('[Diag V2] document.body.outerHTML length:', document.body.outerHTML.length);
+                    const finalActionsHTMLCheck = document.body.outerHTML.includes('id="finalActions"');
+                    const proceedToPaymentHTMLCheck = document.body.outerHTML.includes('id="proceedToPayment"');
+                    console.log(`[Diag V2] In document.body.outerHTML: id="finalActions" present: ${finalActionsHTMLCheck}, id="proceedToPayment" present: ${proceedToPaymentHTMLCheck}`);
+
+                    if (!finalActionsHTMLCheck) {
+                        console.log('[Diag V2] #finalActions was NOT found in document.body.outerHTML.');
+                        // You can add more detailed search here if needed, e.g. searching for parts of the ID or related classes
                     }
-                    console.log('[Diag] HTML context check:', relevantHTMLSnippet);
+                    if (!proceedToPaymentHTMLCheck) {
+                        console.log('[Diag V2] #proceedToPayment was NOT found in document.body.outerHTML.');
+                    }
                 } else {
-                    console.error('[Diag] Could not determine a common ancestor for diagnostic logging.');
+                    console.error('[Diag V2] document.body.outerHTML is not available or not a string.');
                 }
-                // --- END NEW DIAGNOSTIC LOGGING ---
+                // --- END NEW SIMPLIFIED DIAGNOSTIC LOGGING ---
 
                 const shippingOptionsSection = document.getElementById('shippingOptions');
                 const orderSummarySection = document.getElementById('orderSummary');

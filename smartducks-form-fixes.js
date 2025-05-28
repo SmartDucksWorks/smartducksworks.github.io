@@ -656,7 +656,7 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - Diagnostic V4'); // Updated Checkpoint Log
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V1'); // Updated Checkpoint Log
         console.log('Initializing form step handlers');
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
@@ -693,12 +693,24 @@
             const { carrierName, serviceName, price, currency, transitTime } = event.detail;
             const transitDisplay = transitTime && transitTime !== 'null' && transitTime !== 'undefined' ? `${transitTime} business day(s)` : 'Not available';
             
+            // ---- NEW DIAGNOSTICS SOS_DEBUG_V1 ----
+            console.log('SOS_DEBUG_V1: PRE-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
+            console.log('SOS_DEBUG_V1: PRE-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
+            console.log('SOS_DEBUG_V1: PRE-SUMMARY-UPDATE: orderSummarySection.outerHTML (first 100 chars):', orderSummarySection && orderSummarySection.outerHTML ? orderSummarySection.outerHTML.substring(0,100) : 'orderSummarySection NOT FOUND or no outerHTML');
+            // ---- END NEW DIAGNOSTICS ----
+
             orderSummarySection.innerHTML = `
                 <h4>Order Summary</h4>
                 <p><strong>Shipping Method:</strong> ${carrierName} - ${serviceName}</p>
                 <p><strong>Cost:</strong> $${parseFloat(price).toFixed(2)} ${currency}</p>
                 <p><strong>Estimated Delivery:</strong> ${transitDisplay}</p>
             `;
+
+            // ---- NEW DIAGNOSTICS SOS_DEBUG_V1 ----
+            console.log('SOS_DEBUG_V1: POST-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
+            console.log('SOS_DEBUG_V1: POST-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
+            // ---- END NEW DIAGNOSTICS ----
+            
             showSection(orderSummarySection);
             if (confirmShippingBtn) confirmShippingBtn.disabled = false;
         });

@@ -656,8 +656,8 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V6_EVENT_DETAILS_ONCE'); 
-        console.log('Initializing form step handlers');
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_DEBUG_V7_DELAYED_ENABLE');
+        console.log('Initializing form step handlers (V7 - delayed enable)');
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
         const orderSummarySection = document.getElementById('orderSummary');
@@ -772,9 +772,9 @@
 
         // 2. Handler for "Confirm Shipping" button
         if (confirmShippingBtn) {
-            confirmShippingBtn.addEventListener('click', function onConfirmShippingClickHandler(event) { 
-                console.log('Confirm Shipping button clicked (Updated Logic V6 - event details, once)');
-                event.stopPropagation(); 
+            confirmShippingBtn.addEventListener('click', function onConfirmShippingClickHandler(event) {
+                console.log('Confirm Shipping button clicked (Updated Logic V7 - delayed enable)');
+                event.stopPropagation();
                 event.preventDefault();  
 
                 console.log('[Diag V2] Checking document body for element IDs...');
@@ -814,27 +814,41 @@
                     const finalActionsDiv = document.getElementById('finalActions');
                     const proceedToPaymentButton = document.getElementById('proceedToPayment');
 
-                    console.log(`[CONFIRM_SHIPPING_DEFERRED] About to modify finalActions and proceedToPaymentButton.`);
-                    console.log(`[CONFIRM_SHIPPING_DEFERRED] finalActionsDiv found: ${!!finalActionsDiv}, proceedToPaymentButton found: ${!!proceedToPaymentButton}`);
+                    console.log(`[CONFIRM_SHIPPING_DEFERRED_V7] About to modify finalActions and proceedToPaymentButton.`);
+                    console.log(`[CONFIRM_SHIPPING_DEFERRED_V7] finalActionsDiv found: ${!!finalActionsDiv}, proceedToPaymentButton found: ${!!proceedToPaymentButton}`);
+                    
                     if (finalActionsDiv) {
-                        finalActionsDiv.style.display = 'block'; 
-                        console.log(`[CONFIRM_SHIPPING_DEFERRED] finalActionsDiv.style.display set to 'block'. Actual style: ${finalActionsDiv.style.display}. Computed style: ${getComputedStyle(finalActionsDiv).display}`);
+                        finalActionsDiv.style.display = 'block';
+                        console.log(`[CONFIRM_SHIPPING_DEFERRED_V7] finalActionsDiv.style.display set to 'block'. Actual style: ${finalActionsDiv.style.display}. Computed style: ${getComputedStyle(finalActionsDiv).display}`);
+                        
                         if (proceedToPaymentButton) {
-                            proceedToPaymentButton.disabled = false;
-                            console.log(`[CONFIRM_SHIPPING_DEFERRED] proceedToPaymentButton.disabled set to false. Actual state: ${proceedToPaymentButton.disabled}`);
-                            
-                            // Remove listener first to prevent duplicates if this somehow runs multiple times (defensive)
+                            // Ensure it's disabled before attaching listener
+                            proceedToPaymentButton.disabled = true;
+                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V7] proceedToPaymentButton explicitly disabled before attaching listener. Current state: ${proceedToPaymentButton.disabled}`);
+
+                            // Remove listener first to prevent duplicates (defensive)
                             proceedToPaymentButton.removeEventListener('click', onProceedToPaymentClick);
-                            // Add the event listener now with { once: true }
+                            // Add the event listener now with { once: true } while button is still disabled
                             proceedToPaymentButton.addEventListener('click', onProceedToPaymentClick, { once: true });
-                            console.log(`[CONFIRM_SHIPPING_DEFERRED] Event listener attached to proceedToPaymentButton with { once: true }.`);
+                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V7] Event listener attached to proceedToPaymentButton with { once: true } while it is disabled.`);
+
+                            // After another short delay, enable the button
+                            setTimeout(() => {
+                                if (document.getElementById('proceedToPayment')) { // Re-check if button still exists
+                                    proceedToPaymentButton.disabled = false;
+                                    console.log(`[CONFIRM_SHIPPING_DEFERRED_ENABLE_V7] proceedToPaymentButton.disabled set to false. Actual state: ${proceedToPaymentButton.disabled}`);
+                                } else {
+                                    console.error('[CONFIRM_SHIPPING_DEFERRED_ENABLE_V7] proceedToPaymentButton was NOT FOUND when trying to enable it after delay.');
+                                }
+                            }, 100); // 100ms delay
+
                         } else {
-                            console.error('[CONFIRM_SHIPPING_DEFERRED] proceedToPaymentButton was NOT FOUND when trying to enable and attach listener.');
+                            console.error('[CONFIRM_SHIPPING_DEFERRED_V7] proceedToPaymentButton was NOT FOUND when trying to attach listener.');
                         }
                     } else {
-                        console.error('[CONFIRM_SHIPPING_DEFERRED] finalActionsDiv was NOT FOUND when trying to show it.');
+                        console.error('[CONFIRM_SHIPPING_DEFERRED_V7] finalActionsDiv was NOT FOUND when trying to show it.');
                     }
-                }, 0); 
+                }, 0);
             });
         } else {
             console.warn('#confirmShipping button not found at init.');
@@ -859,7 +873,7 @@
         }
 
 
-        console.log('Form step handlers initialized (V6).');
+        console.log('Form step handlers initialized (V7).');
     }
 
 

@@ -127,18 +127,26 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
 
     // Function to update state/province options based on selected country
     function updateStateOptions(country) {
-        console.log(`Updating state options for country: ${country}`);
+        console.log(`SFH_DEBUG: updateStateOptions called with country: '${country}'`); // More distinct log
         const stateSelect = document.getElementById('state');
-        const stateContainer = document.getElementById('stateContainer') || (stateSelect ? stateSelect.closest('.form-group') : null);
-
+        
         if (!stateSelect) {
-            console.error('State select element (#state) not found.');
+            console.error('SFH_DEBUG: State select element (#state) not found in updateStateOptions.');
             return;
         }
 
-        stateSelect.innerHTML = '<option value="">-- Select State/Province --</option>';
+        const stateContainer = stateSelect.closest('.form-group');
+        if (!stateContainer) {
+            console.error('SFH_DEBUG: State select container (.form-group wrapping #state) not found in updateStateOptions.');
+            // If the container is missing, we can't control its visibility.
+            return; 
+        }
+        console.log('SFH_DEBUG: stateSelect and stateContainer found:', stateSelect, stateContainer);
+
+        stateSelect.innerHTML = '<option value=\"\">-- Select State/Province --</option>'; // Clear existing options
 
         if (country && states[country]) {
+            console.log(`SFH_DEBUG: Populating states for ${country}. Count: ${states[country].length}`);
             states[country].forEach(state => {
                 const option = document.createElement('option');
                 option.value = state.value;
@@ -146,16 +154,17 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                 stateSelect.appendChild(option);
             });
             stateSelect.disabled = false;
-            if (stateContainer) stateContainer.style.display = '';
-            console.log(`Updated state select with ${states[country].length} options for ${country}`);
+            stateContainer.style.display = ''; // Make it visible
+            console.log(`SFH_DEBUG: State container for ${country} display set to: '${stateContainer.style.display}'. Expected: visible.`);
         } else {
             stateSelect.disabled = true;
-            if (stateContainer) stateContainer.style.display = 'none';
+            stateContainer.style.display = 'none'; // Make it hidden
             if (country) {
-                console.warn(`No states defined for country: ${country}, or country not in states list.`);
+                console.warn(`SFH_DEBUG: No states defined for country: ${country}, or country not in states list. Hiding state field.`);
             } else {
-                console.log('No country selected, hiding/disabling state select.');
+                console.log('SFH_DEBUG: No country selected. Hiding state field.');
             }
+            console.log(`SFH_DEBUG: State container for empty/invalid country display set to: '${stateContainer.style.display}'. Expected: hidden.`);
         }
     }
 

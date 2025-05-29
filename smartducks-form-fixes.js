@@ -29,25 +29,41 @@
     let isFetchingRates = false; // Guard for shipping rate fetches
 
     // Define our states data (US states and Canadian provinces)
-    const statesData = {
-        US: {
-            AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
-            CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', FL: 'Florida', GA: 'Georgia',
-            HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa',
-            KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland',
-            MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi',
-            MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire',
-            NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina',
-            ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
-            RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee',
-            TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington',
-            WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming'
-        },
-        CA: {
-            AB: 'Alberta', BC: 'British Columbia', MB: 'Manitoba', NB: 'New Brunswick',
-            NL: 'Newfoundland and Labrador', NS: 'Nova Scotia', ON: 'Ontario',
-            PE: 'Prince Edward Island', QC: 'Quebec', SK: 'Saskatchewan'
-        }
+    const states = {
+        CA: [ // Canada
+            { value: 'AB', text: 'Alberta' },
+            { value: 'BC', text: 'British Columbia' },
+            { value: 'MB', text: 'Manitoba' },
+            { value: 'NB', text: 'New Brunswick' },
+            { value: 'NL', text: 'Newfoundland and Labrador' },
+            { value: 'NS', text: 'Nova Scotia' },
+            { value: 'ON', text: 'Ontario' },
+            { value: 'PE', text: 'Prince Edward Island' },
+            { value: 'QC', text: 'Quebec' },
+            { value: 'SK', text: 'Saskatchewan' },
+            { value: 'NT', text: 'Northwest Territories' },
+            { value: 'NU', text: 'Nunavut' },
+            { value: 'YT', text: 'Yukon' }
+        ],
+        US: [ // United States
+            { value: 'AL', text: 'Alabama' }, { value: 'AK', text: 'Alaska' }, { value: 'AZ', text: 'Arizona' },
+            { value: 'AR', text: 'Arkansas' }, { value: 'CA', text: 'California' }, { value: 'CO', text: 'Colorado' },
+            { value: 'CT', text: 'Connecticut' }, { value: 'DE', text: 'Delaware' }, { value: 'FL', text: 'Florida' },
+            { value: 'GA', text: 'Georgia' }, { value: 'HI', text: 'Hawaii' }, { value: 'ID', text: 'Idaho' },
+            { value: 'IL', text: 'Illinois' }, { value: 'IN', text: 'Indiana' }, { value: 'IA', text: 'Iowa' },
+            { value: 'KS', text: 'Kansas' }, { value: 'KY', text: 'Kentucky' }, { value: 'LA', text: 'Louisiana' },
+            { value: 'ME', text: 'Maine' }, { value: 'MD', text: 'Maryland' }, { value: 'MA', text: 'Massachusetts' },
+            { value: 'MI', text: 'Michigan' }, { value: 'MN', text: 'Minnesota' }, { value: 'MS', text: 'Mississippi' },
+            { value: 'MO', text: 'Missouri' }, { value: 'MT', text: 'Montana' }, { value: 'NE', text: 'Nebraska' },
+            { value: 'NV', text: 'Nevada' }, { value: 'NH', text: 'New Hampshire' }, { value: 'NJ', text: 'New Jersey' },
+            { value: 'NM', text: 'New Mexico' }, { value: 'NY', text: 'New York' }, { value: 'NC', text: 'North Carolina' },
+            { value: 'ND', text: 'North Dakota' }, { value: 'OH', text: 'Ohio' }, { value: 'OK', text: 'Oklahoma' },
+            { value: 'OR', text: 'Oregon' }, { value: 'PA', text: 'Pennsylvania' }, { value: 'RI', text: 'Rhode Island' },
+            { value: 'SC', text: 'South Carolina' }, { value: 'SD', text: 'South Dakota' }, { value: 'TN', text: 'Tennessee' },
+            { value: 'TX', text: 'Texas' }, { value: 'UT', text: 'Utah' }, { value: 'VT', text: 'Vermont' },
+            { value: 'VA', text: 'Virginia' }, { value: 'WA', text: 'Washington' }, { value: 'WV', text: 'West Virginia' },
+            { value: 'WI', text: 'Wisconsin' }, { value: 'WY', text: 'Wyoming' }
+        ]
     };
 
     // Simple helper to ensure an element exists with improved reliability
@@ -108,135 +124,109 @@
 
     // Function to update state/province options based on selected country
     function updateStateOptions(country) {
-        console.log('Updating state options for country:', country);
-        
+        console.log(`Updating state options for country: ${country}`);
         const stateSelect = document.getElementById('state');
+        const stateContainer = document.getElementById('stateContainer') || (stateSelect ? stateSelect.closest('.form-group') : null);
+
         if (!stateSelect) {
-            console.error('State select element not found');
+            console.error('State select element (#state) not found.');
             return;
         }
-        
-        stateSelect.innerHTML = '<option value="" disabled selected>Select State/Province</option>';
-        if (!country || !statesData[country]) {
-            stateSelect.disabled = true;
-            return;
-        }
-        
-        Object.entries(statesData[country])
-            .sort((a, b) => a[1].localeCompare(b[1]))
-            .forEach(([code, name]) => {
+
+        stateSelect.innerHTML = '<option value="">-- Select State/Province --</option>';
+
+        if (country && states[country]) {
+            states[country].forEach(state => {
                 const option = document.createElement('option');
-                option.value = code;
-                option.textContent = name;
+                option.value = state.value;
+                option.textContent = state.text;
                 stateSelect.appendChild(option);
             });
-        
-        stateSelect.disabled = false;
-        
-        const isCanada = country === 'CA';
-        const stateLabel = document.querySelector('label[for="state"]');
-        if (stateLabel) {
-            stateLabel.textContent = isCanada ? 'Province*' : 'State*';
-        }
-        
-        const postalInput = document.getElementById('postalCode');
-        if (postalInput) {
-            postalInput.pattern = isCanada ? '[A-Za-z][0-9][A-Za-z] [0-9][A-Za-z][0-9]' : '\\\\d{5}(-\\\\d{4})?';
-            postalInput.placeholder = isCanada ? 'A1A 1A1' : '12345 or 12345-6789';
-            
-            postalInput.removeEventListener('input', window.handlePostalInput); 
-            postalInput.addEventListener('input', window.handlePostalInput);
-
-            if(postalInput.value){
-                postalInput.value = formatPostalCode(country, postalInput.value);
+            stateSelect.disabled = false;
+            if (stateContainer) stateContainer.style.display = '';
+            console.log(`Updated state select with ${states[country].length} options for ${country}`);
+        } else {
+            stateSelect.disabled = true;
+            if (stateContainer) stateContainer.style.display = 'none';
+            if (country) {
+                console.warn(`No states defined for country: ${country}, or country not in states list.`);
+            } else {
+                console.log('No country selected, hiding/disabling state select.');
             }
         }
+    }
+
+    // Function to apply postal code formatting based on country
+    function applyPostalCodeFormatting(country) {
+        console.log(`ShippingFix: Postal code formatting event listener setup for country: ${country}`);
+        const postalCodeInput = document.getElementById('postalCode');
+        if (!postalCodeInput) {
+            console.warn('Postal code input (#postalCode) not found for formatting.');
+            return;
+        }
+
+        if (postalCodeInput._formatHandler) {
+            postalCodeInput.removeEventListener('input', postalCodeInput._formatHandler);
+            delete postalCodeInput._formatHandler; // Clean up property
+        }
+
+        let formatHandler;
+        if (country === 'CA') {
+            formatHandler = function(e) {
+                let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (value.length > 3 && value.charAt(3) !== ' ') {
+                    value = value.slice(0, 3) + ' ' + value.slice(3);
+                }
+                e.target.value = value.slice(0, 7); // A1A 1A1
+            };
+        } else if (country === 'US') {
+            formatHandler = function(e) {
+                let value = e.target.value.replace(/[^0-9-]/g, ''); // Allow dash for ZIP+4 as it's typed
+                // Basic validation: remove multiple dashes or dashes in wrong places
+                value = value.replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+                if (value.includes('-') && value.indexOf('-') !== 5) {
+                     // If dash is present but not at 6th char (index 5), remove it and re-evaluate
+                    value = value.replace(/-/g, '');
+                }
+                if (value.length > 5 && !value.includes('-')) {
+                    value = value.slice(0, 5) + '-' + value.slice(5);
+                }
+                e.target.value = value.slice(0, 10); // 12345-6789
+            };
+        } else {
+            formatHandler = function(e) { /* No specific formatting */ };
+        }
         
-        console.log(`Updated state select with ${Object.keys(statesData[country]).length} options`);
+        postalCodeInput._formatHandler = formatHandler;
+        postalCodeInput.addEventListener('input', formatHandler);
+        console.log('ShippingFix: Postal code formatting handlers (re)applied.');
     }
 
     // Main function to initialize the state/province and postal code fixes
     function initStateProvinceFix() {
-        console.log('Initializing state/province selector fix');
-            
+        console.log('Initializing state/province selector fix (Reinserted 2025-05-29)');
         waitForElement('#countryCode', (countrySelect) => {
-            waitForElement('#state', (stateSelect) => {
-                console.log('Both country and state selectors found, applying fix');
-
-                const currentCountryValue = countrySelect.value;
-
-                const newCountrySelect = countrySelect.cloneNode(true);
-                countrySelect.parentNode.replaceChild(newCountrySelect, countrySelect);
-
-                const newStateSelect = stateSelect.cloneNode(true);
-                stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
-
-                const freshCountrySelect = document.getElementById('countryCode');
-                const freshStateSelect = document.getElementById('state');
-                
-                function handleCountryChange() {
-                    console.log('Country changed to:', this.value);
-                    updateStateOptions(this.value);
-                }
-                
-                freshCountrySelect.addEventListener('change', handleCountryChange);
-                
-                if (currentCountryValue) {
-                    console.log('Country already selected, initializing states for:', currentCountryValue);
-                    freshCountrySelect.value = currentCountryValue;
-                    updateStateOptions(currentCountryValue);
-                    
-                    const postalInput = document.getElementById('postalCode');
-                    if (postalInput && postalInput.value) {
-                        postalInput.value = formatPostalCode(currentCountryValue, postalInput.value);
-                    }
-                } else {
-                    console.log('No country selected yet, state select will initialize when country is chosen');
-                    freshStateSelect.disabled = true;
-                }
-                
-                const postalInput = document.getElementById('postalCode');
-                if (postalInput) {
-                    window.handlePostalInput = function(event) {
-                        const countrySelect = document.getElementById('countryCode');
-                        const country = countrySelect ? countrySelect.value : 'CA'; 
-                        
-                        let cursorPos = this.selectionStart;
-                        const originalValue = this.value;
-                        const formattedValue = formatPostalCode(country, originalValue);
-                        
-                        if (formattedValue !== originalValue) {
-                            this.value = formattedValue;
-                            if (country === 'CA' && originalValue.length === 6 && formattedValue.length === 7 && cursorPos > 3) {
-                                cursorPos++;
-                            }
-                            else if (country === 'US' && originalValue.length === 9 && formattedValue.length === 10 && cursorPos > 5) {
-                                cursorPos++;
-                            }
-                            else if (formattedValue.length !== originalValue.length) {
-                                cursorPos = Math.max(0, cursorPos + (formattedValue.length - originalValue.length));
-                            }
-                            
-                            cursorPos = Math.min(cursorPos, formattedValue.length);
-                            this.setSelectionRange(cursorPos, cursorPos);
-                        }
-                    };
-                    
-                    postalInput.removeEventListener('input', window.handlePostalInput);
-                    postalInput.addEventListener('input', window.handlePostalInput);
-                    
-                    console.log('ShippingFix: Postal code formatting handlers (re)applied.');
-
-                    if (postalInput.value) {
-                        const currentCountry = document.getElementById('countryCode') ? document.getElementById('countryCode').value : 'CA';
-                        postalInput.value = formatPostalCode(currentCountry, postalInput.value);
-                    }
-                }
-                
-                console.log('State/province fix successfully applied');
+            console.log('Country selector (#countryCode) found, applying fix.');
+            
+            countrySelect.addEventListener('change', function() {
+                console.log(`Country changed to: ${this.value}`);
+                updateStateOptions(this.value);
+                applyPostalCodeFormatting(this.value);
             });
-        });
+
+            if (countrySelect.value) {
+                console.log(`Initial country detected: ${countrySelect.value}`);
+                updateStateOptions(countrySelect.value);
+                applyPostalCodeFormatting(countrySelect.value);
+            } else {
+                console.log('No country selected initially. State/Province will be hidden/disabled.');
+                updateStateOptions(''); 
+                applyPostalCodeFormatting(''); // Apply no formatting
+            }
+            console.log('State/province and postal code fix event listeners attached.');
+        }, 10000);
     }
+    // END REGION: Country/State/Postal Code Logic
 
     // Set up a monitoring function to ensure the fix stays applied
     function monitorStateProvince() {

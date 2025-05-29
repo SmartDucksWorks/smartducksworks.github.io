@@ -340,9 +340,13 @@
             }
             // console.log('ShippingFix: e.stopPropagation() NOT called.'); // DEBUG
 
-            console.log('ShippingFix: Form submission intercepted - SFH_V14_REVERTED'); // Updated Version Marker
+            console.log('ShippingFix: Form submission intercepted - SFH_V13_ENHANCED_LOGS'); // Reverted Version Marker
 
-            // Removed isFetchingRates flag and logic
+            if (isFetchingRates) { // Restoring isFetchingRates logic
+                console.log('ShippingFix: Already fetching rates, submission ignored.');
+                return;
+            }
+            isFetchingRates = true; // Restoring isFetchingRates logic
 
             const loadingEl = document.createElement('div');
             loadingEl.id = 'sm-loading-indicator';
@@ -456,17 +460,31 @@
             fetch(actionUrl, fetchOptions)
             .then(response => {
                 console.log('ShippingFix: Got response:', response.status, 'Content-Type:', response.headers.get('content-type'));
-                // Reverted to direct response.json()
-                if (!response.ok) {
-                    // Attempt to get text for error context, then throw
-                    return response.text().then(text => {
-                        console.error('ShippingFix: Server error response text:', text);
-                        throw new Error(`Network response was not ok: ${response.status} ${response.statusText}. Server message: ${text}`);
-                    }).catch(() => { // Catch if .text() also fails
-                        throw new Error(`Network response was not ok: ${response.status} ${response.statusText}. Unable to retrieve server message.`);
-                    });
-                }
-                return response.json(); 
+                const contentType = response.headers.get('content-type');
+                // ... (header map logging can be re-added if needed, kept minimal for now) ...
+
+                // Restoring detailed text parsing from V13
+                return response.text().then(text => {
+                    console.log('ShippingFix: Raw text from server. Type: ' + typeof text + ', Length: ' + (text ? text.length : 'N/A') + ', Value: [' + text + ']');
+                    let isTextEmptyOrNull = (text === null || (typeof text === 'string' && text.trim() === ""));
+                    console.log('ShippingFix: Evaluating condition "(text === null || (typeof text === \'string\' && text.trim() === "")): "' + isTextEmptyOrNull);
+
+                    if (isTextEmptyOrNull) {
+                        console.warn('ShippingFix: Path A - Empty/null text detected. Returning structured error.');
+                        return { success: false, error: "Empty response from server", rates: [], quotes: [], isEmptyResponse: true };
+                    } else {
+                        console.log('ShippingFix: Path B - Text not considered empty/null by initial check. Attempting JSON.parse.');
+                        try {
+                            const parsedJson = JSON.parse(text);
+                            console.log('ShippingFix: Path B.1 - JSON.parse successful.');
+                            return parsedJson;
+                        } catch (parseError) {
+                            console.error('ShippingFix: Path B.2 - JSON.parse error:', parseError);
+                            console.error('ShippingFix: Path B.2 - Original raw text that failed parsing. Type: ' + typeof text + ', Length: ' + (text ? text.length : 'N/A') + ', Value: [' + text + ']');
+                            return { success: false, error: `JSON parse error: ${parseError.message}`, rawText: text, rates: [], quotes: [] };
+                        }
+                    }
+                });
             })
             .then(data => {
                 console.log('ShippingFix: Received data after parsing attempt:', data); 
@@ -614,7 +632,7 @@
                 }
             })
             .finally(() => {
-                // Removed isFetchingRates = false;
+                isFetchingRates = false; // Restoring isFetchingRates logic
                 const loadingElExisting = document.getElementById('sm-loading-indicator');
                 if (loadingElExisting && loadingElExisting.parentNode) {
                     loadingElExisting.parentNode.removeChild(loadingElExisting);
@@ -659,8 +677,8 @@
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_V11_REVERTED_SFH'); // Updated Version Marker
-        console.log('Initializing form step handlers (V11 - Reverted SFH)'); // Updated Version Marker
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_V10_SYNC_WITH_SFH_V13'); // Reverted Version Marker
+        console.log('Initializing form step handlers (V10 - Synced with SFH_V13)'); // Reverted Version Marker
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
         const orderSummarySection = document.getElementById('orderSummary');
@@ -880,7 +898,7 @@
         }
 
 
-        console.log('Form step handlers initialized (V11 - Reverted SFH).'); // Corrected Version
+        console.log('Form step handlers initialized (V10 - Synced with SFH_V13).'); // Corrected Version to match V10
     }
 
 })();

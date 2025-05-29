@@ -1,3 +1,5 @@
+console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - VERSION CHECKPOINT: MAY 29 2025 12:00 PM');
+
 // Consolidated fixes for SmartDucks payment form - Fresh implementation
 // Version: 2024-05-24 
 // Focus: Properly handling state/province selection and postal code formatting

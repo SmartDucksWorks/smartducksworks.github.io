@@ -26,9 +26,10 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
  ***************************************************************************************************/
 
 (function() {
-    console.log('SmartDucks form fixes loaded - Fresh implementation');
-    
-    let isFetchingRates = false; // Guard for shipping rate fetches
+    console.log('SmartDucks form fixes loaded - Fresh implementation'); // This is line 29 (approx)
+
+    // Restore the main body of the IIFE from SFH_V13_ENHANCED_LOGS / SOS_V10_SYNC_WITH_SFH_V13 version
+    let isFetchingRates = false; 
 
     // Define our states data (US states and Canadian provinces)
     const states = {
@@ -291,36 +292,38 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
         setTimeout(monitorStateProvince, interval);
     }
 
-    // Ensure form submission handler is properly working
     function runFixes() {
-        console.log('ShippingFix: runFixes function execution started.');
-        
-        initStateProvinceFix(); 
+        console.log('ShippingFix: runFixes function execution started.'); 
+        initStateProvinceFix(); // This will call the initStateProvinceFix defined at the top of the IIFE
 
         const addressForm = document.querySelector('form');
-        
         if (!addressForm) {
-            console.error('ShippingFix: No form found on page');
+            console.error('ShippingFix: Address form not found. Cannot attach submission handler.');
             return;
         }
         
         let submitButton = addressForm.querySelector('button[type="submit"], input[type="submit"]');
         if (!submitButton) {
-            submitButton = addressForm.querySelector('button.submit-button, .button[type="submit"], [class*="submit"], .btn-primary');
+            const buttons = addressForm.querySelectorAll('button');
+            if (buttons.length > 0) {
+                submitButton = buttons[buttons.length - 1]; // Fallback: use the last button in the form
+                console.warn('ShippingFix: No explicit submit button found, using the last button in the form as a fallback:', submitButton);
+            }
         }
-        
+
         if (!submitButton) {
-            console.error('ShippingFix: No submit button found');
+            console.error('ShippingFix: Submit button not found. Cannot attach submission handler.');
             return;
         }
         
         console.log('ShippingFix: Found form and submit button');
         
+        // Remove old handler if it exists from previous script versions or re-runs
         if (window._shippingFixHandler && addressForm._hasShippingFix) {
-            console.log('ShippingFix: Removing previous handler to avoid duplicates');
-            addressForm.removeEventListener('submit', window._shippingFixHandler);
-            if (submitButton._clickHandler) {
-                submitButton.removeEventListener('click', submitButton._clickHandler);
+            if (submitButton._clickHandler) { // Check if the aggressive handler was attached
+                submitButton.removeEventListener('click', submitButton._clickHandler, true);
+            } else { // Otherwise, assume the direct submit handler was attached
+                addressForm.removeEventListener('submit', window._shippingFixHandler);
             }
         }
         
@@ -332,13 +335,13 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
             }
             // console.log('ShippingFix: e.stopPropagation() NOT called.'); // DEBUG
 
-            console.log('ShippingFix: Form submission intercepted - SFH_V13_ENHANCED_LOGS'); // Reverted Version Marker
+            console.log('ShippingFix: Form submission intercepted - SFH_V13_ENHANCED_LOGS'); 
 
-            if (isFetchingRates) { // Restoring isFetchingRates logic
+            if (isFetchingRates) { 
                 console.log('ShippingFix: Already fetching rates, submission ignored.');
                 return;
             }
-            isFetchingRates = true; // Restoring isFetchingRates logic
+            isFetchingRates = true; 
 
             const loadingEl = document.createElement('div');
             loadingEl.id = 'sm-loading-indicator';
@@ -351,11 +354,9 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
             for (let i = 0; i < formElements.length; i++) {
                 const element = formElements[i];
                 if (element.name) {
-                    if (element.type === 'checkbox' || element.type === 'radio') {
-                        if (element.checked) {
-                            formDataObj[element.name] = element.value;
-                        }
-                    } else if (element.type !== 'submit' && element.type !== 'button') {
+                    if (element.type === 'checkbox') {
+                        formDataObj[element.name] = element.checked;
+                    } else {
                         formDataObj[element.name] = element.value;
                     }
                 }
@@ -370,7 +371,6 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                 console.error('ShippingFix: Error with FormData:', err);
             }
             
-            // DEBUG: Log formDataObj
             console.log('ShippingFix: formDataObj:', JSON.stringify(formDataObj, null, 2));
 
             let actionUrl = 'https://duckpond.smartducks.works/webhook/shiptime-rates';
@@ -416,23 +416,25 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                 }
             };
 
-            // DEBUG: Log n8nFormattedData
             console.log('ShippingFix: n8nFormattedData (request payload):', JSON.stringify(n8nFormattedData, null, 2));
 
-            function generateCSRFToken() {
-                const timestamp = Date.now();
+            function generateCSRFTokenInternal() { // Renamed to avoid conflict if global exists
+                const timestamp = Date.now().toString();
+                const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
                 if (!window._csrfFingerprint) {
-                    window._csrfFingerprint = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+                    console.warn("CSRF Fingerprint not available on window object. Consider initializing it.");
+                    window._csrfFingerprint = "fingerprint_not_set_" + Math.random().toString(36).substring(2);
                 }
-                return `${timestamp}:${Math.random().toString(36).substring(2)}:${window._csrfFingerprint}`;
+                return `${timestamp}:${randomPart}:${window._csrfFingerprint}`;
             }
             
             let csrfToken = '';
-            const csrfField = document.querySelector('input[name="_csrf"], input[name="csrf_token"]');
-            if (csrfField && csrfField.value) {
-                csrfToken = csrfField.value;
+            const csrfInput = addressForm.querySelector('input[name="_csrf"], input[name="csrf_token"]');
+            if (csrfInput && csrfInput.value) {
+                csrfToken = csrfInput.value;
             } else {
-                csrfToken = generateCSRFToken();
+                console.warn('ShippingFix: CSRF token input field not found or empty in the form. Generating a new one for the request.');
+                csrfToken = generateCSRFTokenInternal();
             }
             
             let fetchOptions = {
@@ -440,26 +442,38 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'request-method': 'POST',
+                    'request-method': 'POST', 
                     'X-CSRF-Token': csrfToken,
-                    'Origin': window.location.origin
+                    'Origin': window.location.origin 
                 },
                 body: JSON.stringify(n8nFormattedData),
-                credentials: 'include',
-                mode: 'cors'
+                credentials: 'include', 
+                mode: 'cors' 
             };
             
             fetch(actionUrl, fetchOptions)
             .then(response => {
                 console.log('ShippingFix: Got response:', response.status, 'Content-Type:', response.headers.get('content-type'));
                 const contentType = response.headers.get('content-type');
-                // ... (header map logging can be re-added if needed, kept minimal for now) ...
+                let headerMap = {};
+                response.headers.forEach((value, name) => {
+                    const lowerName = name.toLowerCase();
+                    if (headerMap[lowerName]) {
+                        headerMap[lowerName].count++;
+                        headerMap[lowerName].isDuplicate = true;
+                    } else {
+                        headerMap[lowerName] = { value: value, count: 1, isDuplicate: false };
+                    }
+                });
+                const duplicateHeaders = Object.keys(headerMap).filter(key => headerMap[key].isDuplicate);
+                if (duplicateHeaders.length > 0) {
+                    console.warn('ShippingFix: Duplicate headers found in response:', duplicateHeaders.join(', '));
+                }
 
-                // Restoring detailed text parsing from V13
                 return response.text().then(text => {
                     console.log('ShippingFix: Raw text from server. Type: ' + typeof text + ', Length: ' + (text ? text.length : 'N/A') + ', Value: [' + text + ']');
                     let isTextEmptyOrNull = (text === null || (typeof text === 'string' && text.trim() === ""));
-                    console.log('ShippingFix: Evaluating condition "(text === null || (typeof text === \'string\' && text.trim() === "")): "' + isTextEmptyOrNull);
+                    console.log('ShippingFix: Evaluating condition "(text === null || (typeof text === \\\'string\\\' && text.trim() === \"\")): \"' + isTextEmptyOrNull);
 
                     if (isTextEmptyOrNull) {
                         console.warn('ShippingFix: Path A - Empty/null text detected. Returning structured error.');
@@ -482,28 +496,25 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                 console.log('ShippingFix: Received data after parsing attempt:', data); 
 
                 if (!data) {
-                    alert('Could not retrieve shipping options. No data received.');
+                    console.error('ShippingFix: Parsed data is null or undefined. Cannot process rates.');
+                    const shippingOptionsListDiv = document.getElementById('shippingOptionsList');
+                    if (shippingOptionsListDiv) {
+                        shippingOptionsListDiv.innerHTML = '<p style="color: red;">Error: Received no data from the server.</p>';
+                    }
                     return;
                 }
 
                 if (data.success === false) {
-                    let userMessage = 'An error occurred while fetching shipping options.';
                     if (data.error) {
-                        if (data.error.toLowerCase().includes("required field") || data.error.toLowerCase().includes("validation")) {
-                            userMessage = "Please check your address details. Some required information might be missing or incorrect.";
-                        } else if (data.error.toLowerCase().includes("no rates found") || data.error.toLowerCase().includes("no shipping options")) {
-                            userMessage = "No shipping options could be found for the provided address. Please verify your address details.";
-                        } else {
-                             userMessage = `Error: ${data.error}. Please try again.`;
-                        }
+                        console.error('ShippingFix: Server returned success=false. Error:', data.error, 'Raw Text (if available):', data.rawText);
+                    } else {
+                        console.error('ShippingFix: Server returned success=false with no specific error message.');
                     }
                     const shippingOptionsListDiv = document.getElementById('shippingOptionsList');
                     if (shippingOptionsListDiv) {
-                        shippingOptionsListDiv.innerHTML = `<p style="color: red;">${userMessage}</p>`;
-                        const shippingOptionsDiv = document.getElementById('shippingOptions');
-                        if (shippingOptionsDiv) shippingOptionsDiv.style.display = 'block';
+                        shippingOptionsListDiv.innerHTML = `<p style="color: red;">Could not retrieve shipping options: ${data.error || 'Unknown server error'}. Please check your address details.</p>`;
                     } else {
-                        alert(userMessage);
+                        console.error('ShippingFix: #shippingOptionsList element not found. Cannot display server error.');
                     }
                     return;
                 }
@@ -516,18 +527,15 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
 
                 if (!shippingOptionsDiv || !shippingOptionsListEl) {
                     console.error('ShippingFix: #shippingOptions or #shippingOptionsList element not found. Cannot display rates.');
-                    // CRITICAL: DO NOT CREATE A MODAL HERE. This was a source of issues.
-                    // If these elements are not found, it's an HTML structure problem.
                     alert('Error: Required shipping display elements are missing from the page.');
                     return;
                 }
-
-                // Replace previous diagnostic logs (DEBUG_MARKER_1, [Diag SFH Pre-Clear V2], etc.)
+                
                 console.log('SFH_DEBUG_V4: shippingOptionsListEl is:', shippingOptionsListEl ? 'Found' : 'NOT FOUND');
                 console.log('SFH_DEBUG_V4: PRE-CLEAR: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
                 console.log('SFH_DEBUG_V4: PRE-CLEAR: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
                 
-                shippingOptionsListEl.innerHTML = ''; // Clear previous options
+                shippingOptionsListEl.innerHTML = ''; 
 
                 console.log('SFH_DEBUG_V4: POST-CLEAR: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
                 console.log('SFH_DEBUG_V4: POST-CLEAR: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
@@ -540,69 +548,46 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
 
                     quotes.forEach((quote, index) => {
                         const li = document.createElement('li');
-                        li.className = 'shipping-option'; // Ensure this class matches CSS for styling/selection
+                        li.className = 'list-group-item shipping-option';
+                        li.style.cursor = 'pointer';
+                        li.style.padding = '10px';
+                        li.style.border = '1px solid #ddd';
+                        li.style.marginBottom = '5px';
+                        li.style.borderRadius = '4px';
 
-                        li.dataset.quoteId = quote.id || `quote-${index}-${Date.now()}`;
-                        li.dataset.price = quote.cost;
+                        const transitTime = quote.delivery_days || quote.transitTime || 'N/A';
+                        const transitDisplay = (transitTime && transitTime !== 'null' && transitTime !== 'undefined' && transitTime !== 'N/A') ? `${transitTime} business day(s)` : 'Not available';
+                        
+                        li.innerHTML = `
+                            <strong>${quote.carrier} - ${quote.service}</strong><br>
+                            Cost: $${parseFloat(quote.cost).toFixed(2)} ${quote.currency}<br>
+                            Estimated Delivery: ${transitDisplay}
+                        `;
                         li.dataset.carrierName = quote.carrier;
                         li.dataset.serviceName = quote.service;
+                        li.dataset.price = quote.cost;
                         li.dataset.currency = quote.currency;
-                        li.dataset.deliveryDays = quote.delivery_days; 
-                        li.dataset.option = `${quote.carrier} - ${quote.service}`;
-
-                        const carrier = quote.carrier || 'N/A';
-                        const service = quote.service || 'N/A';
-                        const cost = quote.cost ? `$${parseFloat(quote.cost).toFixed(2)}` : 'Price N/A';
-                        const currency = quote.currency || 'CAD';
-                        // Ensure delivery_days is handled correctly, even if null or undefined from API
-                        const transitTimeValue = quote.delivery_days;
-                        const deliveryDays = (transitTimeValue !== null && transitTimeValue !== undefined && transitTimeValue !== 'null' && transitTimeValue !== 'undefined') 
-                                           ? `${transitTimeValue} business day(s)` 
-                                           : 'Not available';
-
-
-                        li.innerHTML = `
-                            <div class="shipping-option-header">
-                                <strong>${carrier} - ${service}</strong>
-                                <span class="price" style="font-weight: bold;">${cost} ${cost !== 'Price N/A' ? currency : ''}</span>
-                            </div>
-                            <div>
-                                <small>Estimated Delivery: ${deliveryDays}</small>
-                            </div>
-                        `;
+                        li.dataset.transitTime = transitTime; // Use the resolved transitTime
 
                         li.addEventListener('click', function() {
-                            // Visually mark selection
-                            const currentlySelected = ul.querySelector('.shipping-option.selected');
-                            if (currentlySelected) {
-                                currentlySelected.classList.remove('selected');
-                                // You might also want to remove any specific styling applied directly for selection
-                            }
-                            this.classList.add('selected');
-                            // Add specific styling if needed, e.g., this.style.backgroundColor = '#f0f0f0';
-
-
+                            document.querySelectorAll('.shipping-option').forEach(opt => opt.classList.remove('selected-shipping-option'));
+                            this.classList.add('selected-shipping-option');
+                            
                             const eventDetail = {
-                                quoteId: this.dataset.quoteId,
-                                price: this.dataset.price,
-                                option: this.dataset.option, // carrier - service
                                 carrierName: this.dataset.carrierName,
                                 serviceName: this.dataset.serviceName,
+                                price: this.dataset.price,
                                 currency: this.dataset.currency,
-                                transitTime: this.dataset.deliveryDays, // Pass the raw delivery_days value
+                                transitTime: this.dataset.transitTime
                             };
-                            console.log(`ShippingFix: Dispatching shipping-option-selected event with detail: ${JSON.stringify(eventDetail)}`);
+                            console.log('Dispatching shipping-option-selected event:', eventDetail);
                             document.dispatchEvent(new CustomEvent('shipping-option-selected', { detail: eventDetail }));
-
-                            const confirmBtn = document.getElementById('confirmShipping');
-                            if (confirmBtn) confirmBtn.disabled = false;
                         });
                         ul.appendChild(li);
                     });
                     shippingOptionsListEl.appendChild(ul);
-                    if (shippingOptionsDiv) shippingOptionsDiv.style.display = 'block'; // Show the container
+                    if (shippingOptionsDiv) shippingOptionsDiv.style.display = 'block'; 
 
-                    // Ensure confirm button is initially disabled until a selection is made
                     const confirmBtn = document.getElementById('confirmShipping');
                     if (confirmBtn) confirmBtn.disabled = true; 
                 } else {
@@ -612,8 +597,6 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
             })
             .catch(error => {
                 console.error('ShippingFix: Error fetching shipping options:', error);
-                // Note: loading indicator is now removed in .finally()
-
                 const shippingOptionsListEl = document.getElementById('shippingOptionsList');
                 if (shippingOptionsListEl) {
                     shippingOptionsListEl.innerHTML = `<p style="color: red;">Error loading shipping options: ${error.message}. Please try again.</p>`;
@@ -624,7 +607,7 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                 }
             })
             .finally(() => {
-                isFetchingRates = false; // Restoring isFetchingRates logic
+                isFetchingRates = false; 
                 const loadingElExisting = document.getElementById('sm-loading-indicator');
                 if (loadingElExisting && loadingElExisting.parentNode) {
                     loadingElExisting.parentNode.removeChild(loadingElExisting);
@@ -633,15 +616,14 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                     console.log('ShippingFix: Loading indicator not found or already removed in finally block.');
                 }
             });
-        }; // End of window._shippingFixHandler
+        }; 
 
         addressForm._hasShippingFix = true;
-        addressForm.addEventListener('submit', window._shippingFixHandler);
         
         const buttonClickHandler = function(e) {
             console.log('ShippingFix: Submit Button clicked directly (aggressive handler)');
-            e.preventDefault();
-            e.stopPropagation(); 
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            if (e && typeof e.stopPropagation === 'function') e.stopPropagation(); 
 
             if (addressForm._isSubmitting) {
                 console.log('ShippingFix: Form already submitting, ignoring click.');
@@ -649,10 +631,11 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
             }
             addressForm._isSubmitting = true;
             
+            // Manually create an event-like object for _shippingFixHandler
             window._shippingFixHandler({
-                preventDefault: () => {},
-                stopPropagation: () => {},
-                submitter: submitButton 
+                preventDefault: () => {}, // Provide no-op preventDefault
+                stopPropagation: () => {}, // Provide no-op stopPropagation
+                submitter: submitButton // Pass the submitter if needed by the handler
             });
             
             setTimeout(() => {
@@ -664,38 +647,34 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
             submitButton.removeEventListener('click', submitButton._clickHandler, true);
         }
         submitButton._clickHandler = buttonClickHandler;
-        submitButton.addEventListener('click', buttonClickHandler, true);
+        submitButton.addEventListener('click', buttonClickHandler, true); // Use capture phase
         console.log('ShippingFix: Aggressive click handler (re-)attached to submit button.');
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_V10_SYNC_WITH_SFH_V13'); // Reverted Version Marker
-        console.log('Initializing form step handlers (V10 - Synced with SFH_V13)'); // Reverted Version Marker
+        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_V10_SYNC_WITH_SFH_V13'); 
+        console.log('Initializing form step handlers (V10 - Synced with SFH_V13)'); 
 
         const shippingOptionsSection = document.getElementById('shippingOptions');
         const orderSummarySection = document.getElementById('orderSummary');
         const confirmShippingBtn = document.getElementById('confirmShipping');
+        const finalActionsDiv = document.getElementById('finalActions'); // Get it once
+        const paymentSection = document.getElementById('paymentSection'); // Get it once
 
-        // Helper to hide sections
         function hideSection(section) {
             if (section) section.style.display = 'none';
         }
 
-        // Helper to show sections
         function showSection(section, displayType = 'block') {
             if (section) section.style.display = displayType;
         }
 
         hideSection(orderSummarySection);
-        
-        const initialFinalActionsDiv = document.getElementById('finalActions');
-        hideSection(initialFinalActionsDiv);
-        const initialPaymentSection = document.getElementById('paymentSection');
-        hideSection(initialPaymentSection);
+        hideSection(finalActionsDiv); // Use the variable
+        hideSection(paymentSection); // Use the variable
 
         if (shippingOptionsSection) shippingOptionsSection.style.display = 'block';
 
-        // 1. Global listener for when a shipping option is selected
         document.addEventListener('shipping-option-selected', function(event) {
             console.log('shipping-option-selected event caught by global listener', event.detail);
             if (!orderSummarySection) {
@@ -704,18 +683,15 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
             }
 
             const { carrierName, serviceName, price, currency, transitTime } = event.detail;
-            const transitDisplay = transitTime && transitTime !== 'null' && transitTime !== 'undefined' ? `${transitTime} business day(s)` : 'Not available';
+            const transitDisplay = transitTime && transitTime !== 'null' && transitTime !== 'undefined' && transitTime !== 'N/A' ? `${transitTime} business day(s)` : 'Not available';
             
             console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
             console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
-            console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: orderSummarySection.outerHTML (first 100 chars):', orderSummarySection && orderSummarySection.outerHTML ? orderSummarySection.outerHTML.substring(0,100) : 'orderSummarySection NOT FOUND or no outerHTML');
-
-            // Clear existing content
+            
             while (orderSummarySection.firstChild) {
                 orderSummarySection.removeChild(orderSummarySection.firstChild);
             }
 
-            // Create and append new content
             const h4 = document.createElement('h4');
             h4.textContent = 'Order Summary';
             orderSummarySection.appendChild(h4);
@@ -748,149 +724,113 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
             if (confirmShippingBtn) confirmShippingBtn.disabled = false;
         });
 
-        // Define the handler function for "Proceed to Payment"
-        // Moved definition before onConfirmShippingClickHandler for clarity
-        function onProceedToPaymentClick(event) { // Added event parameter
+        function onProceedToPaymentClick(event) { 
             console.log('[PROCEED_TO_PAYMENT] Click handler fired.');
             if (event) {
                 console.log(`[PROCEED_TO_PAYMENT] Event details: type=${event.type}, isTrusted=${event.isTrusted}, timeStamp=${event.timeStamp}`);
-                console.log(`[PROCEED_TO_PAYMENT] Event target:`, event.target);
-                console.log(`[PROCEED_TO_PAYMENT] Event currentTarget:`, event.currentTarget);
             } else {
                 console.log('[PROCEED_TO_PAYMENT] Event object was not received by handler.');
             }
             
-            const currentFinalActions = document.getElementById('finalActions');
-            const paymentSection = document.getElementById('paymentSection');
-            const thisButton = document.getElementById('proceedToPayment'); 
-
-            console.log(`[PROCEED_TO_PAYMENT] finalActions current display: ${currentFinalActions ? getComputedStyle(currentFinalActions).display : 'NOT FOUND'}`);
-            console.log(`[PROCEED_TO_PAYMENT] proceedToPaymentButton current disabled state: ${thisButton ? thisButton.disabled : 'NOT FOUND'}`); // 'this' would refer to the button here
-            console.log(`[PROCEED_TO_PAYMENT] paymentSection current display: ${paymentSection ? getComputedStyle(paymentSection).display : 'NOT FOUND'}`);
+            const currentFinalActions = document.getElementById('finalActions'); // Re-fetch in handler context
+            const currentPaymentSection = document.getElementById('paymentSection'); // Re-fetch
 
             if (currentFinalActions) {
                 currentFinalActions.style.display = 'none';
-                console.log(`[PROCEED_TO_PAYMENT] currentFinalActions.style.display set to 'none'. Actual: ${currentFinalActions.style.display}. Computed: ${getComputedStyle(currentFinalActions).display}`);
             } else {
                 console.warn('[PROCEED_TO_PAYMENT] Final actions section not found when trying to hide for payment.');
             }
 
-            if (paymentSection) {
-                paymentSection.style.display = 'block';
-                console.log(`[PROCEED_TO_PAYMENT] paymentSection.style.display set to 'block'. Actual: ${paymentSection.style.display}. Computed: ${getComputedStyle(paymentSection).display}`);
+            if (currentPaymentSection) {
+                currentPaymentSection.style.display = 'block';
             } else {
                 console.error('[PROCEED_TO_PAYMENT] Payment section not found, cannot show.');
             }
         }
 
-        // 2. Handler for "Confirm Shipping" button
         if (confirmShippingBtn) {
             confirmShippingBtn.addEventListener('click', function onConfirmShippingClickHandler(event) { 
-                console.log('Confirm Shipping button clicked (Updated Logic V9 - longer delay)');
-                event.stopPropagation();
-                event.preventDefault();  
-
-                console.log('[Diag V2] Checking document body for element IDs...');
-                if (document && document.body && typeof document.body.outerHTML === 'string') {
-                    console.log('[Diag V2] document.body.outerHTML length:', document.body.outerHTML.length);
-                    const finalActionsHTMLCheck = document.body.outerHTML.includes('id="finalActions"');
-                    const proceedToPaymentHTMLCheck = document.body.outerHTML.includes('id="proceedToPayment"');
-                    console.log(`[Diag V2] In document.body.outerHTML: id="finalActions" present: ${finalActionsHTMLCheck}, id="proceedToPayment" present: ${proceedToPaymentHTMLCheck}`);
-                    if (!finalActionsHTMLCheck) console.log('[Diag V2] #finalActions was NOT found in document.body.outerHTML.');
-                    if (!proceedToPaymentHTMLCheck) console.log('[Diag V2] #proceedToPayment was NOT found in document.body.outerHTML.');
-                } else {
-                    console.error('[Diag V2] document.body.outerHTML is not available or not a string.');
+                console.log('Confirm Shipping button clicked (Updated Logic V10)');
+                if(event) {
+                    event.stopPropagation();
+                    event.preventDefault();  
                 }
 
                 const currentShippingOptionsSection = document.getElementById('shippingOptions');
                 const currentOrderSummarySection = document.getElementById('orderSummary');
                 
-                console.log('[Diag CSC] --- Element States Before Changes (queried on demand) ---');
-                console.log('[Diag CSC] currentShippingOptionsSection:', currentShippingOptionsSection ? `Found, display: ${getComputedStyle(currentShippingOptionsSection).display}` : 'NOT FOUND');
-                console.log('[Diag CSC] currentOrderSummarySection:', currentOrderSummarySection ? `Found, display: ${getComputedStyle(currentOrderSummarySection).display}` : 'NOT FOUND');
-                // Query finalActionsDiv and proceedToPaymentButton here for logging, before the setTimeout
-                const finalActionsDivForLog = document.getElementById('finalActions'); 
-                const proceedToPaymentButtonForLog = document.getElementById('proceedToPayment');
-                console.log('[Diag CSC] finalActionsDiv (for log):', finalActionsDivForLog ? `Found, display: ${getComputedStyle(finalActionsDivForLog).display}` : 'NOT FOUND'); 
-                console.log('[Diag CSC] proceedToPaymentButton (for log):', proceedToPaymentButtonForLog ? `Found, display: ${getComputedStyle(proceedToPaymentButtonForLog).display}, disabled: ${proceedToPaymentButtonForLog.disabled}` : 'NOT FOUND');
-                console.log('[Diag CSC] confirmShippingButton (this):', this ? `Found, disabled: ${this.disabled}` : 'NOT FOUND (this is unexpected)');
-
-                if (currentShippingOptionsSection) currentShippingOptionsSection.style.display = 'none';
+                if (currentShippingOptionsSection) hideSection(currentShippingOptionsSection);
                 else console.error('[Diag CSC] currentShippingOptionsSection NOT FOUND, cannot hide.');
 
-                if (currentOrderSummarySection) currentOrderSummarySection.style.display = 'block';
+                if (currentOrderSummarySection) showSection(currentOrderSummarySection);
                 else console.error('[Diag CSC] currentOrderSummarySection NOT FOUND, cannot show.');
 
                 this.disabled = true; 
 
                 setTimeout(() => {
-                    const finalActionsDiv = document.getElementById('finalActions');
+                    const finalActionsDivInstance = document.getElementById('finalActions'); // Use a different name
                     let originalProceedToPaymentButton = document.getElementById('proceedToPayment'); 
 
-                    console.log(`[CONFIRM_SHIPPING_DEFERRED_V9_LONGER_DELAY] About to modify finalActions and proceedToPaymentButton.`);
-                    console.log(`[CONFIRM_SHIPPING_DEFERRED_V9_LONGER_DELAY] finalActionsDiv found: ${!!finalActionsDiv}, original proceedToPaymentButton found: ${!!originalProceedToPaymentButton}`);
+                    console.log(`[CONFIRM_SHIPPING_DEFERRED_V10] About to modify finalActions and proceedToPaymentButton.`);
                     
-                    if (finalActionsDiv) {
-                        finalActionsDiv.style.display = 'block';
-                        console.log(`[CONFIRM_SHIPPING_DEFERRED_V9_LONGER_DELAY] finalActionsDiv.style.display set to 'block'. Actual style: ${finalActionsDiv.style.display}. Computed style: ${getComputedStyle(finalActionsDiv).display}`);
+                    if (finalActionsDivInstance) {
+                        showSection(finalActionsDivInstance);
+                        console.log(`[CONFIRM_SHIPPING_DEFERRED_V10] finalActionsDiv.style.display set to 'block'.`);
                         
                         if (originalProceedToPaymentButton && originalProceedToPaymentButton.parentNode) {
                             const newProceedToPaymentButton = originalProceedToPaymentButton.cloneNode(true);
-                            newProceedToPaymentButton.disabled = true; // Ensure clone is disabled initially
+                            newProceedToPaymentButton.disabled = true; 
                             
-                            originalProceedToPaymentButton.removeEventListener('click', onProceedToPaymentClick); // From original, just in case
+                            // Remove any old listener from the original button before replacing
+                            originalProceedToPaymentButton.removeEventListener('click', onProceedToPaymentClick);
 
                             originalProceedToPaymentButton.parentNode.replaceChild(newProceedToPaymentButton, originalProceedToPaymentButton);
-                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V9_LONGER_DELAY] Original proceedToPaymentButton replaced with a clone.`);
+                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V10] Original proceedToPaymentButton replaced with a clone.`);
                             
                             newProceedToPaymentButton.addEventListener('click', onProceedToPaymentClick, { once: true });
-                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V9_LONGER_DELAY] Event listener attached to NEW proceedToPaymentButton with { once: true } while it is disabled.`);
+                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V10] Event listener attached to NEW proceedToPaymentButton with { once: true } while it is disabled.`);
 
                             setTimeout(() => {
                                 const currentButtonInDom = document.getElementById('proceedToPayment');
                                 if (currentButtonInDom === newProceedToPaymentButton) {
                                     newProceedToPaymentButton.disabled = false;
-                                    console.log(`[CONFIRM_SHIPPING_DEFERRED_ENABLE_V9_LONGER_DELAY] NEW proceedToPaymentButton.disabled set to false. Actual state: ${newProceedToPaymentButton.disabled}`);
+                                    console.log(`[CONFIRM_SHIPPING_DEFERRED_ENABLE_V10] NEW proceedToPaymentButton.disabled set to false.`);
                                 } else {
-                                    console.error('[CONFIRM_SHIPPING_DEFERRED_ENABLE_V9_LONGER_DELAY] NEW proceedToPaymentButton was NOT FOUND or changed in DOM when trying to enable it after delay.');
-                                    if (currentButtonInDom) {
-                                        console.log('[CONFIRM_SHIPPING_DEFERRED_ENABLE_V9_LONGER_DELAY] A different button was found with ID proceedToPayment.');
-                                    }
+                                    console.error('[CONFIRM_SHIPPING_DEFERRED_ENABLE_V10] NEW proceedToPaymentButton was NOT FOUND or changed in DOM when trying to enable it after delay.');
                                 }
-                            }, 300); // Increased delay to 300ms
-
+                            }, 300); 
                         } else {
-                            console.error('[CONFIRM_SHIPPING_DEFERRED_V9_LONGER_DELAY] Original proceedToPaymentButton was NOT FOUND or has no parentNode when trying to clone.');
+                            console.error('[CONFIRM_SHIPPING_DEFERRED_V10] Original proceedToPaymentButton was NOT FOUND or has no parentNode when trying to clone.');
                         }
                     } else {
-                        console.error('[CONFIRM_SHIPPING_DEFERRED_V9_LONGER_DELAY] finalActionsDiv was NOT FOUND when trying to show it.');
+                        console.error('[CONFIRM_SHIPPING_DEFERRED_V10] finalActionsDiv was NOT FOUND when trying to show it.');
                     }
-                }, 0); // End of main setTimeout
-            }); // End of confirmShippingBtn event listener
+                }, 0); 
+            }); 
         } else {
             console.warn('#confirmShipping button not found at init.');
         }
-
-        // 3. Handler for "Proceed to Payment" button - Listener is now attached dynamically.
-        // We can still check if the button exists at init for a warning if it's missing from HTML.
-        const proceedToPaymentBtnForWarning = document.getElementById('proceedToPayment');
-        if (!proceedToPaymentBtnForWarning) {
-            console.warn('#proceedToPayment button not found in HTML at initial script load. Listener will be attached dynamically if button appears.');
-        }
-        
-        // Initialize button states
-        if (confirmShippingBtn) confirmShippingBtn.disabled = true;
         
         const ptpButtonForInitialDisable = document.getElementById('proceedToPayment');
         if (ptpButtonForInitialDisable) {
             ptpButtonForInitialDisable.disabled = true;
-            // Explicitly remove any potential old listener for onProceedToPaymentClick, especially if it might have been added without {once: true}
-            // This is a safeguard.
             ptpButtonForInitialDisable.removeEventListener('click', onProceedToPaymentClick);
         }
 
+        console.log('Form step handlers initialized (V10 - Synced with SFH_V13).');
+    }
 
-        console.log('Form step handlers initialized (V10 - Synced with SFH_V13).'); // Corrected Version to match V10
+    // ---- Execution: Ensure DOM is ready ----
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded event fired. Running fixes and initializing handlers.');
+            runFixes();
+            initializeFormStepHandlers();
+        });
+    } else {
+        console.log('DOM already loaded. Running fixes and initializing handlers immediately.');
+        runFixes();
+        initializeFormStepHandlers();
     }
 
 })();

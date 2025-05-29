@@ -596,6 +596,7 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                     });
                     shippingOptionsListEl.appendChild(ul);
                     if (shippingOptionsDiv) shippingOptionsDiv.style.display = 'block'; 
+                    if (shippingOptionsDiv) shippingOptionsDiv.style.opacity = '1';
 
                     const confirmBtn = document.getElementById('confirmShipping');
                     if (confirmBtn) confirmBtn.disabled = true; 
@@ -661,173 +662,135 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
     } // End of runFixes function
 
     function initializeFormStepHandlers() {
-        console.log('INITIALIZING FORM STEP HANDLERS - SCRIPT VERSION CHECKPOINT: MAY 28 2025 - SOS_V10_SYNC_WITH_SFH_V13'); 
-        console.log('Initializing form step handlers (V10 - Synced with SFH_V13)'); 
+        console.log('INITIALIZING FORM STEP HANDLERS - V_ALL_VISIBLE'); 
 
+        const addressForm = document.getElementById('addressForm');
         const shippingOptionsSection = document.getElementById('shippingOptions');
         const orderSummarySection = document.getElementById('orderSummary');
         const confirmShippingBtn = document.getElementById('confirmShipping');
-        const finalActionsDiv = document.getElementById('finalActions'); // Get it once
-        const paymentSection = document.getElementById('paymentSection'); // Get it once
+        const finalActionsDiv = document.getElementById('finalActions');
+        const paymentSection = document.getElementById('paymentSection');
+        const proceedToPaymentBtn = document.getElementById('proceedToPayment');
+        // const changeShippingBtn = document.getElementById('changeShipping'); // Commented out in HTML
 
-        function hideSection(section) {
-            if (section) section.style.display = 'none';
-        }
+        // Initially, only the address form and its submit button should be fully active.
+        // Shipping options, order summary, and payment are visible but should be non-interactive until populated.
 
-        function showSection(section, displayType = 'block') {
-            if (section) section.style.display = displayType;
-        }
+        if (shippingOptionsSection) shippingOptionsSection.style.opacity = '0.5';
+        if (orderSummarySection) orderSummarySection.style.opacity = '0.5';
+        if (finalActionsDiv) finalActionsDiv.style.opacity = '0.5';
+        if (paymentSection) paymentSection.style.opacity = '0.5';
 
-        hideSection(orderSummarySection);
-        hideSection(finalActionsDiv); // Use the variable
-        hideSection(paymentSection); // Use the variable
+        if (confirmShippingBtn) confirmShippingBtn.disabled = true;
+        if (proceedToPaymentBtn) proceedToPaymentBtn.disabled = true;
 
-        if (shippingOptionsSection) shippingOptionsSection.style.display = 'block';
+        // Event listener for when shipping options are fetched and displayed by _shippingFixHandler
+        // We'll use a custom event or a direct call from _shippingFixHandler if that's simpler.
+        // For now, let's assume _shippingFixHandler will directly enable the confirm button once rates are loaded.
+        // And it will make shippingOptionsSection fully opaque.
 
         document.addEventListener('shipping-option-selected', function(event) {
-            console.log('shipping-option-selected event caught by global listener', event.detail);
+            console.log('shipping-option-selected event caught', event.detail);
             if (!orderSummarySection) {
-                console.error('Order summary section not found by shipping-option-selected listener.');
+                console.error('Order summary section not found.');
                 return;
             }
+            orderSummarySection.style.opacity = '1';
 
             const { carrierName, serviceName, price, currency, transitTime } = event.detail;
             const transitDisplay = transitTime && transitTime !== 'null' && transitTime !== 'undefined' && transitTime !== 'N/A' ? `${transitTime} business day(s)` : 'Not available';
             
-            console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
-            console.log('SOS_DEBUG_V2_DOM_MANIP: PRE-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
-            
-            while (orderSummarySection.firstChild) {
+            // Clear previous summary
+            while (orderSummarySection.firstChild && orderSummarySection.firstChild.tagName !== 'H2') {
                 orderSummarySection.removeChild(orderSummarySection.firstChild);
             }
-
-            const h4 = document.createElement('h4');
-            h4.textContent = 'Order Summary';
-            orderSummarySection.appendChild(h4);
+            // If H2 is gone, recreate it
+            if (!orderSummarySection.querySelector('h2')) {
+                const h2 = document.createElement('h2');
+                h2.textContent = 'Order Summary';
+                orderSummarySection.prepend(h2);
+            }
 
             const pMethod = document.createElement('p');
-            const strongMethod = document.createElement('strong');
-            strongMethod.textContent = 'Shipping Method: ';
-            pMethod.appendChild(strongMethod);
-            pMethod.appendChild(document.createTextNode(`${carrierName} - ${serviceName}`));
+            pMethod.innerHTML = `<strong>Shipping Method:</strong> ${carrierName} - ${serviceName}`;
             orderSummarySection.appendChild(pMethod);
 
             const pCost = document.createElement('p');
-            const strongCost = document.createElement('strong');
-            strongCost.textContent = 'Cost: ';
-            pCost.appendChild(strongCost);
-            pCost.appendChild(document.createTextNode(`$${parseFloat(price).toFixed(2)} ${currency}`));
+            pCost.innerHTML = `<strong>Cost:</strong> $${parseFloat(price).toFixed(2)} ${currency}`;
             orderSummarySection.appendChild(pCost);
 
             const pDelivery = document.createElement('p');
-            const strongDelivery = document.createElement('strong');
-            strongDelivery.textContent = 'Estimated Delivery: ';
-            pDelivery.appendChild(strongDelivery);
-            pDelivery.appendChild(document.createTextNode(transitDisplay));
+            pDelivery.innerHTML = `<strong>Estimated Delivery:</strong> ${transitDisplay}`;
             orderSummarySection.appendChild(pDelivery);
-
-            console.log('SOS_DEBUG_V2_DOM_MANIP: POST-SUMMARY-UPDATE: finalActions exists?', document.getElementById('finalActions') ? 'Yes' : 'No');
-            console.log('SOS_DEBUG_V2_DOM_MANIP: POST-SUMMARY-UPDATE: proceedToPayment exists?', document.getElementById('proceedToPayment') ? 'Yes' : 'No');
             
-            showSection(orderSummarySection);
             if (confirmShippingBtn) confirmShippingBtn.disabled = false;
         });
 
-        function onProceedToPaymentClick(event) { 
-            console.log('[PROCEED_TO_PAYMENT] Click handler fired.');
-            if (event) {
-                console.log(`[PROCEED_TO_PAYMENT] Event details: type=${event.type}, isTrusted=${event.isTrusted}, timeStamp=${event.timeStamp}`);
-            } else {
-                console.log('[PROCEED_TO_PAYMENT] Event object was not received by handler.');
-            }
-            
-            const currentFinalActions = document.getElementById('finalActions'); // Re-fetch in handler context
-            const currentPaymentSection = document.getElementById('paymentSection'); // Re-fetch
-
-            if (currentFinalActions) {
-                currentFinalActions.style.display = 'none';
-            } else {
-                console.warn('[PROCEED_TO_PAYMENT] Final actions section not found when trying to hide for payment.');
-            }
-
-            if (currentPaymentSection) {
-                currentPaymentSection.style.display = 'block';
-            } else {
-                console.error('[PROCEED_TO_PAYMENT] Payment section not found, cannot show.');
-            }
-        }
-
         if (confirmShippingBtn) {
             confirmShippingBtn.addEventListener('click', function onConfirmShippingClickHandler(event) { 
-                console.log('Confirm Shipping button clicked (Updated Logic V10)');
+                console.log('Confirm Shipping button clicked');
                 if(event) {
                     event.stopPropagation();
                     event.preventDefault();  
                 }
 
-                const currentShippingOptionsSection = document.getElementById('shippingOptions');
-                const currentOrderSummarySection = document.getElementById('orderSummary');
-                
-                if (currentShippingOptionsSection) hideSection(currentShippingOptionsSection);
-                else console.error('[Diag CSC] currentShippingOptionsSection NOT FOUND, cannot hide.');
-
-                if (currentOrderSummarySection) showSection(currentOrderSummarySection);
-                else console.error('[Diag CSC] currentOrderSummarySection NOT FOUND, cannot show.');
-
+                // Visually indicate that shipping is confirmed, perhaps by making other sections less prominent again if desired
+                // For now, just enable the next step.
+                if (finalActionsDiv) finalActionsDiv.style.opacity = '1';
+                if (proceedToPaymentBtn) proceedToPaymentBtn.disabled = false;
                 this.disabled = true; 
-
-                setTimeout(() => {
-                    const finalActionsDivInstance = document.getElementById('finalActions'); // Use a different name
-                    let originalProceedToPaymentButton = document.getElementById('proceedToPayment'); 
-
-                    console.log(`[CONFIRM_SHIPPING_DEFERRED_V10] About to modify finalActions and proceedToPaymentButton.`);
-                    
-                    if (finalActionsDivInstance) {
-                        showSection(finalActionsDivInstance);
-                        console.log(`[CONFIRM_SHIPPING_DEFERRED_V10] finalActionsDiv.style.display set to 'block'.`);
-                        
-                        if (originalProceedToPaymentButton && originalProceedToPaymentButton.parentNode) {
-                            const newProceedToPaymentButton = originalProceedToPaymentButton.cloneNode(true);
-                            newProceedToPaymentButton.disabled = true; 
-                            
-                            // Remove any old listener from the original button before replacing
-                            originalProceedToPaymentButton.removeEventListener('click', onProceedToPaymentClick);
-
-                            originalProceedToPaymentButton.parentNode.replaceChild(newProceedToPaymentButton, originalProceedToPaymentButton);
-                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V10] Original proceedToPaymentButton replaced with a clone.`);
-                            
-                            newProceedToPaymentButton.addEventListener('click', onProceedToPaymentClick, { once: true });
-                            console.log(`[CONFIRM_SHIPPING_DEFERRED_V10] Event listener attached to NEW proceedToPaymentButton with { once: true } while it is disabled.`);
-
-                            setTimeout(() => {
-                                const currentButtonInDom = document.getElementById('proceedToPayment');
-                                if (currentButtonInDom === newProceedToPaymentButton) {
-                                    newProceedToPaymentButton.disabled = false;
-                                    console.log(`[CONFIRM_SHIPPING_DEFERRED_ENABLE_V10] NEW proceedToPaymentButton.disabled set to false.`);
-                                } else {
-                                    console.error('[CONFIRM_SHIPPING_DEFERRED_ENABLE_V10] NEW proceedToPaymentButton was NOT FOUND or changed in DOM when trying to enable it after delay.');
-                                }
-                            }, 300); 
-                        } else {
-                            console.error('[CONFIRM_SHIPPING_DEFERRED_V10] Original proceedToPaymentButton was NOT FOUND or has no parentNode when trying to clone.');
-                        }
-                    } else {
-                        console.error('[CONFIRM_SHIPPING_DEFERRED_V10] finalActionsDiv was NOT FOUND when trying to show it.');
-                    }
-                }, 0); 
+                // if (changeShippingBtn) changeShippingBtn.disabled = false; // If re-enabled
             }); 
-        } else {
-            console.warn('#confirmShipping button not found at init.');
+        }
+
+        if (proceedToPaymentBtn) {
+            proceedToPaymentBtn.addEventListener('click', function onProceedToPaymentClick(event) { 
+                console.log('Proceed to Payment button clicked.');
+                 if(event) {
+                    event.stopPropagation();
+                    event.preventDefault();  
+                }
+                if (paymentSection) paymentSection.style.opacity = '1';
+                // Logic to initialize Stripe or other payment elements would go here.
+                console.log('Payment section would be activated here.');
+                this.disabled = true;
+                // if (changeShippingBtn) changeShippingBtn.disabled = true; // Disable if going to payment
+            });
         }
         
-        const ptpButtonForInitialDisable = document.getElementById('proceedToPayment');
-        if (ptpButtonForInitialDisable) {
-            ptpButtonForInitialDisable.disabled = true;
-            ptpButtonForInitialDisable.removeEventListener('click', onProceedToPaymentClick);
-        }
+        // if (changeShippingBtn) { // If re-enabled
+        //     changeShippingBtn.addEventListener('click', function onChangeShippingClick(event) {
+        //         console.log('Change Shipping button clicked');
+        //         if(event) {
+        //             event.stopPropagation();
+        //             event.preventDefault();  
+        //         }
+        //         if (shippingOptionsSection) shippingOptionsSection.style.opacity = '1';
+        //         if (confirmShippingBtn) confirmShippingBtn.disabled = true; // Re-disable until a new option is selected
+        //         if (orderSummarySection) orderSummarySection.style.opacity = '0.5';
+        //         if (finalActionsDiv) finalActionsDiv.style.opacity = '0.5';
+        //         if (proceedToPaymentBtn) proceedToPaymentBtn.disabled = true;
+        //         if (paymentSection) paymentSection.style.opacity = '0.5';
+        //         // Potentially clear selected shipping option in #shippingOptionsList
+        //         document.querySelectorAll('.shipping-option.selected-shipping-option').forEach(opt => opt.classList.remove('selected-shipping-option'));
+        //         // Clear order summary details
+        //         const h2 = orderSummarySection.querySelector('h2');
+        //         orderSummarySection.innerHTML = '';
+        //         if(h2) orderSummarySection.appendChild(h2);
 
-        console.log('Form step handlers initialized (V10 - Synced with SFH_V13).');
+        //         this.disabled = true;
+        //     });
+        // }
+
+        console.log('Form step handlers initialized for all-visible layout.');
     }
+
+    // Modify _shippingFixHandler to update opacity and enable confirm button
+    // ... within the .then(data => { ... }) block of _shippingFixHandler, after quotes are processed:
+    // Find the part where shippingOptionsDiv.style.display = 'block'; is set.
+    // Add: if (shippingOptionsDiv) shippingOptionsDiv.style.opacity = '1';
+    // And ensure confirmShippingBtn is handled appropriately (it's currently disabled if quotes.length > 0)
+    // The 'shipping-option-selected' event will enable it.
 
     // ---- Execution: Ensure DOM is ready ----
     if (document.readyState === 'loading') {

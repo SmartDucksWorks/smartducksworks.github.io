@@ -431,7 +431,7 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                     unitOfMeasurement: "IMPERIAL",
                     serviceOptions: ["APPOINTMENT"],
                     shipDate: new Date().toISOString().split('T')[0],
-                    insuranceType: "CARRIER" // Changed from "NONE" to "CARRIER"
+                    insuranceType: "" // Changed from "NONE" to "CARRIER"
                 }
             };
 

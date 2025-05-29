@@ -138,15 +138,21 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
         const stateContainer = stateSelect.closest('.form-group');
         if (!stateContainer) {
             console.error('SFH_DEBUG: State select container (.form-group wrapping #state) not found in updateStateOptions.');
-            // If the container is missing, we can't control its visibility.
             return; 
         }
         console.log('SFH_DEBUG: stateSelect and stateContainer found:', stateSelect, stateContainer);
 
-        stateSelect.innerHTML = '<option value=\"\">-- Select State/Province --</option>'; // Clear existing options
+        // Make the container visible by default, regardless of country selection initially
+        stateContainer.style.display = ''; 
+        stateSelect.innerHTML = ''; // Clear existing options
 
         if (country && states[country]) {
             console.log(`SFH_DEBUG: Populating states for ${country}. Count: ${states[country].length}`);
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "-- Select State/Province --";
+            stateSelect.appendChild(defaultOption);
+
             states[country].forEach(state => {
                 const option = document.createElement('option');
                 option.value = state.value;
@@ -154,18 +160,22 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                 stateSelect.appendChild(option);
             });
             stateSelect.disabled = false;
-            stateContainer.style.display = ''; // Make it visible
-            console.log(`SFH_DEBUG: State container for ${country} display set to: '${stateContainer.style.display}'. Expected: visible.`);
+            console.log(`SFH_DEBUG: State field populated and enabled for ${country}.`);
         } else {
-            stateSelect.disabled = true;
-            stateContainer.style.display = 'none'; // Make it hidden
-            if (country) {
-                console.warn(`SFH_DEBUG: No states defined for country: ${country}, or country not in states list. Hiding state field.`);
-            } else {
-                console.log('SFH_DEBUG: No country selected. Hiding state field.');
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = "";
+            // Update placeholder based on whether a country was *attempted* or if it's initial load
+            if (country) { // Country was selected, but no states found (e.g. invalid country code)
+                placeholderOption.textContent = "-- No states for selected country --";
+                console.warn(`SFH_DEBUG: No states defined for country: ${country}. State field disabled.`);
+            } else { // Initial load, no country selected yet
+                placeholderOption.textContent = "-- Select Country First --";
+                console.log('SFH_DEBUG: No country selected. State field disabled with placeholder.');
             }
-            console.log(`SFH_DEBUG: State container for empty/invalid country display set to: '${stateContainer.style.display}'. Expected: hidden.`);
+            stateSelect.appendChild(placeholderOption);
+            stateSelect.disabled = true;
         }
+        // The container's display is now always '', so no need to log its style.display for visibility checks here.
     }
 
     // Function to apply postal code formatting based on country
@@ -231,8 +241,8 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                 updateStateOptions(countrySelect.value);
                 applyPostalCodeFormatting(countrySelect.value);
             } else {
-                console.log('No country selected initially. State/Province will be hidden/disabled.');
-                updateStateOptions(''); 
+                console.log('No country selected initially. State/Province will be visible but disabled.');
+                updateStateOptions(''); // Call with empty country to set initial placeholder and disabled state
                 applyPostalCodeFormatting(''); // Apply no formatting
             }
             console.log('State/province and postal code fix event listeners attached.');
@@ -421,7 +431,7 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                     unitOfMeasurement: "IMPERIAL",
                     serviceOptions: ["APPOINTMENT"],
                     shipDate: new Date().toISOString().split('T')[0],
-                    insuranceType: "NONE"
+                    insuranceType: "CARRIER" // Changed from "NONE" to "CARRIER"
                 }
             };
 

@@ -492,11 +492,11 @@ console.log('SMARTDUCKS_FORM_FIXES.JS SCRIPT EXECUTION STARTED - TOP OF FILE - V
                 return response.text().then(text => {
                     console.log('ShippingFix: Raw text from server. Type: ' + typeof text + ', Length: ' + (text ? text.length : 'N/A') + ', Value: [' + text + ']');
                     let isTextEmptyOrNull = (text === null || (typeof text === 'string' && text.trim() === ""));
-                    console.log('ShippingFix: Evaluating condition "(text === null || (typeof text === \\\'string\\\' && text.trim() === \"\")): \"' + isTextEmptyOrNull);
+                    console.log('ShippingFix: Evaluating condition "(text === null || (typeof text === \\'string\\' && text.trim() === \\"\\")): \\"' + isTextEmptyOrNull);
 
                     if (isTextEmptyOrNull) {
-                        console.warn('ShippingFix: Path A - Empty/null text detected. Returning structured error.');
-                        return { success: false, error: "Empty response from server", rates: [], quotes: [], isEmptyResponse: true };
+                        console.warn('ShippingFix: Path A - Empty/null text detected. Treating as no rates found.');
+                        return []; // Treat as no rates found, similar to an empty JSON array '[]'
                     } else {
                         console.log('ShippingFix: Path B - Text not considered empty/null by initial check. Attempting JSON.parse.');
                         try {

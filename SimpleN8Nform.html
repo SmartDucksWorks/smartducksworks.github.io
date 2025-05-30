@@ -256,6 +256,16 @@
 
             countryInput.addEventListener('change', updateStatesProvinces);
 
+            phoneInput.addEventListener('blur', function() {
+                let phoneNumber = phoneInput.value.replace(/\D/g, ''); // Remove all non-digits
+                if (phoneNumber.length === 10) {
+                    phoneInput.value = `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
+                } else if (phoneNumber.length === 11 && phoneNumber.startsWith('1')) {
+                    phoneNumber = phoneNumber.substring(1); // Strip leading '1'
+                    phoneInput.value = `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
+                } // else, leave as is for the submit validation to catch other cases
+            });
+
             postalCodeInput.addEventListener('blur', function() {
                 const selectedCountry = countryInput.value;
                 let postalCode = postalCodeInput.value.trim();

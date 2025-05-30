@@ -272,7 +272,7 @@
 
                 if (selectedCountry === 'CA') {
                     // Canadian Postal Code Regex: A1A 1A1 (allows for optional space)
-                    const canadianPostalCodeRegex = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-ZaZ]\d$/;
+                    const canadianPostalCodeRegex = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/; // Corrected [A-ZaZ] to [A-Za-z]
                     if (!canadianPostalCodeRegex.test(postalCode)) {
                         postalCodeValid = false;
                         postalCodeAlertMessage = 'Please enter a valid Canadian Postal Code (e.g., A1A 1A1).';

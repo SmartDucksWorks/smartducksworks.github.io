@@ -193,10 +193,11 @@
         </form>
     </div>
 
-    <script>
+        <script>
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.querySelector('form');
             const phoneInput = document.getElementById('phone');
+            // CORRECTED REGEX:
             const northAmericanPhoneNumberRegex = /^(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]\d{2})\s*\)|([2-9]\d{2}))\s*(?:[.-]\s*)?([2-9]\d{2})\s*(?:[.-]\s*)?(\d{4})$/;
 
             form.addEventListener('submit', function (event) {

@@ -197,7 +197,7 @@
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.querySelector('form');
             const phoneInput = document.getElementById('phone');
-            const northAmericanPhoneNumberRegex = /^(?:\\+?1\\s*(?:[.-]\\s*)?)?(?:\\(\\s*([2-9]\\d{2})\\s*\\)|([2-9]\\d{2}))\\s*(?:[.-]\\s*)?([2-9]\\d{2})\\s*(?:[.-]\\s*)?(\\d{4})$/;
+            const northAmericanPhoneNumberRegex = /^(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]\d{2})\s*\)|([2-9]\d{2}))\s*(?:[.-]\s*)?([2-9]\d{2})\s*(?:[.-]\s*)?(\d{4})$/;
 
             form.addEventListener('submit', function (event) {
                 const phoneNumber = phoneInput.value;

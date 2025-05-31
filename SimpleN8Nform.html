@@ -362,40 +362,88 @@
                 const n8nFormattedData = {
                     type: 'shipping_quote',
                     data: {
-                        from: { // Hardcoded 'from' address details
+                        from: { 
                             companyName: "SmartDucks.Works",
                             streetAddress: "2053 Wildflower Drive",
+                            streetAddress2: "", // Optional
                             city: "Orleans",
                             state: "ON",
                             postalCode: "K1E 3R5",
-                            countryCode: "CA"
+                            countryCode: "CA",
+                            attention: "Shipping Department",
+                            email: "shipping@smartducks.works", // Example email
+                            phone: "613-555-0101", // Example phone
+                            instructions: "Handle with care.",
+                            residential: false, // Business address
+                            notify: true
                         },
-                        to: { // Data from the form for 'to' address
+                        to: {
                             companyName: formDataObj.companyName || formDataObj.lastName || "",
                             streetAddress: formDataObj.streetAddress || "",
+                            streetAddress2: formDataObj.streetAddress2 || "",
                             city: formDataObj.city || "",
-                            state: formDataObj.state || "", // Ensure 'state' is the name of your state/province select
+                            state: formDataObj.state || "",
                             postalCode: formDataObj.postalCode || "",
-                            countryCode: formDataObj.countryCode || "", // Ensure 'countryCode' is the name of your country select
+                            countryCode: formDataObj.countryCode || "",
                             attention: (formDataObj.firstName || "") + (formDataObj.firstName && formDataObj.lastName ? " " : "") + (formDataObj.lastName || ""),
                             email: formDataObj.email || "",
-                            phone: formDataObj.phone || ""
+                            phone: formDataObj.phone || "",
+                            instructions: formDataObj.instructions || "",
+                            residential: formDataObj.residential || false, // from checkbox
+                            notify: true // Default to notify recipient
                         },
-                        packageType: "PACKAGE", // Hardcoded package details
+                        packageType: "PACKAGE",
                         lineItems: [{
                             length: 12,
                             width: 5,
                             height: 5,
                             weight: 0.7,
                             declaredValue: { currency: "CAD", amount: 1000 },
-                            description: "SmartDucks",
+                            description: "SmartDucks Product",
                             nmfcCode: "",
                             freightClass: "package"
                         }],
                         unitOfMeasurement: "IMPERIAL",
-                        serviceOptions: ["APPOINTMENT"], // Example, adjust as needed
-                        shipDate: new Date().toISOString().split('T')[0],
-                        insuranceType: "" // N8N node might default this if empty
+                        serviceOptions: ["APPOINTMENT"], 
+                        shipDate: new Date().toISOString(), // Full ISO string
+                        insuranceType: "SHIPTIME", // As per API spec
+                        carrier: "Canada Post", // Preferred carrier
+                        customsInvoice: {
+                            invoiceContact: { // Using 'from' details as a placeholder
+                                companyName: "SmartDucks.Works",
+                                streetAddress: "2053 Wildflower Drive",
+                                streetAddress2: "",
+                                city: "Orleans",
+                                countryCode: "CA",
+                                state: "ON",
+                                postalCode: "K1E 3R5",
+                                attention: "Accounts Payable",
+                                email: "billing@smartducks.works",
+                                phone: "613-555-0102",
+                                instructions: "",
+                                residential: false,
+                                notify: true,
+                                customsBroker: "Self", // Example
+                                shipperTaxId: "GST123456789" // Example
+                            },
+                            dutiesAndTaxes: {
+                                dutiable: true, // Assuming international may have duties
+                                paidBy: "CONSIGNEE" // Or "SHIPPER"
+                            },
+                            currency: "CAD",
+                            invoiceItems: [
+                                {
+                                    quantity: 1,
+                                    code: "SDUCK001", // Example item code
+                                    description: "SmartDucks Product Sample", // From lineItems[0].description
+                                    origin: "CA", // Country of origin for the item
+                                    provinceOrState: "ON", // Province/State of origin for the item
+                                    unitPrice: 1000, // From lineItems[0].declaredValue.amount
+                                    weight: 0.7 // From lineItems[0].weight
+                                }
+                            ],
+                            reasonForExport: "COMMERCIAL"
+                        }
                     }
                 };
                 

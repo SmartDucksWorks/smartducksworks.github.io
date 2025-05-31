@@ -165,11 +165,23 @@
             border: 1px solid #e0e0e0;
             border-radius: 6px;
         }
+
+        .product-order-line { /* New: For single line layout */
+            display: flex;
+            align-items: center;
+            gap: 15px; /* Gap between label, controls, and price block */
+        }
+
+        .product-order-line > label[for="smartDucksQuantity"] { /* "Number of SmartDucks:" label */
+            margin-bottom: 0; /* Override default label margin */
+            font-weight: normal; /* Override default label bold */
+        }
+
         .product-order-controls {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-top: 10px;
+            gap: 10px; /* Gap between -, quantity, + */
+            margin-top: 0; /* Was 10px, remove as it's inline now */
         }
         .product-order-controls button {
             padding: 8px 12px;
@@ -188,6 +200,14 @@
             background-color: #ccc;
             cursor: not-allowed;
         }
+
+        .product-price-display { /* New: Wrapper for price label and value */
+            display: flex;
+            align-items: center;
+            gap: 5px; /* Space between "Total Price:" and the value */
+            margin-left: auto; /* Pushes this to the far right */
+        }
+
         #quantityDisplay, #totalPriceDisplay {
             font-size: 1.1em;
             font-weight: bold;
@@ -195,9 +215,11 @@
         #totalPriceDisplay {
             color: #28a745; /* Green for price, consistent with shipping */
         }
-        .price-label {
+        .price-label { /* "Total Price:" label specific styling */
             font-size: 0.9em;
             color: #555;
+            margin-bottom: 0; /* Override default label margin */
+            font-weight: normal; /* Override default label bold */
         }
 
 
@@ -295,17 +317,17 @@
             <!-- Product Order Section -->
             <fieldset id="productOrderContainer">
                 <legend>Your SmartDucks Order</legend>
-                <div class="form-group">
+                <div class="form-group product-order-line">
                     <label for="smartDucksQuantity">Number of SmartDucks:</label>
                     <div class="product-order-controls">
                         <button type="button" id="decreaseQuantity">-</button>
                         <span id="quantityDisplay">5</span>
                         <button type="button" id="increaseQuantity">+</button>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label class="price-label">Total Price:</label>
-                    <div>$<span id="totalPriceDisplay">350.00</span></div>
+                    <div class="product-price-display">
+                        <label class="price-label">Total Price:</label>
+                        <div>$<span id="totalPriceDisplay">350.00</span></div>
+                    </div>
                 </div>
             </fieldset>
             <!-- End Product Order Section -->

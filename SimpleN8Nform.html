@@ -202,7 +202,7 @@
             const stateInput = document.getElementById('state');
             const postalCodeInput = document.getElementById('postalCode');
             // CORRECTED REGEX:
-            const northAmericanPhoneNumberRegex = /^(?:\\+?1\\s*(?:[.-]\\s*)?)?(?:\\(\\s*([2-9]\\d{2})\\s*\\)|([2-9]\\d{2}))\\s*(?:[.-]\\s*)?([2-9]\\d{2})\\s*(?:[.-]\\s*)?(\\d{4})$/;
+            const northAmericanPhoneNumberRegex = /^(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]\d{2})\s*\)|([2-9]\d{2}))\s*(?:[.-]\s*)?([2-9]\d{2})\s*(?:[.-]\s*)?(\d{4})$/;
 
             const statesProvinces = {
                 CA: [

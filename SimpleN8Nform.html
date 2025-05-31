@@ -289,64 +289,178 @@
             });
 
             form.addEventListener('submit', function (event) {
-                const phoneNumber = phoneInput.value.trim(); // Added .trim()
+                event.preventDefault(); // Prevent default form submission to handle it with fetch
+
+                // --- Existing Validations (Phone, Postal Code) ---
+                const phoneNumber = phoneInput.value.trim();
                 if (!northAmericanPhoneNumberRegex.test(phoneNumber)) {
                     alert('Please enter a valid North American phone number (e.g., +1 (555) 123-4567, 555-123-4567).');
-                    event.preventDefault(); // Stop form submission
-                    phoneInput.focus(); // Optional: bring focus to the phone field
+                    phoneInput.focus();
                     return;
                 }
 
                 const selectedCountry = countryInput.value;
-                const postalCode = postalCodeInput.value.trim(); // Use the current value from the input field
+                const postalCode = postalCodeInput.value.trim();
                 let postalCodeValid = true;
                 let postalCodeAlertMessage = '';
 
                 if (selectedCountry === 'CA') {
                     let processedPostalCode = postalCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    let finalFormattedPostalCode = postalCode; // Default to original input if not processable
+                    let finalFormattedPostalCode = postalCode;
 
                     if (processedPostalCode.length === 6) {
                         finalFormattedPostalCode = processedPostalCode.substring(0, 3) + ' ' + processedPostalCode.substring(3);
                     } else if (processedPostalCode.length > 0 && processedPostalCode.length !== 6) {
-                        finalFormattedPostalCode = processedPostalCode; // Use the cleaned, unspaced version for regex test if not 6 chars
+                        finalFormattedPostalCode = processedPostalCode;
                     }
                     
-                    // Stricter regex for client-side, matching common Canadian postal code rules for XXX XXX format
                     const strictCanadianPostalCodeRegex = /^[A-CEGHJ-NPR-TVXY][0-9][A-CEGHJ-NPR-TV-Z] [0-9][A-CEGHJ-NPR-TV-Z][0-9]$/;
-
                     if (!strictCanadianPostalCodeRegex.test(finalFormattedPostalCode)) {
                         postalCodeValid = false;
                         postalCodeAlertMessage = 'Please enter a valid Canadian Postal Code (e.g., A1A 1A1). Ensure letters D,F,I,O,Q,U are not used, and W,Z are not the first letter.';
                     } else {
-                        postalCodeInput.value = finalFormattedPostalCode; // Ensure the input field has the validated, formatted code
+                        postalCodeInput.value = finalFormattedPostalCode;
                     }
                 } else if (selectedCountry === 'US') {
-                    // US Zip Code Regex: 5 digits or 5 digits + 4 (e.g., 12345 or 12345-6789)
                     const usZipCodeRegex = /^\d{5}(?:-\d{4})?$/;
                     if (!usZipCodeRegex.test(postalCode)) {
                         postalCodeValid = false;
                         postalCodeAlertMessage = 'Please enter a valid US Zip Code (e.g., 12345 or 12345-6789).';
                     }
-                } else if (!postalCode && (countryInput.value === 'CA' || countryInput.value === 'US')) { // Postal code is required if CA or US is selected
+                } else if (!postalCode && (countryInput.value === 'CA' || countryInput.value === 'US')) {
                      postalCodeValid = false;
                      postalCodeAlertMessage = 'Postal/Zip Code is required for the selected country.';
-                } else if (!countryInput.value && postalCode) { // Postal code entered but no country selected
+                } else if (!countryInput.value && postalCode) {
                     postalCodeValid = false;
                     postalCodeAlertMessage = 'Please select a country for the entered postal/zip code.';
-                } else if (!countryInput.value && !postalCode) { // Both country and postal code are empty but required by the field itself
-                    postalCodeValid = false; // Assuming postal code is always required if a country can be selected.
+                } else if (!countryInput.value && !postalCode) {
+                    postalCodeValid = false;
                     postalCodeAlertMessage = 'Please select a country and enter a postal/zip code.';
                 }
 
-
                 if (!postalCodeValid) {
                     alert(postalCodeAlertMessage);
-                    event.preventDefault();
                     postalCodeInput.focus();
                     return;
                 }
 
+                // --- New: Collect form data into an object ---
+                const formDataElements = form.elements;
+                const formDataObj = {};
+                for (let i = 0; i < formDataElements.length; i++) {
+                    const element = formDataElements[i];
+                    if (element.name) {
+                        if (element.type === 'checkbox') {
+                            formDataObj[element.name] = element.checked;
+                        } else {
+                            formDataObj[element.name] = element.value;
+                        }
+                    }
+                }
+
+                // --- New: Construct n8nFormattedData ---
+                const n8nFormattedData = {
+                    type: 'shipping_quote',
+                    data: {
+                        from: { // Hardcoded 'from' address details
+                            companyName: "SmartDucks.Works",
+                            streetAddress: "2053 Wildflower Drive",
+                            city: "Orleans",
+                            state: "ON",
+                            postalCode: "K1E 3R5",
+                            countryCode: "CA"
+                        },
+                        to: { // Data from the form for 'to' address
+                            companyName: formDataObj.companyName || formDataObj.lastName || "",
+                            streetAddress: formDataObj.streetAddress || "",
+                            city: formDataObj.city || "",
+                            state: formDataObj.state || "", // Ensure 'state' is the name of your state/province select
+                            postalCode: formDataObj.postalCode || "",
+                            countryCode: formDataObj.countryCode || "", // Ensure 'countryCode' is the name of your country select
+                            attention: (formDataObj.firstName || "") + (formDataObj.firstName && formDataObj.lastName ? " " : "") + (formDataObj.lastName || ""),
+                            email: formDataObj.email || "",
+                            phone: formDataObj.phone || ""
+                        },
+                        packageType: "PACKAGE", // Hardcoded package details
+                        lineItems: [{
+                            length: 12,
+                            width: 5,
+                            height: 5,
+                            weight: 0.7,
+                            declaredValue: { currency: "CAD", amount: 1000 },
+                            description: "SmartDucks",
+                            nmfcCode: "",
+                            freightClass: "package"
+                        }],
+                        unitOfMeasurement: "IMPERIAL",
+                        serviceOptions: ["APPOINTMENT"], // Example, adjust as needed
+                        shipDate: new Date().toISOString().split('T')[0],
+                        insuranceType: "" // N8N node might default this if empty
+                    }
+                };
+                
+                // Add the _csrf token if it exists in formDataObj
+                if (formDataObj._csrf) {
+                    n8nFormattedData.data._csrf = formDataObj._csrf;
+                }
+                if (formDataObj.residential !== undefined) {
+                    n8nFormattedData.data.to.residential = formDataObj.residential;
+                }
+                 if (formDataObj.streetAddress2) {
+                    n8nFormattedData.data.to.streetAddress2 = formDataObj.streetAddress2;
+                }
+                if (formDataObj.instructions) {
+                    n8nFormattedData.data.instructions = formDataObj.instructions;
+                }
+
+
+                // --- New: Send data using fetch ---
+                const webhookUrl = form.action; // Get URL from form's action attribute
+                
+                // Simple loading indicator
+                const submitButton = form.querySelector('button[type="submit"]');
+                const originalButtonText = submitButton.textContent;
+                submitButton.textContent = 'Submitting...';
+                submitButton.disabled = true;
+
+                fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                        // Add any other headers like CSRF if your N8N webhook requires them
+                    },
+                    body: JSON.stringify(n8nFormattedData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        // Try to get error message from N8N if it provides one
+                        return response.json().catch(() => {
+                            // If response is not JSON or error in parsing, throw generic error
+                            throw new Error(`HTTP error ${response.status}`);
+                        }).then(errBody => {
+                            // If N8N sends a JSON error message like { message: "Error details" }
+                            const errorMessage = errBody.message || `HTTP error ${response.status}`;
+                            throw new Error(errorMessage);
+                        });
+                    }
+                    return response.json(); // Or response.text() if N8N returns plain text
+                })
+                .then(data => {
+                    console.log('Success:', data);
+                    alert('Form submitted successfully!'); // Replace with more sophisticated UI update
+                    form.reset(); // Optionally reset the form
+                    updateStatesProvinces(); // Reset state/province dropdown
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert(`Submission failed: ${error.message}`);
+                })
+                .finally(() => {
+                    // Restore button
+                    submitButton.textContent = originalButtonText;
+                    submitButton.disabled = false;
+                });
             });
 
             // Initialize states/provinces on page load if a country is already selected (e.g. due to browser cache)

@@ -271,13 +271,18 @@
                 let postalCode = postalCodeInput.value.trim();
 
                 if (selectedCountry === 'CA' && postalCode) {
-                    let formattedPostalCode = postalCode.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Keep only alphanumeric
-                    if (formattedPostalCode.length === 6) {
-                        postalCodeInput.value = formattedPostalCode.substring(0, 3) + ' ' + formattedPostalCode.substring(3);
-                    } else if (formattedPostalCode.length > 0) {
-                        postalCodeInput.value = formattedPostalCode; // Show cleaned version if not 6 chars (will likely fail validation on submit)
-                    } else {
-                        postalCodeInput.value = ''; // Clear if processing results in empty string
+                    let cleanedPostalCode = postalCode.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Keep only alphanumeric
+
+                    if (cleanedPostalCode.length > 6) { // If more than 6 chars
+                        cleanedPostalCode = cleanedPostalCode.substring(0, 6); // Truncate to 6
+                    }
+
+                    if (cleanedPostalCode.length === 6) {
+                        postalCodeInput.value = cleanedPostalCode.substring(0, 3) + ' ' + cleanedPostalCode.substring(3);
+                    } else if (cleanedPostalCode.length > 0) { // If 1-5 chars
+                        postalCodeInput.value = cleanedPostalCode; // Show cleaned, unspaced version
+                    } else { // If 0 chars after cleaning (or was initially empty)
+                        postalCodeInput.value = ''; // Clear the input
                     }
                 }
                 // No specific on-blur formatting for US Zip Codes for now, validation is on submit.

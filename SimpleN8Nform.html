@@ -174,7 +174,7 @@
 
         .product-order-line > label[for="smartDucksQuantity"] { /* "Number of SmartDucks:" label */
             margin-bottom: 0; /* Override default label margin */
-            font-weight: normal; /* Override default label bold */
+            font-weight: bold; /* Make the label bold */
         }
 
         .product-order-controls {
@@ -360,8 +360,15 @@
             const countryInput = document.getElementById('countryCode');
             const stateInput = document.getElementById('state');
             const postalCodeInput = document.getElementById('postalCode');
-            // CORRECTED REGEX:
-            const northAmericanPhoneNumberRegex = /^(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]\d{2})\s*\)|([2-9]\d{2}))\s*(?:[.-]\s*)?([2-9]\d{2})\s*(?:[.-]\s*)?(\d{4})$/;
+            const northAmericanPhoneNumberRegex = /^(?:\\+?1\\s*(?:[.-]\\s*)?)?(?:\\(\\s*([2-9]\\d{2})\\s*\\)|([2-9]\\d{2}))\\s*(?:[.-]\\s*)?([2-9]\\d{2})\\s*(?:[.-]\\s*)?(\\d{4})$/;
+
+            const shippingRatesContainer = document.getElementById('shippingRatesContainer');
+            const ratesList = document.getElementById('ratesList');
+            const confirmShippingRate = document.getElementById('confirmShippingRate'); // Renamed for consistency
+            
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.textContent;
+            let rateRequeryTimer;
 
             const statesProvinces = {
                 CA: [
@@ -414,7 +421,6 @@
             }
 
             countryInput.addEventListener('change', updateStatesProvinces);
-
             phoneInput.addEventListener('blur', function() {
                 let phoneNumber = phoneInput.value.replace(/\D/g, ''); // Remove all non-digits
                 if (phoneNumber.length === 10) {
@@ -424,7 +430,6 @@
                     phoneInput.value = `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
                 } // else, leave as is for the submit validation to catch other cases
             });
-
             postalCodeInput.addEventListener('blur', function() {
                 const selectedCountry = countryInput.value;
                 let postalCode = postalCodeInput.value.trim();
@@ -447,9 +452,60 @@
                 // No specific on-blur formatting for US Zip Codes for now, validation is on submit.
             });
 
-            form.addEventListener('submit', function (event) {
-                event.preventDefault(); // Prevent default form submission to handle it with fetch
+            // --- Product Order Logic ---
+            const decreaseQuantityButton = document.getElementById('decreaseQuantity');
+            const increaseQuantityButton = document.getElementById('increaseQuantity');
+            const quantityDisplay = document.getElementById('quantityDisplay');
+            const totalPriceDisplay = document.getElementById('totalPriceDisplay');
 
+            let currentQuantity = 5;
+            const minQuantity = 5;
+            const maxQuantity = 25;
+            const basePrice = 350; // Price for minQuantity (5 units)
+            const tier1Price = 60; // Price per unit for 6-11 units
+            const tier2Price = 70; // Price per unit for 12-25 units
+
+            function updatePriceAndDisplay() {
+                let calculatedPrice = basePrice;
+                if (currentQuantity > 5) {
+                    if (currentQuantity <= 11) {
+                        calculatedPrice += (currentQuantity - 5) * tier1Price;
+                    } else { // currentQuantity > 11
+                        calculatedPrice += (11 - 5) * tier1Price; // Price for units 6-11
+                        calculatedPrice += (currentQuantity - 11) * tier2Price; // Price for units 12+
+                    }
+                }
+                quantityDisplay.textContent = currentQuantity;
+                totalPriceDisplay.textContent = calculatedPrice.toFixed(2);
+                decreaseQuantityButton.disabled = currentQuantity <= minQuantity;
+                increaseQuantityButton.disabled = currentQuantity >= maxQuantity;
+
+                // Re-query for shipping rates after a delay
+                clearTimeout(rateRequeryTimer);
+                // Only re-query if rates have been shown at least once
+                if (shippingRatesContainer.style.display === 'block' && ratesList.hasChildNodes()) {
+                    console.log("Quantity changed, scheduling rate re-query in 5s.");
+                    rateRequeryTimer = setTimeout(fetchShippingRates, 5000);
+                }
+            }
+
+            increaseQuantityButton.addEventListener('click', () => {
+                if (currentQuantity < maxQuantity) {
+                    currentQuantity++;
+                    updatePriceAndDisplay();
+                }
+            });
+            decreaseQuantityButton.addEventListener('click', () => {
+                if (currentQuantity > minQuantity) {
+                    currentQuantity--;
+                    updatePriceAndDisplay();
+                }
+            });
+            // Initial price display
+            updatePriceAndDisplay();
+
+
+            async function fetchShippingRates() {
                 // --- Existing Validations (Phone, Postal Code) ---
                 const phoneNumber = phoneInput.value.trim();
                 if (!northAmericanPhoneNumberRegex.test(phoneNumber)) {
@@ -465,12 +521,13 @@
 
                 if (selectedCountry === 'CA') {
                     let processedPostalCode = postalCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    let finalFormattedPostalCode = postalCode;
+                    let finalFormattedPostalCode = postalCode; // Keep original for regex test if not 6 chars
 
                     if (processedPostalCode.length === 6) {
                         finalFormattedPostalCode = processedPostalCode.substring(0, 3) + ' ' + processedPostalCode.substring(3);
                     } else if (processedPostalCode.length > 0 && processedPostalCode.length !== 6) {
-                        finalFormattedPostalCode = processedPostalCode;
+                        // If not 6 chars but some input, use the cleaned version for regex test
+                        finalFormattedPostalCode = processedPostalCode; 
                     }
                     
                     const strictCanadianPostalCodeRegex = /^[A-CEGHJ-NPR-TVXY][0-9][A-CEGHJ-NPR-TV-Z] [0-9][A-CEGHJ-NPR-TV-Z][0-9]$/;
@@ -478,10 +535,10 @@
                         postalCodeValid = false;
                         postalCodeAlertMessage = 'Please enter a valid Canadian Postal Code (e.g., A1A 1A1). Ensure letters D,F,I,O,Q,U are not used, and W,Z are not the first letter.';
                     } else {
-                        postalCodeInput.value = finalFormattedPostalCode;
+                        postalCodeInput.value = finalFormattedPostalCode; // Update input with formatted code
                     }
                 } else if (selectedCountry === 'US') {
-                    const usZipCodeRegex = /^\d{5}(?:-\d{4})?$/;
+                    const usZipCodeRegex = /^\\d{5}(?:-\\d{4})?$/;
                     if (!usZipCodeRegex.test(postalCode)) {
                         postalCodeValid = false;
                         postalCodeAlertMessage = 'Please enter a valid US Zip Code (e.g., 12345 or 12345-6789).';
@@ -489,13 +546,14 @@
                 } else if (!postalCode && (countryInput.value === 'CA' || countryInput.value === 'US')) {
                      postalCodeValid = false;
                      postalCodeAlertMessage = 'Postal/Zip Code is required for the selected country.';
-                } else if (!countryInput.value && postalCode) {
+                } else if (!countryInput.value && postalCode) { // Country not selected but postal code entered
                     postalCodeValid = false;
                     postalCodeAlertMessage = 'Please select a country for the entered postal/zip code.';
-                } else if (!countryInput.value && !postalCode) {
+                } else if (!countryInput.value && !postalCode) { // Neither selected
                     postalCodeValid = false;
                     postalCodeAlertMessage = 'Please select a country and enter a postal/zip code.';
                 }
+
 
                 if (!postalCodeValid) {
                     alert(postalCodeAlertMessage);
@@ -503,7 +561,7 @@
                     return;
                 }
 
-                // --- New: Collect form data into an object ---
+                // --- Collect form data into an object ---
                 const formDataElements = form.elements;
                 const formDataObj = {};
                 for (let i = 0; i < formDataElements.length; i++) {
@@ -517,12 +575,10 @@
                     }
                 }
 
-                // --- New: Construct n8nFormattedData ---
+                // --- Construct n8nFormattedData ---
                 const n8nFormattedData = {
                     type: 'shipping_quote',
                     data: {
-                        // 'from' address, 'packageType', 'lineItems', and 'unitOfMeasurement' are removed
-                        // These are now expected to be handled by the N8N workflow.
                         to: {
                             companyName: formDataObj.companyName || formDataObj.lastName || "",
                             streetAddress: formDataObj.streetAddress || "",
@@ -532,177 +588,201 @@
                             postalCode: formDataObj.postalCode || "",
                             countryCode: formDataObj.countryCode || "",
                             attention: (formDataObj.firstName || "") + (formDataObj.firstName && formDataObj.lastName ? " " : "") + (formDataObj.lastName || ""),
-                            email: formDataObj.email || "",
-                            phone: formDataObj.phone || "",
-                            instructions: formDataObj.instructions || "",
-                            residential: formDataObj.residential || false, // from checkbox
-                            notify: true // Default to notify recipient
+                            notify: true,
+                            residential: formDataObj.residential
                         },
                         serviceOptions: ["APPOINTMENT"], 
-                        shipDate: new Date().toISOString(), // Full ISO string
-                        insuranceType: "SHIPTIME" // As per API spec
-                        // customsInvoice will be added conditionally below
+                        shipDate: new Date().toISOString(),
+                        insuranceType: "SHIPTIME",
+                        smartDucksQuantity: currentQuantity // Added current quantity
                     }
                 };
 
-                // Conditionally add customsInvoice if shipping to the US
                 if (formDataObj.countryCode === 'US') {
                     n8nFormattedData.data.customsInvoice = {
                         invoiceContact: { 
-                            companyName: "SmartDucks.Works", // Placeholder
-                            streetAddress: "2053 Wildflower Drive", // Placeholder
-                            streetAddress2: "", // Placeholder
-                            city: "Orleans", // Placeholder
-                            countryCode: "CA", // Placeholder
-                            state: "ON", // Placeholder
-                            postalCode: "K1E 3R5", // Placeholder
-                            attention: "Accounts Payable", // Placeholder
-                            email: "billing@smartducks.works", // Placeholder
-                            phone: "613-555-0102", // Placeholder
-                            instructions: "", // Placeholder
-                            residential: false, // Placeholder
-                            notify: true, // Placeholder
-                            customsBroker: "Self", // Example
                             shipperTaxId: "GST123456789" // Example
-                        },
-                        dutiesAndTaxes: {
-                            dutiable: true, 
-                            paidBy: "CONSIGNEE" 
-                        },
-                        currency: "CAD", // Default currency
-                        invoiceItems: [
-                            {
-                                quantity: 1, // Default quantity
-                                code: "SDUCK001",  // Default item code
-                                description: "SmartDucks Product Sample", // Default description
-                                origin: "CA",  // Default origin country
-                                provinceOrState: "ON", // Default origin province/state
-                                unitPrice: 10.00, // Default unit price
-                                weight: 0.5 // Default weight
-                            }
-                        ],
-                        reasonForExport: "COMMERCIAL"
+                        }
+                        // Add other necessary customs fields here if needed
                     };
                 }
                 
-                // Add the _csrf token if it exists in formDataObj
                 if (formDataObj._csrf) {
                     n8nFormattedData.data._csrf = formDataObj._csrf;
-                }
-                if (formDataObj.residential !== undefined) {
-                    n8nFormattedData.data.to.residential = formDataObj.residential;
-                }
-                 if (formDataObj.streetAddress2) {
-                    n8nFormattedData.data.to.streetAddress2 = formDataObj.streetAddress2;
                 }
                 if (formDataObj.instructions) {
                     n8nFormattedData.data.instructions = formDataObj.instructions;
                 }
-
-
-                // --- New: Send data using fetch ---
-                const webhookUrl = form.action; // Get URL from form's action attribute
                 
-                // Simple loading indicator
-                const submitButton = form.querySelector('button[type="submit"]');
-                const originalButtonText = submitButton.textContent;
-                submitButton.textContent = 'Submitting...';
+                const webhookUrl = form.action;
+                submitButton.textContent = 'Fetching Rates...';
                 submitButton.disabled = true;
+
+                ratesList.innerHTML = '<p>Loading rates...</p>'; // Indicate loading in the rates list
+                // shippingRatesContainer.style.display = 'block'; // Keep container visible for loading message
+                confirmShippingRate.style.display = 'none';
+
 
                 fetch(webhookUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                        // Add any other headers like CSRF if your N8N webhook requires them
                     },
                     body: JSON.stringify(n8nFormattedData)
                 })
                 .then(response => {
                     if (!response.ok) {
-                        // Try to get error message from N8N if it provides one
-                        return response.json().catch(() => {
-                            // If response is not JSON or error in parsing, throw generic error
-                            throw new Error(`HTTP error ${response.status}`);
-                        }).then(errBody => {
-                            // If N8N sends a JSON error message like { message: "Error details" }
-                            const errorMessage = errBody.message || `HTTP error ${response.status}`;
-                            throw new Error(errorMessage);
+                        return response.json().catch(() => response.text()).then(errData => {
+                            let errorMsg = 'Error fetching rates.';
+                            if (typeof errData === 'object' && errData.message) {
+                                errorMsg = `Error: ${errData.message}`;
+                            } else if (typeof errData === 'string' && errData.length < 200) { // Avoid overly long text errors
+                                errorMsg = `Error: ${errData}`;
+                            }
+                            throw new Error(errorMsg + ` (Status: ${response.status})`);
                         });
                     }
-                    return response.json(); // Or response.text() if N8N returns plain text
+                    return response.json();
                 })
-                .then(data => {
-                    console.log('Success:', data);
-                    // alert('Form submitted successfully!'); // Replace with more sophisticated UI update
-                    // form.reset(); // Optionally reset the form
-                    // updateStatesProvinces(); // Reset state/province dropdown
-                    displayShippingRates(data.availableRates); // Call function to display rates
+                .then(rates => {
+                    if (rates && rates.length > 0) {
+                        displayShippingRates(rates); // This function handles populating ratesList
+                        shippingRatesContainer.style.display = 'block';
+                        confirmShippingRate.style.display = 'block';
+                    } else {
+                        ratesList.innerHTML = '<p>No shipping rates found for the provided address or an issue occurred. Please check your details.</p>';
+                        shippingRatesContainer.style.display = 'block';
+                        confirmShippingRate.style.display = 'none';
+                    }
                 })
-                .catch((error) => {
-                    console.error('Error:', error);
-                    alert(`Submission failed: ${error.message}`);
+                .catch(error => {
+                    console.error('Error fetching/processing shipping rates:', error);
+                    ratesList.innerHTML = `<p>Failed to fetch shipping rates: ${error.message}. Please check your input or try again later.</p>`;
+                    shippingRatesContainer.style.display = 'block';
+                    confirmShippingRate.style.display = 'none';
                 })
                 .finally(() => {
-                    // Restore button
                     submitButton.textContent = originalButtonText;
                     submitButton.disabled = false;
                 });
-            });
-
-            // Initialize states/provinces on page load if a country is already selected (e.g. due to browser cache)
-            updateStatesProvinces();
-
-            // --- Product Order Logic ---
-            const decreaseQuantityButton = document.getElementById('decreaseQuantity');
-            const increaseQuantityButton = document.getElementById('increaseQuantity');
-            const quantityDisplay = document.getElementById('quantityDisplay');
-            const totalPriceDisplay = document.getElementById('totalPriceDisplay');
-
-            let currentQuantity = 5;
-            const minQuantity = 5;
-            const maxQuantity = 25;
-            const basePrice = 350;
-            const priceTier1 = 60; // For units 6-11
-            const priceTier2 = 70; // For units 12-25
-
-            function updatePriceAndDisplay() {
-                let totalPrice = basePrice;
-                if (currentQuantity > 5) {
-                    if (currentQuantity <= 11) {
-                        totalPrice += (currentQuantity - 5) * priceTier1;
-                    } else { // currentQuantity > 11
-                        totalPrice += (11 - 5) * priceTier1; // Price for units 6-11
-                        totalPrice += (currentQuantity - 11) * priceTier2; // Price for units 12 onwards
-                    }
-                }
-                quantityDisplay.textContent = currentQuantity;
-                totalPriceDisplay.textContent = totalPrice.toFixed(2);
-
-                decreaseQuantityButton.disabled = currentQuantity <= minQuantity;
-                increaseQuantityButton.disabled = currentQuantity >= maxQuantity;
             }
 
-            decreaseQuantityButton.addEventListener('click', () => {
-                if (currentQuantity > minQuantity) {
-                    currentQuantity--;
-                    updatePriceAndDisplay();
-                }
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault(); 
+                fetchShippingRates();
             });
 
-            increaseQuantityButton.addEventListener('click', () => {
-                if (currentQuantity < maxQuantity) {
-                    currentQuantity++;
-                    updatePriceAndDisplay();
+            // Initialize states/provinces on page load
+            updateStatesProvinces();
+
+            function displayShippingRates(rates) {
+                const ratesContainer = document.getElementById('shippingRatesContainer');
+                const ratesList = document.getElementById('ratesList');
+                const confirmButton = document.getElementById('confirmShippingRate');
+                ratesList.innerHTML = ''; // Clear previous rates
+
+                if (rates && rates.length > 0) {
+                    rates.forEach((rate, index) => {
+                        const rateOptionDiv = document.createElement('div');
+                        rateOptionDiv.classList.add('rate-option');
+                        rateOptionDiv.setAttribute('id', `rate-option-${index}`);
+                        // Make the div itself focusable and act like a radio button container
+                        rateOptionDiv.setAttribute('tabindex', '0'); // For accessibility
+                        rateOptionDiv.setAttribute('role', 'radio');
+                        rateOptionDiv.setAttribute('aria-checked', 'false');
+
+                        const radioInput = document.createElement('input');
+                        radioInput.type = 'radio';
+                        radioInput.name = 'shippingRate';
+                        radioInput.id = `rate-${index}`;
+                        radioInput.value = rate.quoteId; 
+                        radioInput.dataset.carrierName = rate.carrierName;
+                        radioInput.dataset.serviceName = rate.serviceName;
+                        radioInput.dataset.totalCharge = rate.totalCharge.amount / 100;
+                        radioInput.dataset.currency = rate.totalCharge.currency;
+                        // Radio button is visually hidden by CSS, but still part of the div
+
+                        // Main line: Carrier - Service (Price)
+                        const mainLineDiv = document.createElement('div');
+                        mainLineDiv.innerHTML = `<span class="rate-carrier">${rate.carrierName} - ${rate.serviceName}</span> <span class="rate-price">(${(rate.totalCharge.amount / 100).toFixed(2)} ${rate.totalCharge.currency})</span>`;
+
+                        // Details line: Compacted information
+                        const detailsDiv = document.createElement('div');
+                        detailsDiv.classList.add('rate-details');
+                        let detailsParts = [];
+                        detailsParts.push(`Transit: ${rate.transitDays} ${rate.transitUnit}`);
+                        if (rate.cutoffTime) {
+                            detailsParts.push(`Cut-off: ${rate.cutoffTime}`);
+                        }
+                        if (rate.accessTimeInterval) {
+                            detailsParts.push(`Access Interval: ${rate.accessTimeInterval}`);
+                        }
+                        detailsParts.push(`Base: ${(rate.baseCharge.amount / 100).toFixed(2)} ${rate.baseCharge.currency}`);
+                        
+                        if (rate.surcharges && rate.surcharges.length > 0) {
+                            const surchargeSummary = rate.surcharges.map(s => `${s.name}: ${(s.price.amount / 100).toFixed(2)}`).join(', ');
+                            detailsParts.push(`Surcharges: ${surchargeSummary}`);
+                        }
+                        if (rate.taxes && rate.taxes.length > 0) {
+                            const taxSummary = rate.taxes.map(t => `${t.name}: ${(t.price.amount / 100).toFixed(2)}`).join(', ');
+                            detailsParts.push(`Taxes: ${taxSummary}`);
+                        }
+                        detailsDiv.textContent = detailsParts.join(', ');
+
+                        rateOptionDiv.appendChild(radioInput); // Hidden radio still needed for form submission logic
+                        rateOptionDiv.appendChild(mainLineDiv);
+                        rateOptionDiv.appendChild(detailsDiv);
+                        ratesList.appendChild(rateOptionDiv);
+
+                        // Event listener for making the div clickable
+                        rateOptionDiv.addEventListener('click', function() {
+                            // Uncheck other radios and remove selected class from other divs
+                            document.querySelectorAll('.rate-option').forEach(div => {
+                                div.classList.remove('selected-rate');
+                                div.setAttribute('aria-checked', 'false');
+                                const innerRadio = div.querySelector('input[type="radio"]');
+                                if (innerRadio) innerRadio.checked = false;
+                            });
+                            // Check this radio and add selected class to this div
+                            radioInput.checked = true;
+                            this.classList.add('selected-rate');
+                            this.setAttribute('aria-checked', 'true');
+                        });
+                        // Keyboard accessibility for selection
+                        rateOptionDiv.addEventListener('keydown', function(event) {
+                            if (event.key === ' ' || event.key === 'Enter') {
+                                event.preventDefault();
+                                this.click(); // Simulate click to trigger selection logic
+                            }
+                        });
+                    });
+                    ratesContainer.style.display = 'block';
+                    confirmButton.style.display = 'block';
+                } else {
+                    ratesList.innerHTML = '<p>No shipping rates available for the provided information.</p>';
+                    ratesContainer.style.display = 'block';
+                    confirmButton.style.display = 'none';
                 }
-            });
-            
-            // Initial setup
-            updatePriceAndDisplay();
 
+                // Add event listener for confirm button (example action)
+                confirmButton.onclick = function() {
+                    const selectedRate = document.querySelector('input[name="shippingRate"]:checked');
+                    if (selectedRate) {
+                        alert(`Selected Rate:\nCarrier: ${selectedRate.dataset.carrierName}\nService: ${selectedRate.dataset.serviceName}\nPrice: ${selectedRate.dataset.totalCharge} ${selectedRate.dataset.currency}\nQuote ID: ${selectedRate.value}`);
+                        // Here you would typically proceed to the next step, e.g., payment or order confirmation
+                        // Potentially hide rates and show a summary or next part of the form
+                        ratesContainer.style.display = 'none'; 
+                        form.reset();
+                        updateStatesProvinces();
+                        alert('Thank you! Your shipping selection has been noted. (This is a demo - no actual order placed).');
+                    } else {
+                        alert('Please select a shipping rate.');
+                    }
+                };
+            }
 
-            // --- TEMPORARY FOR TESTING: Populate with demo data ---
-            // TODO: Remove this section for production
+            // TODO: Remove this in production. This is for testing UI with ShipTime demo rates.
             const demoRatesData = [
               {
                 "availableRates": [
@@ -1050,117 +1130,27 @@
                 ]
               }
             ];
-            // TODO: Remove this line for production - this simulates receiving data
-            if (demoRatesData && demoRatesData.length > 0 && demoRatesData[0].availableRates) {
-                 displayShippingRates(demoRatesData[0].availableRates);
-            }
-            // --- END TEMPORARY SECTION ---
+            // Temporarily display demo rates on load for testing
+            setTimeout(() => {
+                displayShippingRates(demoRatesData);
+                // shippingRatesContainer.style.display = 'block'; // displayShippingRates handles this
+                // confirmShippingRate.style.display = 'block'; // displayShippingRates handles this
+            }, 100); // Small delay to ensure DOM is ready
 
-            function displayShippingRates(rates) {
-                const ratesContainer = document.getElementById('shippingRatesContainer');
-                const ratesList = document.getElementById('ratesList');
-                const confirmButton = document.getElementById('confirmShippingRate');
-                ratesList.innerHTML = ''; // Clear previous rates
-
-                if (rates && rates.length > 0) {
-                    rates.forEach((rate, index) => {
-                        const rateOptionDiv = document.createElement('div');
-                        rateOptionDiv.classList.add('rate-option');
-                        rateOptionDiv.setAttribute('id', `rate-option-${index}`);
-                        // Make the div itself focusable and act like a radio button container
-                        rateOptionDiv.setAttribute('tabindex', '0'); // For accessibility
-                        rateOptionDiv.setAttribute('role', 'radio');
-                        rateOptionDiv.setAttribute('aria-checked', 'false');
-
-                        const radioInput = document.createElement('input');
-                        radioInput.type = 'radio';
-                        radioInput.name = 'shippingRate';
-                        radioInput.id = `rate-${index}`;
-                        radioInput.value = rate.quoteId; 
-                        radioInput.dataset.carrierName = rate.carrierName;
-                        radioInput.dataset.serviceName = rate.serviceName;
-                        radioInput.dataset.totalCharge = rate.totalCharge.amount / 100;
-                        radioInput.dataset.currency = rate.totalCharge.currency;
-                        // Radio button is visually hidden by CSS, but still part of the div
-
-                        // Main line: Carrier - Service (Price)
-                        const mainLineDiv = document.createElement('div');
-                        mainLineDiv.innerHTML = `<span class="rate-carrier">${rate.carrierName} - ${rate.serviceName}</span> <span class="rate-price">(${(rate.totalCharge.amount / 100).toFixed(2)} ${rate.totalCharge.currency})</span>`;
-
-                        // Details line: Compacted information
-                        const detailsDiv = document.createElement('div');
-                        detailsDiv.classList.add('rate-details');
-                        let detailsParts = [];
-                        detailsParts.push(`Transit: ${rate.transitDays} ${rate.transitUnit}`);
-                        if (rate.cutoffTime) {
-                            detailsParts.push(`Cut-off: ${rate.cutoffTime}`);
-                        }
-                        if (rate.accessTimeInterval) {
-                            detailsParts.push(`Access Interval: ${rate.accessTimeInterval}`);
-                        }
-                        detailsParts.push(`Base: ${(rate.baseCharge.amount / 100).toFixed(2)} ${rate.baseCharge.currency}`);
-                        
-                        if (rate.surcharges && rate.surcharges.length > 0) {
-                            const surchargeSummary = rate.surcharges.map(s => `${s.name}: ${(s.price.amount / 100).toFixed(2)}`).join(', ');
-                            detailsParts.push(`Surcharges: ${surchargeSummary}`);
-                        }
-                        if (rate.taxes && rate.taxes.length > 0) {
-                            const taxSummary = rate.taxes.map(t => `${t.name}: ${(t.price.amount / 100).toFixed(2)}`).join(', ');
-                            detailsParts.push(`Taxes: ${taxSummary}`);
-                        }
-                        detailsDiv.textContent = detailsParts.join(', ');
-
-                        rateOptionDiv.appendChild(radioInput); // Hidden radio still needed for form submission logic
-                        rateOptionDiv.appendChild(mainLineDiv);
-                        rateOptionDiv.appendChild(detailsDiv);
-                        ratesList.appendChild(rateOptionDiv);
-
-                        // Event listener for making the div clickable
-                        rateOptionDiv.addEventListener('click', function() {
-                            // Uncheck other radios and remove selected class from other divs
-                            document.querySelectorAll('.rate-option').forEach(div => {
-                                div.classList.remove('selected-rate');
-                                div.setAttribute('aria-checked', 'false');
-                                const innerRadio = div.querySelector('input[type="radio"]');
-                                if (innerRadio) innerRadio.checked = false;
-                            });
-                            // Check this radio and add selected class to this div
-                            radioInput.checked = true;
-                            this.classList.add('selected-rate');
-                            this.setAttribute('aria-checked', 'true');
-                        });
-                        // Keyboard accessibility for selection
-                        rateOptionDiv.addEventListener('keydown', function(event) {
-                            if (event.key === ' ' || event.key === 'Enter') {
-                                event.preventDefault();
-                                this.click(); // Simulate click to trigger selection logic
-                            }
-                        });
-                    });
-                    ratesContainer.style.display = 'block';
-                    confirmButton.style.display = 'block';
+            confirmShippingRate.addEventListener('click', function() {
+                const selectedRate = document.querySelector('input[name="shippingRate"]:checked');
+                if (selectedRate) {
+                    alert(`Selected Rate:\nCarrier: ${selectedRate.dataset.carrierName}\nService: ${selectedRate.dataset.serviceName}\nPrice: ${selectedRate.dataset.totalCharge} ${selectedRate.dataset.currency}\nQuote ID: ${selectedRate.value}`);
+                    // Here you would typically proceed to the next step, e.g., payment or order confirmation
+                    // Potentially hide rates and show a summary or next part of the form
+                    shippingRatesContainer.style.display = 'none'; 
+                    form.reset();
+                    updateStatesProvinces();
+                    alert('Thank you! Your shipping selection has been noted. (This is a demo - no actual order placed).');
                 } else {
-                    ratesList.innerHTML = '<p>No shipping rates available for the provided information.</p>';
-                    ratesContainer.style.display = 'block';
-                    confirmButton.style.display = 'none';
+                    alert('Please select a shipping rate.');
                 }
-
-                // Add event listener for confirm button (example action)
-                confirmButton.onclick = function() {
-                    const selectedRate = document.querySelector('input[name="shippingRate"]:checked');
-                    if (selectedRate) {
-                        alert(`Selected Rate:\nCarrier: ${selectedRate.dataset.carrierName}\nService: ${selectedRate.dataset.serviceName}\nPrice: ${selectedRate.dataset.totalCharge} ${selectedRate.dataset.currency}\nQuote ID: ${selectedRate.value}`);
-                        // Here you would typically proceed to the next step, e.g., payment or order confirmation
-                        // Potentially hide rates and show a summary or next part of the form
-                        ratesContainer.style.display = 'none'; 
-                        form.reset();
-                        updateStatesProvinces();
-                        alert('Thank you! Your shipping selection has been noted. (This is a demo - no actual order placed).');
-                    } else {
-                        alert('Please select a shipping rate.');
-                    }
-                };
-            }
+            });
         });
     </script>
 </body>

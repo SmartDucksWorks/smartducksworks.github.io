@@ -109,28 +109,43 @@
             border-radius: 6px;
             background-color: #fff;
             cursor: pointer;
-            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            position: relative; /* For hidden radio if needed, and general structure */
         }
         .rate-option:hover {
             background-color: #e9f5ff;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
+        .rate-option.selected-rate {
+            background-color: #d4edda; /* Light green for selection */
+            border-color: #b1dfbb; /* Matching border color */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15); /* Slightly enhanced shadow for selected */
+        }
         .rate-option input[type="radio"] {
-            margin-right: 10px;
-            vertical-align: middle;
+            position: absolute; /* Visually hide the radio button */
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            border: 0;
+            pointer-events: none;
         }
-        .rate-option label {
-            font-weight: normal; /* Override bold from general label style */
-            display: inline; /* Allow text to flow with radio */
-        }
+        /* Remove specific label styling that's no longer needed for this structure */
+        /* .rate-option label { ... } */
+
         .rate-details {
-            margin-left: 25px; /* Indent details under radio button */
-            font-size: 0.9em;
-            color: #555;
+            margin-left: 0; /* Was 25px, reset for new layout */
+            font-size: 0.85em; /* Make details text slightly smaller */
+            color: #666; /* Slightly lighter color for details */
+            margin-top: 8px; /* Space between first line and details line */
+            line-height: 1.4; /* Adjust for readability if it wraps */
+            word-break: break-word; /* Ensure long strings of details wrap */
         }
-        .rate-details p {
-            margin: 5px 0;
-        }
+        /* Remove .rate-details p styling as it will be a single text node */
+        /* .rate-details p { ... } */
+
         .rate-carrier {
             font-weight: bold;
             font-size: 1.1em;
@@ -920,51 +935,75 @@
                         const rateOptionDiv = document.createElement('div');
                         rateOptionDiv.classList.add('rate-option');
                         rateOptionDiv.setAttribute('id', `rate-option-${index}`);
+                        // Make the div itself focusable and act like a radio button container
+                        rateOptionDiv.setAttribute('tabindex', '0'); // For accessibility
+                        rateOptionDiv.setAttribute('role', 'radio');
+                        rateOptionDiv.setAttribute('aria-checked', 'false');
 
                         const radioInput = document.createElement('input');
                         radioInput.type = 'radio';
                         radioInput.name = 'shippingRate';
                         radioInput.id = `rate-${index}`;
-                        radioInput.value = rate.quoteId; // Store quoteId for later use
+                        radioInput.value = rate.quoteId; 
                         radioInput.dataset.carrierName = rate.carrierName;
                         radioInput.dataset.serviceName = rate.serviceName;
-                        radioInput.dataset.totalCharge = rate.totalCharge.amount / 100; // Assuming amount is in cents
+                        radioInput.dataset.totalCharge = rate.totalCharge.amount / 100;
                         radioInput.dataset.currency = rate.totalCharge.currency;
+                        // Radio button is visually hidden by CSS, but still part of the div
 
-                        const label = document.createElement('label');
-                        label.htmlFor = `rate-${index}`;
-                        label.innerHTML = `<span class="rate-carrier">${rate.carrierName} - ${rate.serviceName}</span> <span class="rate-price">(${(rate.totalCharge.amount / 100).toFixed(2)} ${rate.totalCharge.currency})</span>`;
+                        // Main line: Carrier - Service (Price)
+                        const mainLineDiv = document.createElement('div');
+                        mainLineDiv.innerHTML = `<span class="rate-carrier">${rate.carrierName} - ${rate.serviceName}</span> <span class="rate-price">(${(rate.totalCharge.amount / 100).toFixed(2)} ${rate.totalCharge.currency})</span>`;
 
+                        // Details line: Compacted information
                         const detailsDiv = document.createElement('div');
                         detailsDiv.classList.add('rate-details');
-                        let detailsHTML = `<p>Transit: ${rate.transitDays} ${rate.transitUnit}</p>`;
+                        let detailsParts = [];
+                        detailsParts.push(`Transit: ${rate.transitDays} ${rate.transitUnit}`);
                         if (rate.cutoffTime) {
-                            detailsHTML += `<p>Cut-off Time: ${rate.cutoffTime}</p>`;
+                            detailsParts.push(`Cut-off: ${rate.cutoffTime}`);
                         }
                         if (rate.accessTimeInterval) {
-                            detailsHTML += `<p>Access Time Interval: ${rate.accessTimeInterval}</p>`;
+                            detailsParts.push(`Access Interval: ${rate.accessTimeInterval}`);
                         }
-                        detailsHTML += `<p>Base: ${(rate.baseCharge.amount / 100).toFixed(2)} ${rate.baseCharge.currency}</p>`;
+                        detailsParts.push(`Base: ${(rate.baseCharge.amount / 100).toFixed(2)} ${rate.baseCharge.currency}`);
+                        
                         if (rate.surcharges && rate.surcharges.length > 0) {
-                            detailsHTML += 'Surcharges:<ul>';
-                            rate.surcharges.forEach(surcharge => {
-                                detailsHTML += `<li>${surcharge.name}: ${(surcharge.price.amount / 100).toFixed(2)} ${surcharge.price.currency}</li>`;
-                            });
-                            detailsHTML += '</ul>';
+                            const surchargeSummary = rate.surcharges.map(s => `${s.name}: ${(s.price.amount / 100).toFixed(2)}`).join(', ');
+                            detailsParts.push(`Surcharges: ${surchargeSummary}`);
                         }
                         if (rate.taxes && rate.taxes.length > 0) {
-                            detailsHTML += 'Taxes:<ul>';
-                            rate.taxes.forEach(tax => {
-                                detailsHTML += `<li>${tax.name}: ${(tax.price.amount / 100).toFixed(2)} ${tax.price.currency}</li>`;
-                            });
-                            detailsHTML += '</ul>';
+                            const taxSummary = rate.taxes.map(t => `${t.name}: ${(t.price.amount / 100).toFixed(2)}`).join(', ');
+                            detailsParts.push(`Taxes: ${taxSummary}`);
                         }
-                        detailsDiv.innerHTML = detailsHTML;
+                        detailsDiv.textContent = detailsParts.join(', ');
 
-                        rateOptionDiv.appendChild(radioInput);
-                        rateOptionDiv.appendChild(label);
+                        rateOptionDiv.appendChild(radioInput); // Hidden radio still needed for form submission logic
+                        rateOptionDiv.appendChild(mainLineDiv);
                         rateOptionDiv.appendChild(detailsDiv);
                         ratesList.appendChild(rateOptionDiv);
+
+                        // Event listener for making the div clickable
+                        rateOptionDiv.addEventListener('click', function() {
+                            // Uncheck other radios and remove selected class from other divs
+                            document.querySelectorAll('.rate-option').forEach(div => {
+                                div.classList.remove('selected-rate');
+                                div.setAttribute('aria-checked', 'false');
+                                const innerRadio = div.querySelector('input[type="radio"]');
+                                if (innerRadio) innerRadio.checked = false;
+                            });
+                            // Check this radio and add selected class to this div
+                            radioInput.checked = true;
+                            this.classList.add('selected-rate');
+                            this.setAttribute('aria-checked', 'true');
+                        });
+                        // Keyboard accessibility for selection
+                        rateOptionDiv.addEventListener('keydown', function(event) {
+                            if (event.key === ' ' || event.key === 'Enter') {
+                                event.preventDefault();
+                                this.click(); // Simulate click to trigger selection logic
+                            }
+                        });
                     });
                     ratesContainer.style.display = 'block';
                     confirmButton.style.display = 'block';

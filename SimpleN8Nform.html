@@ -1132,9 +1132,15 @@
             ];
             // Temporarily display demo rates on load for testing
             setTimeout(() => {
-                displayShippingRates(demoRatesData);
-                // shippingRatesContainer.style.display = 'block'; // displayShippingRates handles this
-                // confirmShippingRate.style.display = 'block'; // displayShippingRates handles this
+                // Ensure demoRatesData and its expected nested structure exist
+                if (demoRatesData && demoRatesData.length > 0 && demoRatesData[0] && typeof demoRatesData[0].availableRates !== 'undefined') {
+                    displayShippingRates(demoRatesData[0].availableRates);
+                } else {
+                    console.warn("Demo rates data is not in the expected format, is empty, or 'availableRates' is missing. Displaying no demo rates.");
+                    ratesList.innerHTML = '<p>Demo rates are currently unavailable or misconfigured.</p>';
+                    shippingRatesContainer.style.display = 'block'; // Show container to display the message
+                    if (confirmShippingRate) confirmShippingRate.style.display = 'none'; // Ensure confirm button is hidden
+                }
             }, 100); // Small delay to ensure DOM is ready
 
             confirmShippingRate.addEventListener('click', function() {

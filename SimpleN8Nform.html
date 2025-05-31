@@ -94,6 +94,54 @@
             min-width: calc(50% - 10px); /* Adjust for gap, ensuring two columns */
         }
 
+        /* Styles for the shipping rates section */
+        #shippingRatesContainer {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+        .rate-option {
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .rate-option:hover {
+            background-color: #e9f5ff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .rate-option input[type="radio"] {
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        .rate-option label {
+            font-weight: normal; /* Override bold from general label style */
+            display: inline; /* Allow text to flow with radio */
+        }
+        .rate-details {
+            margin-left: 25px; /* Indent details under radio button */
+            font-size: 0.9em;
+            color: #555;
+        }
+        .rate-details p {
+            margin: 5px 0;
+        }
+        .rate-carrier {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .rate-price {
+            font-weight: bold;
+            color: #28a745; /* Green for price */
+            font-size: 1.1em;
+        }
+
         @media (max-width: 600px) {
             .form-row .form-group {
                 min-width: 100%; /* Full width on smaller screens */
@@ -103,7 +151,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.3 - 2025-05-31</p>
+        <p>Form Version: 1.0.4 - 2025-05-31</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -195,6 +243,15 @@
             
             <button type="submit">Get Shipping Rates</button>
         </form>
+
+        <!-- New section for displaying shipping rates -->
+        <div id="shippingRatesContainer" style="display: none;">
+            <h2>Available Shipping Rates</h2>
+            <div id="ratesList">
+                <!-- Rates will be populated here by JavaScript -->
+            </div>
+            <button id="confirmShippingRate" style="display: none; margin-top: 15px; background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer;">Confirm Selection</button>
+        </div>
     </div>
 
         <script>
@@ -384,8 +441,7 @@
                         },
                         serviceOptions: ["APPOINTMENT"], 
                         shipDate: new Date().toISOString(), // Full ISO string
-                        insuranceType: "SHIPTIME", // As per API spec
-                        carrier: "Canada Post" // Preferred carrier
+                        insuranceType: "SHIPTIME" // As per API spec
                         // customsInvoice will be added conditionally below
                     }
                 };
@@ -479,9 +535,10 @@
                 })
                 .then(data => {
                     console.log('Success:', data);
-                    alert('Form submitted successfully!'); // Replace with more sophisticated UI update
-                    form.reset(); // Optionally reset the form
-                    updateStatesProvinces(); // Reset state/province dropdown
+                    // alert('Form submitted successfully!'); // Replace with more sophisticated UI update
+                    // form.reset(); // Optionally reset the form
+                    // updateStatesProvinces(); // Reset state/province dropdown
+                    displayShippingRates(data.availableRates); // Call function to display rates
                 })
                 .catch((error) => {
                     console.error('Error:', error);
@@ -496,6 +553,88 @@
 
             // Initialize states/provinces on page load if a country is already selected (e.g. due to browser cache)
             updateStatesProvinces();
+
+            function displayShippingRates(rates) {
+                const ratesContainer = document.getElementById('shippingRatesContainer');
+                const ratesList = document.getElementById('ratesList');
+                const confirmButton = document.getElementById('confirmShippingRate');
+                ratesList.innerHTML = ''; // Clear previous rates
+
+                if (rates && rates.length > 0) {
+                    rates.forEach((rate, index) => {
+                        const rateOptionDiv = document.createElement('div');
+                        rateOptionDiv.classList.add('rate-option');
+                        rateOptionDiv.setAttribute('id', `rate-option-${index}`);
+
+                        const radioInput = document.createElement('input');
+                        radioInput.type = 'radio';
+                        radioInput.name = 'shippingRate';
+                        radioInput.id = `rate-${index}`;
+                        radioInput.value = rate.quoteId; // Store quoteId for later use
+                        radioInput.dataset.carrierName = rate.carrierName;
+                        radioInput.dataset.serviceName = rate.serviceName;
+                        radioInput.dataset.totalCharge = rate.totalCharge.amount / 100; // Assuming amount is in cents
+                        radioInput.dataset.currency = rate.totalCharge.currency;
+
+                        const label = document.createElement('label');
+                        label.htmlFor = `rate-${index}`;
+                        label.innerHTML = `<span class="rate-carrier">${rate.carrierName} - ${rate.serviceName}</span> <span class="rate-price">(${(rate.totalCharge.amount / 100).toFixed(2)} ${rate.totalCharge.currency})</span>`;
+
+                        const detailsDiv = document.createElement('div');
+                        detailsDiv.classList.add('rate-details');
+                        let detailsHTML = `<p>Transit: ${rate.transitDays} ${rate.transitUnit}</p>`;
+                        if (rate.cutoffTime) {
+                            detailsHTML += `<p>Cut-off Time: ${rate.cutoffTime}</p>`;
+                        }
+                        if (rate.accessTimeInterval) {
+                            detailsHTML += `<p>Access Time Interval: ${rate.accessTimeInterval}</p>`;
+                        }
+                        detailsHTML += `<p>Base: ${(rate.baseCharge.amount / 100).toFixed(2)} ${rate.baseCharge.currency}</p>`;
+                        if (rate.surcharges && rate.surcharges.length > 0) {
+                            detailsHTML += 'Surcharges:<ul>';
+                            rate.surcharges.forEach(surcharge => {
+                                detailsHTML += `<li>${surcharge.name}: ${(surcharge.price.amount / 100).toFixed(2)} ${surcharge.price.currency}</li>`;
+                            });
+                            detailsHTML += '</ul>';
+                        }
+                        if (rate.taxes && rate.taxes.length > 0) {
+                            detailsHTML += 'Taxes:<ul>';
+                            rate.taxes.forEach(tax => {
+                                detailsHTML += `<li>${tax.name}: ${(tax.price.amount / 100).toFixed(2)} ${tax.price.currency}</li>`;
+                            });
+                            detailsHTML += '</ul>';
+                        }
+                        detailsDiv.innerHTML = detailsHTML;
+
+                        rateOptionDiv.appendChild(radioInput);
+                        rateOptionDiv.appendChild(label);
+                        rateOptionDiv.appendChild(detailsDiv);
+                        ratesList.appendChild(rateOptionDiv);
+                    });
+                    ratesContainer.style.display = 'block';
+                    confirmButton.style.display = 'block';
+                } else {
+                    ratesList.innerHTML = '<p>No shipping rates available for the provided information.</p>';
+                    ratesContainer.style.display = 'block';
+                    confirmButton.style.display = 'none';
+                }
+
+                // Add event listener for confirm button (example action)
+                confirmButton.onclick = function() {
+                    const selectedRate = document.querySelector('input[name="shippingRate"]:checked');
+                    if (selectedRate) {
+                        alert(`Selected Rate:\nCarrier: ${selectedRate.dataset.carrierName}\nService: ${selectedRate.dataset.serviceName}\nPrice: ${selectedRate.dataset.totalCharge} ${selectedRate.dataset.currency}\nQuote ID: ${selectedRate.value}`);
+                        // Here you would typically proceed to the next step, e.g., payment or order confirmation
+                        // Potentially hide rates and show a summary or next part of the form
+                        ratesContainer.style.display = 'none'; 
+                        form.reset();
+                        updateStatesProvinces();
+                        alert('Thank you! Your shipping selection has been noted. (This is a demo - no actual order placed).');
+                    } else {
+                        alert('Please select a shipping rate.');
+                    }
+                };
+            }
         });
     </script>
 </body>

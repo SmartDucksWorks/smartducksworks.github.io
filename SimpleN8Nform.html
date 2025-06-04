@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.19 - 2025-06-04</p>
+        <p>Form Version: 1.0.20 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -413,7 +413,7 @@
 
             function updateStatesProvinces() {
                 const selectedCountry = countryInput.value;
-                stateInput.innerHTML = '<option value="">-- Select State/Province --</option>'; // Clear existing options
+                stateInput.innerHTML = '<option value="">-- Select State/Province --</option>';
                 if (selectedCountry && statesProvinces[selectedCountry]) {
                     statesProvinces[selectedCountry].forEach(function (sp) {
                         const option = document.createElement('option');

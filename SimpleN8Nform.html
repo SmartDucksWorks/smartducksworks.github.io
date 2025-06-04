@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.20 - 2025-06-04</p>
+        <p>Form Version: 1.0.21 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -411,8 +411,10 @@
                 ]
             };
 
-            function updateStatesProvinces() {
+            // --- State/Province Dropdown Robustness ---
+            function updateStatesProvinces(forceValue) {
                 const selectedCountry = countryInput.value;
+                const prevValue = forceValue !== undefined ? forceValue : stateInput.value;
                 stateInput.innerHTML = '<option value="">-- Select State/Province --</option>';
                 if (selectedCountry && statesProvinces[selectedCountry]) {
                     statesProvinces[selectedCountry].forEach(function (sp) {
@@ -421,40 +423,78 @@
                         option.textContent = sp.name;
                         stateInput.appendChild(option);
                     });
+                    // Try to restore previous value if still valid
+                    if (prevValue && statesProvinces[selectedCountry].some(sp => sp.value === prevValue)) {
+                        stateInput.value = prevValue;
+                    }
                 }
             }
 
-            countryInput.addEventListener('change', updateStatesProvinces);
-            phoneInput.addEventListener('blur', function() {
-                let phoneNumber = phoneInput.value.replace(/\D/g, ''); // Remove all non-digits
-                if (phoneNumber.length === 10) {
-                    phoneInput.value = `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
-                } else if (phoneNumber.length === 11 && phoneNumber.startsWith('1')) {
-                    phoneNumber = phoneNumber.substring(1); // Strip leading '1'
-                    phoneInput.value = `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
-                } // else, leave as is for the submit validation to catch other cases
+            countryInput.addEventListener('change', function() {
+                updateStatesProvinces();
             });
-            postalCodeInput.addEventListener('blur', function() {
+
+            // Autofill/Programmatic change observer for country
+            const observer = new MutationObserver(() => {
+                updateStatesProvinces();
+            });
+            observer.observe(countryInput, { attributes: true, attributeFilter: ['value'] });
+
+            // Also update on form reset
+            form.addEventListener('reset', function() {
+                setTimeout(updateStatesProvinces, 0);
+            });
+
+            // --- Phone Number Formatting ---
+            function formatPhoneNumber(value) {
+                let phoneNumber = value.replace(/\D/g, '');
+                if (phoneNumber.length === 10) {
+                    return `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
+                } else if (phoneNumber.length === 11 && phoneNumber.startsWith('1')) {
+                    phoneNumber = phoneNumber.substring(1);
+                    return `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
+                }
+                return value; // Return as-is if not a valid NA number
+            }
+
+            phoneInput.removeEventListener && phoneInput.removeEventListener('blur', window._phoneBlurHandler);
+            window._phoneBlurHandler = function() {
+                const formatted = formatPhoneNumber(phoneInput.value);
+                phoneInput.value = formatted;
+            };
+            phoneInput.addEventListener('blur', window._phoneBlurHandler);
+
+            // --- Postal/Zip Code Formatting ---
+            postalCodeInput.removeEventListener && postalCodeInput.removeEventListener('blur', window._postalBlurHandler);
+            window._postalBlurHandler = function() {
                 const selectedCountry = countryInput.value;
                 let postalCode = postalCodeInput.value.trim();
-
                 if (selectedCountry === 'CA' && postalCode) {
-                    let cleanedPostalCode = postalCode.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Keep only alphanumeric
-
-                    if (cleanedPostalCode.length > 6) { // If more than 6 chars
-                        cleanedPostalCode = cleanedPostalCode.substring(0, 6); // Truncate to 6
+                    let cleaned = postalCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    if (cleaned.length > 6) cleaned = cleaned.substring(0, 6);
+                    if (cleaned.length === 6) {
+                        postalCodeInput.value = cleaned.substring(0, 3) + ' ' + cleaned.substring(3);
+                    } else {
+                        postalCodeInput.value = cleaned;
                     }
-
-                    if (cleanedPostalCode.length === 6) {
-                        postalCodeInput.value = cleanedPostalCode.substring(0, 3) + ' ' + cleanedPostalCode.substring(3);
-                    } else if (cleanedPostalCode.length > 0) { // If 1-5 chars
-                        postalCodeInput.value = cleanedPostalCode; // Show cleaned, unspaced version
-                    } else { // If 0 chars after cleaning (or was initially empty)
-                        postalCodeInput.value = ''; // Clear the input
+                } else if (selectedCountry === 'US' && postalCode) {
+                    let cleaned = postalCode.replace(/[^0-9-]/g, '');
+                    // Format as 12345 or 12345-6789
+                    if (/^\d{9}$/.test(cleaned)) {
+                        postalCodeInput.value = cleaned.substring(0,5) + '-' + cleaned.substring(5);
+                    } else if (/^\d{5}-\d{4}$/.test(cleaned)) {
+                        postalCodeInput.value = cleaned;
+                    } else if (/^\d{5}$/.test(cleaned)) {
+                        postalCodeInput.value = cleaned;
+                    } else {
+                        postalCodeInput.value = cleaned;
                     }
                 }
-                // No specific on-blur formatting for US Zip Codes for now, validation is on submit.
-            });
+            };
+            postalCodeInput.addEventListener('blur', window._postalBlurHandler);
+
+            // --- Initial population on load ---
+            updateStatesProvinces();
 
             // --- Product Order Logic ---
             const decreaseQuantityButton = document.getElementById('decreaseQuantity');

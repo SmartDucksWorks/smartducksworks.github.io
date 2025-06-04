@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.11 - 2025-06-03</p>
+        <p>Form Version: 1.0.12 - 2025-06-03</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -510,6 +510,15 @@
             async function fetchShippingRates() {
                 // --- Existing Validations (Phone, Postal Code) ---
                 const phoneNumber = phoneInput.value.trim();
+
+                // Explicitly check if the phone number is empty after trimming
+                if (phoneNumber === '') {
+                    alert('Phone number is required. Please enter a phone number.');
+                    phoneInput.focus();
+                    return;
+                }
+
+                // Then, validate the non-empty phone number against the regex
                 if (!northAmericanPhoneNumberRegex.test(phoneNumber)) {
                     alert('Please enter a valid North American phone number (e.g., +1 (555) 123-4567, 555-123-4567).');
                     phoneInput.focus();

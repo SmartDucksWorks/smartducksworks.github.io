@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple N8N Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 8px;
+            width: auto;
+        }
+        .checkbox-group label {
+            margin-bottom: 0;
+            font-weight: normal;
+        }
+        button[type="submit"] {
+            background-color: #5cb85c;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+        button[type="submit"]:hover {
+            background-color: #4cae4c;
+        }
+        .hidden-field {
+            display: none;
+        }
+        /* Basic responsive two-column layout for larger screens */
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px; /* Space between columns */
+        }
+        .form-row .form-group {
+            flex: 1; /* Each group takes equal space */
+            min-width: calc(50% - 10px); /* Adjust for gap, ensuring two columns */
+        }
+
+        /* Styles for the shipping rates section */
+        #shippingRatesContainer {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+        .rate-option {
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            position: relative; /* For hidden radio if needed, and general structure */
+        }
+        .rate-option:hover {
+            background-color: #e9f5ff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .rate-option.selected-rate {
+            background-color: #d4edda; /* Light green for selection */
+            border-color: #b1dfbb; /* Matching border color */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15); /* Slightly enhanced shadow for selected */
+        }
+        .rate-option input[type="radio"] {
+            position: absolute; /* Visually hide the radio button */
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            border: 0;
+            pointer-events: none;
+        }
+        /* Remove specific label styling that's no longer needed for this structure */
+        /* .rate-option label { ... } */
+
+        .rate-details {
+            margin-left: 0; /* Was 25px, reset for new layout */
+            font-size: 0.85em; /* Make details text slightly smaller */
+            color: #666; /* Slightly lighter color for details */
+            margin-top: 8px; /* Space between first line and details line */
+            line-height: 1.4; /* Adjust for readability if it wraps */
+            word-break: break-word; /* Ensure long strings of details wrap */
+        }
+        /* Remove .rate-details p styling as it will be a single text node */
+        /* .rate-details p { ... } */
+
+        .rate-carrier {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .rate-price {
+            font-weight: bold;
+            color: #28a745; /* Green for price */
+            font-size: 1.1em;
+        }
+
+        /* Styles for Product Order Section */
+        #productOrderContainer {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fdfdfd;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+
+        .product-order-line { /* New: For single line layout */
+            display: flex;
+            align-items: center;
+            gap: 15px; /* Gap between label, controls, and price block */
+        }
+
+        .product-order-line > label[for="smartDucksQuantity"] { /* "Number of SmartDucks:" label */
+            margin-bottom: 0; /* Override default label margin */
+            font-weight: bold; /* Make the label bold */
+        }
+
+        .product-order-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Gap between -, quantity, + */
+            margin-top: 0; /* Was 10px, remove as it's inline now */
+        }
+        .product-order-controls button {
+            padding: 8px 12px;
+            font-size: 1em;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .product-order-controls button:hover {
+            background-color: #0056b3;
+        }
+        .product-order-controls button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .product-price-display { /* New: Wrapper for price label and value */
+            display: flex;
+            align-items: center;
+            gap: 5px; /* Space between "Total Price:" and the value */
+            margin-left: auto; /* Pushes this to the far right */
+        }
+
+        #quantityDisplay, #totalPriceDisplay {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        #totalPriceDisplay {
+            color: #28a745; /* Green for price, consistent with shipping */
+        }
+        .price-label { /* "Total Price:" label specific styling */
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 0; /* Override default label margin */
+            font-weight: normal; /* Override default label bold */
+        }
+
+
+        @media (max-width: 600px) {
+            .form-row .form-group {
+                min-width: 100%; /* Full width on smaller screens */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
+        <p>Form Version: 1.0.14 - 2025-06-04</p>
+    </div>
+    <div class="container">
+        <h1>Shipping Information</h1>
+        <form action="https://duckpond.smartducks.works/webhook/shiptime-rates2" method="POST">
+            <!-- Hidden fields -->
+            <input type="hidden" name="_csrf" id="_csrf" value="dummyCSRFToken12345">
+            <div class="hidden-field">
+                <label for="website">Website (Honeypot)</label>
+                <input type="text" name="website" id="website">
+            </div>
+
+            <fieldset>
+                <legend>Recipient Information</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">First Name</label>
+                        <input type="text" id="firstName" name="firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Last Name</label>
+                        <input type="text" id="lastName" name="lastName" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone</label>
+                        <input type="tel" id="phone" name="phone" required placeholder="e.g., +1 (555) 123-4567">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="companyName">Company Name (Optional)</label>
+                    <input type="text" id="companyName" name="companyName">
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Shipping Address</legend>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="countryCode">Country</label>
+                        <select id="countryCode" name="countryCode" required>
+                            <option value="">-- Select Country --</option>
+                            <option value="CA">Canada</option>
+                            <option value="US">United States</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="state">State/Province</label>
+                        <select id="state" name="state" required>
+                            <option value="">-- Select State/Province --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="city">City</label>
+                        <input type="text" id="city" name="city" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="postalCode">Postal/Zip Code</label>
+                        <input type="text" id="postalCode" name="postalCode" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="streetAddress">Street Address</label>
+                    <input type="text" id="streetAddress" name="streetAddress" required>
+                </div>
+                <div class="form-group">
+                    <label for="streetAddress2">Apartment, suite, etc. (Optional)</label>
+                    <input type="text" id="streetAddress2" name="streetAddress2">
+                </div>
+                 <div class="form-group checkbox-group">
+                    <input type="checkbox" id="residential" name="residential">
+                    <label for="residential">This is a residential address</label>
+                </div>
+            </fieldset>
+
+            <!-- Product Order Section -->
+            <fieldset id="productOrderContainer">
+                <legend>Your SmartDucks Order</legend>
+                <div class="form-group product-order-line">
+                    <label for="smartDucksQuantity">Number of SmartDucks:</label>
+                    <div class="product-order-controls">
+                        <button type="button" id="decreaseQuantity">-</button>
+                        <span id="quantityDisplay">5</span>
+                        <button type="button" id="increaseQuantity">+</button>
+                    </div>
+                    <div class="product-price-display">
+                        <label class="price-label">Total Price:</label>
+                        <div>$<span id="totalPriceDisplay">350.00</span></div>
+                    </div>
+                </div>
+            </fieldset>
+            <!-- End Product Order Section -->
+
+            <fieldset>
+                <legend>Other Information</legend>
+                <div class="form-group">
+                    <label for="instructions">Special Instructions (Optional)</label>
+                    <textarea id="instructions" name="instructions"></textarea>
+                </div>
+            </fieldset>
+            
+            <button type="submit">Get Shipping Rates</button>
+        </form>
+
+        <!-- New section for displaying shipping rates -->
+        <div id="shippingRatesContainer" style="display: none;">
+            <h2>Available Shipping Rates</h2>
+            <div id="ratesList">
+                <!-- Rates will be populated here by JavaScript -->
+            </div>
+            <button id="confirmShippingRate" style="display: none; margin-top: 15px; background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer;">Confirm Selection</button>
+        </div>
+    </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('form');
+            const phoneInput = document.getElementById('phone');
+            const emailInput = document.getElementById('email'); // Added emailInput
+            const countryInput = document.getElementById('countryCode');
+            const stateInput = document.getElementById('state');
+            const postalCodeInput = document.getElementById('postalCode');
+            // Corrected North American phone number regex (removed extra backslashes)
+            const northAmericanPhoneNumberRegex = /^(?:\\+?1\\s*(?:[.-]\\s*)?)?(?:\\(\\s*([2-9]\\d{2})\\s*\\)|([2-9]\\d{2}))\\s*(?:[.-]\\s*)?([2-9]\\d{2})\\s*(?:[.-]\\s*)?(\\d{4})$/;
+            const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/; // Added email regex
+
+            const shippingRatesContainer = document.getElementById('shippingRatesContainer');
+            const ratesList = document.getElementById('ratesList');
+            // const confirmShippingRateButton = document.getElementById('confirmShippingRate'); // Original
+            const confirmShippingRate = document.getElementById('confirmShippingRate'); // Renamed for consistency
+            
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.textContent;
+            let rateRequeryTimer;
+
+            const statesProvinces = {
+                CA: [
+                    { value: 'AB', name: 'Alberta' },
+                    { value: 'BC', name: 'British Columbia' },
+                    { value: 'MB', name: 'Manitoba' },
+                    { value: 'NB', name: 'New Brunswick' },
+                    { value: 'NL', name: 'Newfoundland and Labrador' },
+                    { value: 'NS', name: 'Nova Scotia' },
+                    { value: 'NT', name: 'Northwest Territories' },
+                    { value: 'NU', name: 'Nunavut' },
+                    { value: 'ON', name: 'Ontario' },
+                    { value: 'PE', name: 'Prince Edward Island' },
+                    { value: 'QC', name: 'Quebec' },
+                    { value: 'SK', name: 'Saskatchewan' },
+                    { value: 'YT', name: 'Yukon' }
+                ],
+                US: [
+                    { value: 'AL', name: 'Alabama' }, { value: 'AK', name: 'Alaska' }, { value: 'AZ', name: 'Arizona' },
+                    { value: 'AR', name: 'Arkansas' }, { value: 'CA', name: 'California' }, { value: 'CO', name: 'Colorado' },
+                    { value: 'CT', name: 'Connecticut' }, { value: 'DE', name: 'Delaware' }, { value: 'FL', name: 'Florida' },
+                    { value: 'GA', name: 'Georgia' }, { value: 'HI', name: 'Hawaii' }, { value: 'ID', name: 'Idaho' },
+                    { value: 'IL', name: 'Illinois' }, { value: 'IN', name: 'Indiana' }, { value: 'IA', name: 'Iowa' },
+                    { value: 'KS', name: 'Kansas' }, { value: 'KY', name: 'Kentucky' }, { value: 'LA', name: 'Louisiana' },
+                    { value: 'ME', name: 'Maine' }, { value: 'MD', name: 'Maryland' }, { value: 'MA', name: 'Massachusetts' },
+                    { value: 'MI', name: 'Michigan' }, { value: 'MN', name: 'Minnesota' }, { value: 'MS', name: 'Mississippi' },
+                    { value: 'MO', name: 'Missouri' }, { value: 'MT', name: 'Montana' }, { value: 'NE', name: 'Nebraska' },
+                    { value: 'NV', name: 'Nevada' }, { value: 'NH', name: 'New Hampshire' }, { value: 'NJ', name: 'New Jersey' },
+                    { value: 'NM', name: 'New Mexico' }, { value: 'NY', name: 'New York' }, { value: 'NC', name: 'North Carolina' },
+                    { value: 'ND', name: 'North Dakota' }, { value: 'OH', name: 'Ohio' }, { value: 'OK', name: 'Oklahoma' },
+                    { value: 'OR', name: 'Oregon' }, { value: 'PA', name: 'Pennsylvania' }, { value: 'RI', name: 'Rhode Island' },
+                    { value: 'SC', name: 'South Carolina' }, { value: 'SD', name: 'South Dakota' }, { value: 'TN', name: 'Tennessee' },
+                    { value: 'TX', name: 'Texas' }, { value: 'UT', name: 'Utah' }, { value: 'VT', name: 'Vermont' },
+                    { value: 'VA', name: 'Virginia' }, { value: 'WA', name: 'Washington' }, { value: 'WV', name: 'West Virginia' },
+                    { value: 'WI', name: 'Wisconsin' }, { value: 'WY', name: 'Wyoming' }
+                ]
+            };
+
+            function updateStatesProvinces() {
+                const selectedCountry = countryInput.value;
+                stateInput.innerHTML = '<option value="">-- Select State/Province --</option>'; // Clear existing options
+                if (selectedCountry && statesProvinces[selectedCountry]) {
+                    statesProvinces[selectedCountry].forEach(function (sp) {
+                        const option = document.createElement('option');
+                        option.value = sp.value;
+                        option.textContent = sp.name;
+                        stateInput.appendChild(option);
+                    });
+                }
+            }
+
+            countryInput.addEventListener('change', updateStatesProvinces);
+            phoneInput.addEventListener('blur', function() {
+                let phoneNumber = phoneInput.value.replace(/\D/g, ''); // Remove all non-digits
+                if (phoneNumber.length === 10) {
+                    phoneInput.value = `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
+                } else if (phoneNumber.length === 11 && phoneNumber.startsWith('1')) {
+                    phoneNumber = phoneNumber.substring(1); // Strip leading '1'
+                    phoneInput.value = `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
+                } // else, leave as is for the submit validation to catch other cases
+            });
+            postalCodeInput.addEventListener('blur', function() {
+                const selectedCountry = countryInput.value;
+                let postalCode = postalCodeInput.value.trim();
+
+                if (selectedCountry === 'CA' && postalCode) {
+                    let cleanedPostalCode = postalCode.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Keep only alphanumeric
+
+                    if (cleanedPostalCode.length > 6) { // If more than 6 chars
+                        cleanedPostalCode = cleanedPostalCode.substring(0, 6); // Truncate to 6
+                    }
+
+                    if (cleanedPostalCode.length === 6) {
+                        postalCodeInput.value = cleanedPostalCode.substring(0, 3) + ' ' + cleanedPostalCode.substring(3);
+                    } else if (cleanedPostalCode.length > 0) { // If 1-5 chars
+                        postalCodeInput.value = cleanedPostalCode; // Show cleaned, unspaced version
+                    } else { // If 0 chars after cleaning (or was initially empty)
+                        postalCodeInput.value = ''; // Clear the input
+                    }
+                }
+                // No specific on-blur formatting for US Zip Codes for now, validation is on submit.
+            });
+
+            // --- Product Order Logic ---
+            const decreaseQuantityButton = document.getElementById('decreaseQuantity');
+            const increaseQuantityButton = document.getElementById('increaseQuantity');
+            const quantityDisplay = document.getElementById('quantityDisplay');
+            const totalPriceDisplay = document.getElementById('totalPriceDisplay');
+
+            let currentQuantity = 5;
+            const minQuantity = 5;
+            const maxQuantity = 25;
+            const basePrice = 350; // Price for minQuantity (5 units)
+            const tier1Price = 60; // Price per unit for 6-11 units
+            const tier2Price = 70; // Price per unit for 12-25 units
+
+            function updatePriceAndDisplay() {
+                let calculatedPrice = basePrice;
+                if (currentQuantity > 5) {
+                    if (currentQuantity <= 11) {
+                        calculatedPrice += (currentQuantity - 5) * tier1Price;
+                    } else { // currentQuantity > 11
+                        calculatedPrice += (11 - 5) * tier1Price; // Price for units 6-11
+                        calculatedPrice += (currentQuantity - 11) * tier2Price; // Price for units 12+
+                    }
+                }
+                quantityDisplay.textContent = currentQuantity;
+                totalPriceDisplay.textContent = calculatedPrice.toFixed(2);
+                decreaseQuantityButton.disabled = currentQuantity <= minQuantity;
+                increaseQuantityButton.disabled = currentQuantity >= maxQuantity;
+
+                // Re-query for shipping rates after a delay
+                clearTimeout(rateRequeryTimer);
+                // Only re-query if rates have been shown at least once
+                if (shippingRatesContainer.style.display === 'block' && ratesList.hasChildNodes()) {
+                    console.log("Quantity changed, scheduling rate re-query in 5s.");
+                    rateRequeryTimer = setTimeout(fetchShippingRates, 5000);
+                }
+            }
+
+            increaseQuantityButton.addEventListener('click', () => {
+                if (currentQuantity < maxQuantity) {
+                    currentQuantity++;
+                    updatePriceAndDisplay();
+                }
+            });
+            decreaseQuantityButton.addEventListener('click', () => {
+                if (currentQuantity > minQuantity) {
+                    currentQuantity--;
+                    updatePriceAndDisplay();
+                }
+            });
+            // Initial price display
+            updatePriceAndDisplay();
+
+
+            async function fetchShippingRates() {
+                // --- Existing Validations (Phone, Postal Code) ---
+                const phoneNumber = phoneInput.value.trim();
+                const emailAddress = emailInput.value.trim(); // Get email address
+                console.log('Email address being validated:', JSON.stringify(emailAddress)); // Debug log
+
+                // Explicitly check if the email address is empty after trimming
+                if (emailAddress === '') {
+                    alert('Email address is required. Please enter an email address.');
+                    emailInput.focus();
+                    return;
+                }
+
+                // Then, validate the non-empty email address against the regex
+                if (!emailRegex.test(emailAddress)) {
+                    alert('Please enter a valid email address (e.g., user@example.com).');
+                    emailInput.focus();
+                    return;
+                }
+
+                // Explicitly check if the phone number is empty after trimming
+                if (phoneNumber === '') {
+                    alert('Phone number is required. Please enter a phone number.');
+                    phoneInput.focus();
+                    return;
+                }
+
+                // Then, validate the non-empty phone number against the regex
+                if (!northAmericanPhoneNumberRegex.test(phoneNumber)) {
+                    alert('Please enter a valid North American phone number (e.g., +1 (555) 123-4567, 555-123-4567).');
+                    phoneInput.focus();
+                    return;
+                }
+
+                const selectedCountry = countryInput.value;
+                const postalCode = postalCodeInput.value.trim();
+                let postalCodeValid = true;
+                let postalCodeAlertMessage = '';
+
+                if (selectedCountry === 'CA') {
+                    let processedPostalCode = postalCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    let finalFormattedPostalCode = postalCode; // Keep original for regex test if not 6 chars
+
+                    if (processedPostalCode.length === 6) {
+                        finalFormattedPostalCode = processedPostalCode.substring(0, 3) + ' ' + processedPostalCode.substring(3);
+                    } else if (processedPostalCode.length > 0 && processedPostalCode.length !== 6) {
+                        // If not 6 chars but some input, use the cleaned version for regex test
+                        finalFormattedPostalCode = processedPostalCode; 
+                    }
+                    
+                    const strictCanadianPostalCodeRegex = /^[A-CEGHJ-NPR-TVXY][0-9][A-CEGHJ-NPR-TV-Z] [0-9][A-CEGHJ-NPR-TV-Z][0-9]$/;
+                    if (!strictCanadianPostalCodeRegex.test(finalFormattedPostalCode)) {
+                        postalCodeValid = false;
+                        postalCodeAlertMessage = 'Please enter a valid Canadian Postal Code (e.g., A1A 1A1). Ensure letters D,F,I,O,Q,U are not used, and W,Z are not the first letter.';
+                    } else {
+                        postalCodeInput.value = finalFormattedPostalCode; // Update input with formatted code
+                    }
+                } else if (selectedCountry === 'US') {
+                    const usZipCodeRegex = /^\\d{5}(?:-\\d{4})?$/;
+                    if (!usZipCodeRegex.test(postalCode)) {
+                        postalCodeValid = false;
+                        postalCodeAlertMessage = 'Please enter a valid US Zip Code (e.g., 12345 or 12345-6789).';
+                    }
+                } else if (!postalCode && (countryInput.value === 'CA' || countryInput.value === 'US')) {
+                     postalCodeValid = false;
+                     postalCodeAlertMessage = 'Postal/Zip Code is required for the selected country.';
+                } else if (!countryInput.value && postalCode) { // Country not selected but postal code entered
+                    postalCodeValid = false;
+                    postalCodeAlertMessage = 'Please select a country for the entered postal/zip code.';
+                } else if (!countryInput.value && !postalCode) { // Neither selected
+                    postalCodeValid = false;
+                    postalCodeAlertMessage = 'Please select a country and enter a postal/zip code.';
+                }
+
+
+                if (!postalCodeValid) {
+                    alert(postalCodeAlertMessage);
+                    postalCodeInput.focus();
+                    return;
+                }
+
+                // --- Collect form data into an object ---
+                const formDataElements = form.elements;
+                const formDataObj = {};
+                for (let i = 0; i < formDataElements.length; i++) {
+                    const element = formDataElements[i];
+                    if (element.name) {
+                        if (element.type === 'checkbox') {
+                            formDataObj[element.name] = element.checked;
+                        } else {
+                            formDataObj[element.name] = element.value;
+                        }
+                    }
+                }
+
+                // --- Construct n8nFormattedData ---
+                const n8nFormattedData = {
+                    type: 'shipping_quote',
+                    data: {
+                        to: {
+                            companyName: formDataObj.companyName || formDataObj.lastName || "",
+                            streetAddress: formDataObj.streetAddress || "",
+                            streetAddress2: formDataObj.streetAddress2 || "",
+                            city: formDataObj.city || "",
+                            state: formDataObj.state || "",
+                            postalCode: formDataObj.postalCode || "",
+                            countryCode: formDataObj.countryCode || "",
+                            attention: (formDataObj.firstName || "") + (formDataObj.firstName && formDataObj.lastName ? " " : "") + (formDataObj.lastName || ""),
+                            phone: formDataObj.phone || "", // Added phone from formDataObj
+                            email: formDataObj.email || "", // Added email from formDataObj
+                            notify: true,
+                            residential: formDataObj.residential
+                        },
+                        serviceOptions: ["APPOINTMENT"], 
+                        shipDate: new Date().toISOString(),
+                        insuranceType: "SHIPTIME",
+                        smartDucksQuantity: currentQuantity // Added current quantity
+                    }
+                };
+
+                if (formDataObj.countryCode === 'US') {
+                    n8nFormattedData.data.customsInvoice = {
+                        invoiceContact: { 
+                            shipperTaxId: "GST123456789" // Example
+                        }
+                        // Add other necessary customs fields here if needed
+                    };
+                }
+                
+                if (formDataObj._csrf) {
+                    n8nFormattedData.data._csrf = formDataObj._csrf;
+                }
+                if (formDataObj.instructions) {
+                    n8nFormattedData.data.instructions = formDataObj.instructions;
+                }
+                
+                const webhookUrl = form.action;
+                submitButton.textContent = 'Fetching Rates...';
+                submitButton.disabled = true;
+
+                ratesList.innerHTML = '<p>Loading rates...</p>'; // Indicate loading in the rates list
+                // shippingRatesContainer.style.display = 'block'; // Keep container visible for loading message
+                confirmShippingRate.style.display = 'none';
+
+
+                fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(n8nFormattedData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().catch(() => response.text()).then(errData => {
+                            let errorMsg = 'Error fetching rates.';
+                            if (typeof errData === 'object' && errData.message) {
+                                errorMsg = `Error: ${errData.message}`;
+                            } else if (typeof errData === 'string' && errData.length < 200) { // Avoid overly long text errors
+                                errorMsg = `Error: ${errData}`;
+                            }
+                            throw new Error(errorMsg + ` (Status: ${response.status})`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(rates => {
+                    if (rates && rates.length > 0) {
+                        displayShippingRates(rates); // This function handles populating ratesList
+                        shippingRatesContainer.style.display = 'block';
+                        confirmShippingRate.style.display = 'block';
+                    } else {
+                        ratesList.innerHTML = '<p>No shipping rates found for the provided address or an issue occurred. Please check your details.</p>';
+                        shippingRatesContainer.style.display = 'block';
+                        confirmShippingRate.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching/processing shipping rates:', error);
+                    ratesList.innerHTML = `<p>Failed to fetch shipping rates: ${error.message}. Please check your input or try again later.</p>`;
+                    shippingRatesContainer.style.display = 'block';
+                    confirmShippingRate.style.display = 'none';
+                })
+                .finally(() => {
+                    submitButton.textContent = originalButtonText;
+                    submitButton.disabled = false;
+                });
+            }
+
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault(); 
+                fetchShippingRates();
+            });
+
+            // Initialize states/provinces on page load
+            updateStatesProvinces();
+
+            function displayShippingRates(rates) {
+                const ratesContainer = document.getElementById('shippingRatesContainer');
+                const ratesList = document.getElementById('ratesList');
+                const confirmButton = document.getElementById('confirmShippingRate');
+                ratesList.innerHTML = ''; // Clear previous rates
+
+                if (rates && rates.length > 0) {
+                    rates.forEach((rate, index) => {
+                        const rateOptionDiv = document.createElement('div');
+                        rateOptionDiv.classList.add('rate-option');
+                        rateOptionDiv.setAttribute('id', `rate-option-${index}`);
+                        // Make the div itself focusable and act like a radio button container
+                        rateOptionDiv.setAttribute('tabindex', '0'); // For accessibility
+                        rateOptionDiv.setAttribute('role', 'radio');
+                        rateOptionDiv.setAttribute('aria-checked', 'false');
+
+                        const radioInput = document.createElement('input');
+                        radioInput.type = 'radio';
+                        radioInput.name = 'shippingRate';
+                        radioInput.id = `rate-${index}`;
+                        radioInput.value = rate.quoteId; 
+                        radioInput.dataset.carrierName = rate.carrierName;
+                        radioInput.dataset.serviceName = rate.serviceName;
+                        radioInput.dataset.totalCharge = rate.totalCharge.amount / 100;
+                        radioInput.dataset.currency = rate.totalCharge.currency;
+                        // Radio button is visually hidden by CSS, but still part of the div
+
+                        // Main line: Carrier - Service (Price)
+                        const mainLineDiv = document.createElement('div');
+                        mainLineDiv.innerHTML = `<span class="rate-carrier">${rate.carrierName} - ${rate.serviceName}</span> <span class="rate-price">(${(rate.totalCharge.amount / 100).toFixed(2)} ${rate.totalCharge.currency})</span>`;
+
+                        // Details line: Compacted information
+                        const detailsDiv = document.createElement('div');
+                        detailsDiv.classList.add('rate-details');
+                        let detailsParts = [];
+                        detailsParts.push(`Transit: ${rate.transitDays} ${rate.transitUnit}`);
+                        if (rate.cutoffTime) {
+                            detailsParts.push(`Cut-off: ${rate.cutoffTime}`);
+                        }
+                        if (rate.accessTimeInterval) {
+                            detailsParts.push(`Access Interval: ${rate.accessTimeInterval}`);
+                        }
+                        detailsParts.push(`Base: ${(rate.baseCharge.amount / 100).toFixed(2)} ${rate.baseCharge.currency}`);
+                        
+                        if (rate.surcharges && rate.surcharges.length > 0) {
+                            const surchargeSummary = rate.surcharges.map(s => `${s.name}: ${(s.price.amount / 100).toFixed(2)}`).join(', ');
+                            detailsParts.push(`Surcharges: ${surchargeSummary}`);
+                        }
+                        if (rate.taxes && rate.taxes.length > 0) {
+                            const taxSummary = rate.taxes.map(t => `${t.name}: ${(t.price.amount / 100).toFixed(2)}`).join(', ');
+                            detailsParts.push(`Taxes: ${taxSummary}`);
+                        }
+                        detailsDiv.textContent = detailsParts.join(', ');
+
+                        rateOptionDiv.appendChild(radioInput); // Hidden radio still needed for form submission logic
+                        rateOptionDiv.appendChild(mainLineDiv);
+                        rateOptionDiv.appendChild(detailsDiv);
+                        ratesList.appendChild(rateOptionDiv);
+
+                        // Event listener for making the div clickable
+                        rateOptionDiv.addEventListener('click', function() {
+                            // Uncheck other radios and remove selected class from other divs
+                            document.querySelectorAll('.rate-option').forEach(div => {
+                                div.classList.remove('selected-rate');
+                                div.setAttribute('aria-checked', 'false');
+                                const innerRadio = div.querySelector('input[type="radio"]');
+                                if (innerRadio) innerRadio.checked = false;
+                            });
+                            // Check this radio and add selected class to this div
+                            radioInput.checked = true;
+                            this.classList.add('selected-rate');
+                            this.setAttribute('aria-checked', 'true');
+                        });
+                        // Keyboard accessibility for selection
+                        rateOptionDiv.addEventListener('keydown', function(event) {
+                            if (event.key === ' ' || event.key === 'Enter') {
+                                event.preventDefault();
+                                this.click(); // Simulate click to trigger selection logic
+                            }
+                        });
+                    });
+                    ratesContainer.style.display = 'block';
+                    confirmButton.style.display = 'block';
+                } else {
+                    ratesList.innerHTML = '<p>No shipping rates available for the provided information.</p>';
+                    ratesContainer.style.display = 'block';
+                    confirmButton.style.display = 'none';
+                }
+
+                // Add event listener for confirm button (example action)
+                confirmButton.onclick = function() {
+                    const selectedRate = document.querySelector('input[name="shippingRate"]:checked');
+                    if (selectedRate) {
+                        alert(`Selected Rate:\nCarrier: ${selectedRate.dataset.carrierName}\nService: ${selectedRate.dataset.serviceName}\nPrice: ${selectedRate.dataset.totalCharge} ${selectedRate.dataset.currency}\nQuote ID: ${selectedRate.value}`);
+                        // Here you would typically proceed to the next step, e.g., payment or order confirmation
+                        // Potentially hide rates and show a summary or next part of the form
+                        ratesContainer.style.display = 'none'; 
+                        form.reset();
+                        updateStatesProvinces();
+                        alert('Thank you! Your shipping selection has been noted. (This is a demo - no actual order placed).');
+                    } else {
+                        alert('Please select a shipping rate.');
+                    }
+                };
+            }
+
+            // Initialize states/provinces on page load
+            updateStatesProvinces();
+        });
+    </script>
+</body>
+</html>

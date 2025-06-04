@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.16 - 2025-06-04</p>
+        <p>Form Version: 1.0.17 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -676,8 +676,29 @@
                     return response.json();
                 })
                 .then(rates => {
-                    if (rates && rates.length > 0) {
-                        displayShippingRates(rates); // This function handles populating ratesList
+                    // Adapt to N8N Process Quotes Node response structure
+                    let processedRates = [];
+                    if (Array.isArray(rates) && rates.length > 0 && Array.isArray(rates[0].rates)) {
+                        processedRates = rates[0].rates.map(rate => ({
+                            carrierName: rate.carrier,
+                            serviceName: rate.service,
+                            totalCharge: {
+                                amount: Math.round(rate.cost * 100), // convert to cents for compatibility
+                                currency: rate.currency
+                            },
+                            transitDays: rate.delivery_days,
+                            transitUnit: rate.delivery_days === 1 ? 'day' : 'days',
+                            quoteId: rate.id || rate.rate_id,
+                            // The following fields are not present in the new response, so we leave them blank or default
+                            baseCharge: { amount: Math.round(rate.cost * 100), currency: rate.currency },
+                            surcharges: [],
+                            taxes: [],
+                            cutoffTime: '',
+                            accessTimeInterval: ''
+                        }));
+                    }
+                    if (processedRates.length > 0) {
+                        displayShippingRates(processedRates); // This function handles populating ratesList
                         shippingRatesContainer.style.display = 'block';
                         confirmShippingRate.style.display = 'block';
                     } else {

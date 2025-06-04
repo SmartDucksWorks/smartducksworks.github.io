@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.22 - 2025-06-04</p>
+        <p>Form Version: 1.0.23 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -411,8 +411,9 @@
                 ]
             };
 
-            // --- CLEANUP: Remove all duplicate/conflicting phone, postal, and state/province logic ---
-            // Only keep the following block after all element definitions in DOMContentLoaded:
+            // --- CLEANUP: Only one set of handlers for phone, postal, and state/province logic ---
+            // Remove all duplicate function and event handler definitions for these fields above this point.
+            // Place this block after all element definitions in DOMContentLoaded:
 
             function updateStatesProvinces(forceValue) {
                 const selectedCountry = countryInput.value;

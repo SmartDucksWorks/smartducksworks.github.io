@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.21 - 2025-06-04</p>
+        <p>Form Version: 1.0.22 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -411,7 +411,9 @@
                 ]
             };
 
-            // --- State/Province Dropdown Robustness ---
+            // --- CLEANUP: Remove all duplicate/conflicting phone, postal, and state/province logic ---
+            // Only keep the following block after all element definitions in DOMContentLoaded:
+
             function updateStatesProvinces(forceValue) {
                 const selectedCountry = countryInput.value;
                 const prevValue = forceValue !== undefined ? forceValue : stateInput.value;
@@ -423,29 +425,16 @@
                         option.textContent = sp.name;
                         stateInput.appendChild(option);
                     });
-                    // Try to restore previous value if still valid
                     if (prevValue && statesProvinces[selectedCountry].some(sp => sp.value === prevValue)) {
                         stateInput.value = prevValue;
                     }
                 }
             }
+            countryInput.addEventListener('change', updateStatesProvinces);
+            countryInput.addEventListener('input', updateStatesProvinces);
+            form.addEventListener('reset', function() { setTimeout(updateStatesProvinces, 0); });
+            updateStatesProvinces();
 
-            countryInput.addEventListener('change', function() {
-                updateStatesProvinces();
-            });
-
-            // Autofill/Programmatic change observer for country
-            const observer = new MutationObserver(() => {
-                updateStatesProvinces();
-            });
-            observer.observe(countryInput, { attributes: true, attributeFilter: ['value'] });
-
-            // Also update on form reset
-            form.addEventListener('reset', function() {
-                setTimeout(updateStatesProvinces, 0);
-            });
-
-            // --- Phone Number Formatting ---
             function formatPhoneNumber(value) {
                 let phoneNumber = value.replace(/\D/g, '');
                 if (phoneNumber.length === 10) {
@@ -454,19 +443,15 @@
                     phoneNumber = phoneNumber.substring(1);
                     return `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
                 }
-                return value; // Return as-is if not a valid NA number
+                return phoneNumber;
             }
+            function phoneFormatHandler() {
+                phoneInput.value = formatPhoneNumber(phoneInput.value);
+            }
+            phoneInput.addEventListener('blur', phoneFormatHandler);
+            phoneInput.addEventListener('input', phoneFormatHandler);
 
-            phoneInput.removeEventListener && phoneInput.removeEventListener('blur', window._phoneBlurHandler);
-            window._phoneBlurHandler = function() {
-                const formatted = formatPhoneNumber(phoneInput.value);
-                phoneInput.value = formatted;
-            };
-            phoneInput.addEventListener('blur', window._phoneBlurHandler);
-
-            // --- Postal/Zip Code Formatting ---
-            postalCodeInput.removeEventListener && postalCodeInput.removeEventListener('blur', window._postalBlurHandler);
-            window._postalBlurHandler = function() {
+            function postalFormatHandler() {
                 const selectedCountry = countryInput.value;
                 let postalCode = postalCodeInput.value.trim();
                 if (selectedCountry === 'CA' && postalCode) {
@@ -478,20 +463,66 @@
                         postalCodeInput.value = cleaned;
                     }
                 } else if (selectedCountry === 'US' && postalCode) {
-                    let cleaned = postalCode.replace(/[^0-9-]/g, '');
-                    // Format as 12345 or 12345-6789
-                    if (/^\d{9}$/.test(cleaned)) {
+                    let cleaned = postalCode.replace(/[^0-9]/g, '');
+                    if (cleaned.length === 9) {
                         postalCodeInput.value = cleaned.substring(0,5) + '-' + cleaned.substring(5);
-                    } else if (/^\d{5}-\d{4}$/.test(cleaned)) {
-                        postalCodeInput.value = cleaned;
-                    } else if (/^\d{5}$/.test(cleaned)) {
+                    } else if (cleaned.length === 5) {
                         postalCodeInput.value = cleaned;
                     } else {
                         postalCodeInput.value = cleaned;
                     }
                 }
-            };
-            postalCodeInput.addEventListener('blur', window._postalBlurHandler);
+            }
+            postalCodeInput.addEventListener('blur', postalFormatHandler);
+            postalCodeInput.addEventListener('input', postalFormatHandler);
+            // --- END CLEANUP ---
+
+            // --- Phone Number Formatting ---
+            function formatPhoneNumber(value) {
+                let phoneNumber = value.replace(/\D/g, '');
+                if (phoneNumber.length === 10) {
+                    return `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
+                } else if (phoneNumber.length === 11 && phoneNumber.startsWith('1')) {
+                    phoneNumber = phoneNumber.substring(1);
+                    return `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
+                }
+                return phoneNumber;
+            }
+            function phoneFormatHandler() {
+                phoneInput.value = formatPhoneNumber(phoneInput.value);
+            }
+            phoneInput.removeEventListener('blur', phoneFormatHandler);
+            phoneInput.removeEventListener('input', phoneFormatHandler);
+            phoneInput.addEventListener('blur', phoneFormatHandler);
+            phoneInput.addEventListener('input', phoneFormatHandler);
+
+            // --- Postal/Zip Code Formatting ---
+            function postalFormatHandler() {
+                const selectedCountry = countryInput.value;
+                let postalCode = postalCodeInput.value.trim();
+                if (selectedCountry === 'CA' && postalCode) {
+                    let cleaned = postalCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    if (cleaned.length > 6) cleaned = cleaned.substring(0, 6);
+                    if (cleaned.length === 6) {
+                        postalCodeInput.value = cleaned.substring(0, 3) + ' ' + cleaned.substring(3);
+                    } else {
+                        postalCodeInput.value = cleaned;
+                    }
+                } else if (selectedCountry === 'US' && postalCode) {
+                    let cleaned = postalCode.replace(/[^0-9]/g, '');
+                    if (cleaned.length === 9) {
+                        postalCodeInput.value = cleaned.substring(0,5) + '-' + cleaned.substring(5);
+                    } else if (cleaned.length === 5) {
+                        postalCodeInput.value = cleaned;
+                    } else {
+                        postalCodeInput.value = cleaned;
+                    }
+                }
+            }
+            postalCodeInput.removeEventListener('blur', postalFormatHandler);
+            postalCodeInput.removeEventListener('input', postalFormatHandler);
+            postalCodeInput.addEventListener('blur', postalFormatHandler);
+            postalCodeInput.addEventListener('input', postalFormatHandler);
 
             // --- Initial population on load ---
             updateStatesProvinces();

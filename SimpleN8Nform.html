@@ -821,22 +821,137 @@
                     confirmButton.style.display = 'none';
                 }
 
-                // Add event listener for confirm button (example action)
-                confirmButton.onclick = function() {
+                // Add event listener for confirm button (Stripe + Payment Intent flow)
+                confirmButton.onclick = async function() {
                     const selectedRate = document.querySelector('input[name="shippingRate"]:checked');
-                    if (selectedRate) {
-                        alert(`Selected Rate:\nCarrier: ${selectedRate.dataset.carrierName}\nService: ${selectedRate.dataset.serviceName}\nPrice: ${selectedRate.dataset.totalCharge} ${selectedRate.dataset.currency}\nQuote ID: ${selectedRate.value}`);
-                        // Here you would typically proceed to the next step, e.g., payment or order confirmation
-                        // Potentially hide rates and show a summary or next part of the form
-                        ratesContainer.style.display = 'none'; 
-                        form.reset();
-                        updateStatesProvinces();
-                        alert('Thank you! Your shipping selection has been noted. (This is a demo - no actual order placed).');
-                    } else {
+                    if (!selectedRate) {
                         alert('Please select a shipping rate.');
+                        return;
+                    }
+                    // Gather all form data again (in case user changed anything)
+                    const formDataElements = form.elements;
+                    const formDataObj = {};
+                    for (let i = 0; i < formDataElements.length; i++) {
+                        const element = formDataElements[i];
+                        if (element.name) {
+                            if (element.type === 'checkbox') {
+                                formDataObj[element.name] = element.checked;
+                            } else {
+                                formDataObj[element.name] = element.value;
+                            }
+                        }
+                    }
+                    // Gather product info
+                    const smartDucksQuantity = parseInt(document.getElementById('quantityDisplay').textContent, 10);
+                    const totalPrice = parseFloat(document.getElementById('totalPriceDisplay').textContent);
+                    // Gather selected rate info
+                    const selectedRateData = {
+                        carrier: selectedRate.dataset.carrierName,
+                        service: selectedRate.dataset.serviceName,
+                        cost: parseFloat(selectedRate.dataset.totalCharge),
+                        currency: selectedRate.dataset.currency,
+                        quoteId: selectedRate.value
+                    };
+                    // Build order payload for Stripe customer creation
+                    const customerPayload = {
+                        type: 'order_submission',
+                        data: {
+                            recipient: {
+                                firstName: formDataObj.firstName,
+                                lastName: formDataObj.lastName,
+                                companyName: formDataObj.companyName,
+                                email: formDataObj.email,
+                                phone: formDataObj.phone
+                            },
+                            shipping: {
+                                countryCode: formDataObj.countryCode,
+                                state: formDataObj.state,
+                                city: formDataObj.city,
+                                postalCode: formDataObj.postalCode,
+                                streetAddress: formDataObj.streetAddress,
+                                streetAddress2: formDataObj.streetAddress2,
+                                residential: formDataObj.residential
+                            },
+                            product: {
+                                smartDucksQuantity,
+                                totalPrice
+                            },
+                            shippingRate: selectedRateData,
+                            instructions: formDataObj.instructions || ''
+                        }
+                    };
+                    // Show loading state
+                    confirmButton.textContent = 'Creating Customer...';
+                    confirmButton.disabled = true;
+                    let customerId = null, paymentUrl = null, orderSuccess = false, orderMessage = '';
+                    try {
+                        // 1. Create Stripe customer
+                        const customerRes = await fetch('https://duckpond.smartducks.works/webhook/create-customer', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(customerPayload)
+                        });
+                        if (!customerRes.ok) throw new Error('Customer creation failed');
+                        const customerData = await customerRes.json();
+                        customerId = customerData.customerId || customerData.id || customerData.customer_id;
+                        if (!customerId) throw new Error('No customer ID returned from Stripe workflow.');
+                        // 2. Create Payment Intent
+                        confirmButton.textContent = 'Preparing Payment...';
+                        const paymentPayload = {
+                            customerId,
+                            amount: Math.round((totalPrice + selectedRateData.cost) * 100), // in cents
+                            currency: selectedRateData.currency,
+                            description: `SmartDucks order (${smartDucksQuantity} units + shipping)`
+                        };
+                        const paymentRes = await fetch('https://duckpond.smartducks.works/webhook/payment-intent', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(paymentPayload)
+                        });
+                        if (!paymentRes.ok) throw new Error('Payment intent creation failed');
+                        const paymentData = await paymentRes.json();
+                        paymentUrl = paymentData.url || paymentData.payment_url || paymentData.checkout_url;
+                        if (!paymentUrl) throw new Error('No payment URL returned from payment workflow.');
+                        orderSuccess = true;
+                        orderMessage = 'Thank you! Please complete your payment to finalize your order.';
+                    } catch (e) {
+                        orderMessage = 'Order/payment setup failed: ' + e.message;
+                    }
+                    // Hide form and rates, show confirmation/error
+                    form.style.display = 'none';
+                    ratesContainer.style.display = 'none';
+                    let confirmationDiv = document.getElementById('orderConfirmation');
+                    if (!confirmationDiv) {
+                        confirmationDiv = document.createElement('div');
+                        confirmationDiv.id = 'orderConfirmation';
+                        confirmationDiv.style.margin = '30px 0';
+                        confirmationDiv.style.padding = '20px';
+                        confirmationDiv.style.background = orderSuccess ? '#d4edda' : '#f8d7da';
+                        confirmationDiv.style.color = orderSuccess ? '#155724' : '#721c24';
+                        confirmationDiv.style.borderRadius = '8px';
+                        confirmationDiv.style.fontSize = '1.2em';
+                        document.querySelector('.container').appendChild(confirmationDiv);
+                    }
+                    confirmationDiv.textContent = orderMessage;
+                    if (orderSuccess && paymentUrl) {
+                        // Add a Pay Now button
+                        const payBtn = document.createElement('a');
+                        payBtn.href = paymentUrl;
+                        payBtn.textContent = 'Pay Now';
+                        payBtn.style.display = 'inline-block';
+                        payBtn.style.marginTop = '20px';
+                        payBtn.style.padding = '12px 24px';
+                        payBtn.style.background = '#007bff';
+                        payBtn.style.color = '#fff';
+                        payBtn.style.fontWeight = 'bold';
+                        payBtn.style.fontSize = '1.1em';
+                        payBtn.style.borderRadius = '6px';
+                        payBtn.style.textDecoration = 'none';
+                        payBtn.target = '_blank';
+                        confirmationDiv.appendChild(document.createElement('br'));
+                        confirmationDiv.appendChild(payBtn);
                     }
                 };
-            }
 
             // Initialize states/provinces on page load
             updateStatesProvinces();

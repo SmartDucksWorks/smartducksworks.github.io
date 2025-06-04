@@ -513,7 +513,6 @@
                 // --- Existing Validations (Phone, Postal Code) ---
                 const phoneNumber = phoneInput.value.trim();
                 const emailAddress = emailInput.value.trim(); // Get email address
-                console.log('Email address being validated:', JSON.stringify(emailAddress)); // Debug log
 
                 // Explicitly check if the email address is empty after trimming
                 if (emailAddress === '') {
@@ -676,20 +675,25 @@
                     return response.json();
                 })
                 .then(rates => {
-                    // Adapt to N8N Process Quotes Node response structure
-                    let processedRates = [];
+                    // Robustly extract rates array from possible response shapes
+                    let ratesArray = [];
                     if (Array.isArray(rates) && rates.length > 0 && Array.isArray(rates[0].rates)) {
-                        processedRates = rates[0].rates.map(rate => ({
+                        ratesArray = rates[0].rates;
+                    } else if (rates && Array.isArray(rates.rates)) {
+                        ratesArray = rates.rates;
+                    }
+                    let processedRates = [];
+                    if (ratesArray.length > 0) {
+                        processedRates = ratesArray.map(rate => ({
                             carrierName: rate.carrier,
                             serviceName: rate.service,
                             totalCharge: {
-                                amount: Math.round(rate.cost * 100), // convert to cents for compatibility
+                                amount: Math.round(rate.cost * 100),
                                 currency: rate.currency
                             },
                             transitDays: rate.delivery_days,
                             transitUnit: rate.delivery_days === 1 ? 'day' : 'days',
                             quoteId: rate.id || rate.rate_id,
-                            // The following fields are not present in the new response, so we leave them blank or default
                             baseCharge: { amount: Math.round(rate.cost * 100), currency: rate.currency },
                             surcharges: [],
                             taxes: [],
@@ -698,7 +702,7 @@
                         }));
                     }
                     if (processedRates.length > 0) {
-                        displayShippingRates(processedRates); // This function handles populating ratesList
+                        displayShippingRates(processedRates);
                         shippingRatesContainer.style.display = 'block';
                         confirmShippingRate.style.display = 'block';
                     } else {

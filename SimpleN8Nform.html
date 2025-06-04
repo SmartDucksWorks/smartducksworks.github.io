@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.12 - 2025-06-03</p>
+        <p>Form Version: 1.0.13 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -357,11 +357,13 @@
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.querySelector('form');
             const phoneInput = document.getElementById('phone');
+            const emailInput = document.getElementById('email'); // Added emailInput
             const countryInput = document.getElementById('countryCode');
             const stateInput = document.getElementById('state');
             const postalCodeInput = document.getElementById('postalCode');
             // Corrected North American phone number regex (removed extra backslashes)
-            const northAmericanPhoneNumberRegex = /^(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]\d{2})\s*\)|([2-9]\d{2}))\s*(?:[.-]\s*)?([2-9]\d{2})\s*(?:[.-]\s*)?(\d{4})$/;
+            const northAmericanPhoneNumberRegex = /^(?:\\+?1\\s*(?:[.-]\\s*)?)?(?:\\(\\s*([2-9]\\d{2})\\s*\\)|([2-9]\\d{2}))\\s*(?:[.-]\\s*)?([2-9]\\d{2})\\s*(?:[.-]\\s*)?(\\d{4})$/;
+            const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/; // Added email regex
 
             const shippingRatesContainer = document.getElementById('shippingRatesContainer');
             const ratesList = document.getElementById('ratesList');
@@ -510,6 +512,21 @@
             async function fetchShippingRates() {
                 // --- Existing Validations (Phone, Postal Code) ---
                 const phoneNumber = phoneInput.value.trim();
+                const emailAddress = emailInput.value.trim(); // Get email address
+
+                // Explicitly check if the email address is empty after trimming
+                if (emailAddress === '') {
+                    alert('Email address is required. Please enter an email address.');
+                    emailInput.focus();
+                    return;
+                }
+
+                // Then, validate the non-empty email address against the regex
+                if (!emailRegex.test(emailAddress)) {
+                    alert('Please enter a valid email address (e.g., user@example.com).');
+                    emailInput.focus();
+                    return;
+                }
 
                 // Explicitly check if the phone number is empty after trimming
                 if (phoneNumber === '') {
@@ -599,6 +616,8 @@
                             postalCode: formDataObj.postalCode || "",
                             countryCode: formDataObj.countryCode || "",
                             attention: (formDataObj.firstName || "") + (formDataObj.firstName && formDataObj.lastName ? " " : "") + (formDataObj.lastName || ""),
+                            phone: formDataObj.phone || "", // Added phone from formDataObj
+                            email: formDataObj.email || "", // Added email from formDataObj
                             notify: true,
                             residential: formDataObj.residential
                         },
@@ -792,11 +811,6 @@
                     }
                 };
             }
-
-            form.addEventListener('submit', async function (event) {
-                event.preventDefault(); 
-                fetchShippingRates();
-            });
 
             // Initialize states/provinces on page load
             updateStatesProvinces();

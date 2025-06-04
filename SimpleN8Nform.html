@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.13 - 2025-06-04</p>
+        <p>Form Version: 1.0.14 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -513,6 +513,7 @@
                 // --- Existing Validations (Phone, Postal Code) ---
                 const phoneNumber = phoneInput.value.trim();
                 const emailAddress = emailInput.value.trim(); // Get email address
+                console.log('Email address being validated:', JSON.stringify(emailAddress)); // Debug log
 
                 // Explicitly check if the email address is empty after trimming
                 if (emailAddress === '') {

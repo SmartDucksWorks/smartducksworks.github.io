@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.14 - 2025-06-04</p>
+        <p>Form Version: 1.0.15 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -362,8 +362,8 @@
             const stateInput = document.getElementById('state');
             const postalCodeInput = document.getElementById('postalCode');
             // Corrected North American phone number regex (removed extra backslashes)
-            const northAmericanPhoneNumberRegex = /^(?:\\+?1\\s*(?:[.-]\\s*)?)?(?:\\(\\s*([2-9]\\d{2})\\s*\\)|([2-9]\\d{2}))\\s*(?:[.-]\\s*)?([2-9]\\d{2})\\s*(?:[.-]\\s*)?(\\d{4})$/;
-            const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/; // Added email regex
+            const northAmericanPhoneNumberRegex = /^(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]\d{2})\s*\)|([2-9]\d{2}))\s*(?:[.-]\s*)?([2-9]\d{2})\s*(?:[.-]\s*)?(\d{4})$/;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Added email regex
 
             const shippingRatesContainer = document.getElementById('shippingRatesContainer');
             const ratesList = document.getElementById('ratesList');

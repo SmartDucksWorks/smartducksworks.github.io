@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.29 - 2025-06-04</p>
+        <p>Form Version: 1.0.30 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -494,18 +494,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Shipping Rates AJAX Logic ---
     function collectFormData() {
-        // Build the nested 'to' object as expected by the server
+        // Build the nested 'from' and 'to' objects as expected by the server
+        const firstName = document.getElementById('firstName').value.trim();
+        const lastName = document.getElementById('lastName').value.trim();
+        const companyName = document.getElementById('companyName').value.trim();
+        const attention = (firstName + ' ' + lastName).trim();
         return {
+            from: {
+                companyName: "SmartDucks.Works",
+                streetAddress: "2053 Wildflower Drive",
+                city: "Orleans",
+                state: "ON",
+                postalCode: "K1E 3R5",
+                countryCode: "CA",
+                attention: "SmartDucks Support",
+                phone: "6137993682",
+                email: "support@smartducks.works"
+            },
             to: {
-                companyName: document.getElementById('companyName').value || (document.getElementById('firstName').value + ' ' + document.getElementById('lastName').value),
-                streetAddress: document.getElementById('streetAddress').value,
-                city: document.getElementById('city').value,
-                state: stateInput.value,
-                postalCode: postalCodeInput.value,
-                countryCode: countryInput.value,
-                attention: document.getElementById('firstName').value + ' ' + document.getElementById('lastName').value,
-                phone: phoneInput.value,
-                email: document.getElementById('email').value
+                companyName: companyName || attention,
+                streetAddress: document.getElementById('streetAddress').value.trim(),
+                city: document.getElementById('city').value.trim(),
+                state: document.getElementById('state').value.trim(),
+                postalCode: document.getElementById('postalCode').value.trim(),
+                countryCode: document.getElementById('countryCode').value.trim(),
+                attention: attention,
+                phone: document.getElementById('phone').value.trim(),
+                email: document.getElementById('email').value.trim()
             },
             residential: document.getElementById('residential').checked,
             quantity: currentQuantity
@@ -591,17 +606,6 @@ document.addEventListener('DOMContentLoaded', function () {
         Array.from(ratesList.children).forEach((el, i) => {
             el.classList.toggle('selected-rate', i === idx);
             const radio = el.querySelector('input[type="radio"]');
-            if (radio) radio.checked = (i === idx);
-        });
-        confirmShippingRateBtn.disabled = false;
-    }
-    confirmShippingRateBtn.addEventListener('click', function () {
-        if (selectedRate === null || !shippingRates[selectedRate]) return;
-        // Proceed to payment UI (Stripe integration)
-        startStripePayment();
-    });
-
-    // --- Stripe Payment Integration (Client-side) ---
     function startStripePayment() {
         // Gather all form data for payment
         const formData = {

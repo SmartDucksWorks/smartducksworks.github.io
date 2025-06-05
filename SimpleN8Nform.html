@@ -232,10 +232,10 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.26 - 2025-06-04</p>
+        <p>Form Version: 1.0.27 - 2025-06-04</p>
     </div>
     <div class="container">
-        <h1>Shipping Information</h1>
+        <h1>SmartDucks Order and Shipping</h1>
         <form action="https://duckpond.smartducks.works/webhook/shiptime-rates2" method="POST">
             <!-- Hidden fields -->
             <input type="hidden" name="_csrf" id="_csrf" value="dummyCSRFToken12345">
@@ -507,8 +507,22 @@ document.addEventListener('DOMContentLoaded', function () {
     function validateShippingFields() {
         // Basic validation for required fields
         const data = collectFormData();
+        // Check for non-empty fields
         if (!data.countryCode || !data.state || !data.city || !data.postalCode || !data.streetAddress) return false;
         if (data.quantity < MIN_QUANTITY || data.quantity > MAX_QUANTITY) return false;
+        // Validate state/province
+        if (!statesProvinces[data.countryCode] || !statesProvinces[data.countryCode].some(sp => sp.value === data.state)) return false;
+        // Validate phone (North American 10-digit)
+        const phoneDigits = phoneInput.value.replace(/\D/g, '');
+        if (phoneDigits.length !== 10) return false;
+        // Validate postal/zip code
+        if (data.countryCode === 'CA') {
+            // Canadian postal code: A1A 1A1
+            if (!/^([A-VXY][0-9][A-Z]) ?([0-9][A-Z][0-9])$/i.test(data.postalCode.replace(/\s/g, ''))) return false;
+        } else if (data.countryCode === 'US') {
+            // US ZIP: 12345 or 12345-6789
+            if (!/^\d{5}(-\d{4})?$/.test(data.postalCode)) return false;
+        }
         return true;
     }
     function fetchShippingRates() {

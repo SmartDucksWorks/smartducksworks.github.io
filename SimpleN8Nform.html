@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.32 - 2025-06-04</p>
+        <p>Form Version: 1.0.33 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -592,8 +592,8 @@ document.addEventListener('DOMContentLoaded', function () {
             div.tabIndex = 0;
             div.innerHTML = `
                 <input type="radio" name="shippingRate" id="rate${idx}" value="${idx}" ${selectedRate === idx ? 'checked' : ''} />
-                <span class="rate-carrier">${rate.carrier}</span> - <span class="rate-price">$${rate.price.toFixed(2)}</span>
-                <div class="rate-details">${rate.service} &bull; Est: ${rate.estimatedDelivery || 'N/A'}</div>
+                <span class="rate-carrier">${rate.carrier}</span> - <span class="rate-price">$${rate.cost.toFixed(2)}</span>
+                <div class="rate-details">${rate.service} &bull; Est: ${rate.delivery_days ? rate.delivery_days + ' days' : (rate.estimatedDelivery || 'N/A')}</div>
             `;
             div.addEventListener('click', function () {
                 selectShippingRate(idx);
@@ -667,17 +667,6 @@ document.addEventListener('DOMContentLoaded', function () {
         fetchShippingRates();
     });
 
-    // --- Re-query shipping rates when relevant fields change ---
-    [countryInput, stateInput, postalCodeInput, document.getElementById('city'), document.getElementById('streetAddress'), document.getElementById('residential')].forEach(function (el) {
-        el.addEventListener('change', function() {
-            hasAttemptedRates = true;
-            fetchShippingRates();
-        });
-        el.addEventListener('blur', function() {
-            hasAttemptedRates = true;
-            fetchShippingRates();
-        });
-    });
     shippingRatesContainer.style.display = 'none';
     confirmShippingRateBtn.style.display = 'none';
 });

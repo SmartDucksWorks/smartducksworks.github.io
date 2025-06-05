@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.28 - 2025-06-04</p>
+        <p>Form Version: 1.0.29 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -494,19 +494,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Shipping Rates AJAX Logic ---
     function collectFormData() {
-        // Collect all fields needed for shipping rate calculation, including recipient info
+        // Build the nested 'to' object as expected by the server
         return {
-            firstName: document.getElementById('firstName').value,
-            lastName: document.getElementById('lastName').value,
-            email: document.getElementById('email').value,
-            phone: phoneInput.value,
-            companyName: document.getElementById('companyName').value,
-            countryCode: countryInput.value,
-            state: stateInput.value,
-            city: document.getElementById('city').value,
-            postalCode: postalCodeInput.value,
-            streetAddress: document.getElementById('streetAddress').value,
-            streetAddress2: document.getElementById('streetAddress2').value,
+            to: {
+                companyName: document.getElementById('companyName').value || (document.getElementById('firstName').value + ' ' + document.getElementById('lastName').value),
+                streetAddress: document.getElementById('streetAddress').value,
+                city: document.getElementById('city').value,
+                state: stateInput.value,
+                postalCode: postalCodeInput.value,
+                countryCode: countryInput.value,
+                attention: document.getElementById('firstName').value + ' ' + document.getElementById('lastName').value,
+                phone: phoneInput.value,
+                email: document.getElementById('email').value
+            },
             residential: document.getElementById('residential').checked,
             quantity: currentQuantity
         };
@@ -515,25 +515,28 @@ document.addEventListener('DOMContentLoaded', function () {
         // Basic validation for required fields
         const data = collectFormData();
         // Check for non-empty fields
-        if (!data.countryCode || !data.state || !data.city || !data.postalCode || !data.streetAddress) return false;
+        if (!data.to.countryCode || !data.to.state || !data.to.city || !data.to.postalCode || !data.to.streetAddress) return false;
         if (data.quantity < MIN_QUANTITY || data.quantity > MAX_QUANTITY) return false;
         // Validate state/province
-        if (!statesProvinces[data.countryCode] || !statesProvinces[data.countryCode].some(sp => sp.value === data.state)) return false;
+        if (!statesProvinces[data.to.countryCode] || !statesProvinces[data.to.countryCode].some(sp => sp.value === data.to.state)) return false;
         // Validate phone (North American 10-digit)
         const phoneDigits = phoneInput.value.replace(/\D/g, '');
         if (phoneDigits.length !== 10) return false;
         // Validate postal/zip code
-        if (data.countryCode === 'CA') {
+        if (data.to.countryCode === 'CA') {
             // Canadian postal code: A1A 1A1
-            if (!/^([A-VXY][0-9][A-Z]) ?([0-9][A-Z][0-9])$/i.test(data.postalCode.replace(/\s/g, ''))) return false;
-        } else if (data.countryCode === 'US') {
+            if (!/^([A-VXY][0-9][A-Z]) ?([0-9][A-Z][0-9])$/i.test(data.to.postalCode.replace(/\s/g, ''))) return false;
+        } else if (data.to.countryCode === 'US') {
             // US ZIP: 12345 or 12345-6789
-            if (!/^\d{5}(-\d{4})?$/.test(data.postalCode)) return false;
+            if (!/^\d{5}(-\d{4})?$/.test(data.to.postalCode)) return false;
         }
         return true;
     }
     function fetchShippingRates() {
-        if (!hasAttemptedRates) return; // Don't show rates/errors until user has interacted
+        if (!hasAttemptedRates) {
+            shippingRatesContainer.style.display = 'none';
+            return;
+        }
         if (!validateShippingFields()) {
             shippingRatesContainer.style.display = 'none';
             return;

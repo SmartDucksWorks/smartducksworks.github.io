@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.30 - 2025-06-04</p>
+        <p>Form Version: 1.0.31 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -419,9 +419,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 option.textContent = sp.name;
                 stateInput.appendChild(option);
             });
+            // Restore previous value if still valid
             if (prevValue && statesProvinces[selectedCountry].some(sp => sp.value === prevValue)) {
                 stateInput.value = prevValue;
+            } else {
+                stateInput.value = '';
             }
+        } else {
+            stateInput.value = '';
         }
     }
     countryInput.addEventListener('change', updateStatesProvinces);
@@ -606,6 +611,11 @@ document.addEventListener('DOMContentLoaded', function () {
         Array.from(ratesList.children).forEach((el, i) => {
             el.classList.toggle('selected-rate', i === idx);
             const radio = el.querySelector('input[type="radio"]');
+            if (radio) radio.checked = (i === idx);
+        });
+    }
+
+    // --- Payment Intent (Stripe) Logic ---
     function startStripePayment() {
         // Gather all form data for payment
         const formData = {

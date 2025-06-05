@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.27 - 2025-06-04</p>
+        <p>Form Version: 1.0.28 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -377,6 +377,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let selectedRate = null;
     let shippingRates = [];
     let paymentIntentClientSecret = null;
+    let hasAttemptedRates = false; // New flag to track if user has attempted to get rates
 
     // --- State/Province Dropdown Logic ---
     const statesProvinces = {
@@ -493,13 +494,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Shipping Rates AJAX Logic ---
     function collectFormData() {
-        // Only collect fields needed for shipping rate calculation
+        // Collect all fields needed for shipping rate calculation, including recipient info
         return {
+            firstName: document.getElementById('firstName').value,
+            lastName: document.getElementById('lastName').value,
+            email: document.getElementById('email').value,
+            phone: phoneInput.value,
+            companyName: document.getElementById('companyName').value,
             countryCode: countryInput.value,
             state: stateInput.value,
             city: document.getElementById('city').value,
             postalCode: postalCodeInput.value,
             streetAddress: document.getElementById('streetAddress').value,
+            streetAddress2: document.getElementById('streetAddress2').value,
             residential: document.getElementById('residential').checked,
             quantity: currentQuantity
         };
@@ -526,6 +533,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return true;
     }
     function fetchShippingRates() {
+        if (!hasAttemptedRates) return; // Don't show rates/errors until user has interacted
         if (!validateShippingFields()) {
             shippingRatesContainer.style.display = 'none';
             return;
@@ -635,6 +643,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Form Submission Handler (Prevent Reload, Trigger AJAX) ---
     form.addEventListener('submit', function (e) {
         e.preventDefault();
+        hasAttemptedRates = true;
         selectedRate = null;
         shippingRates = [];
         paymentIntentClientSecret = null;
@@ -643,12 +652,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Re-query shipping rates when relevant fields change ---
     [countryInput, stateInput, postalCodeInput, document.getElementById('city'), document.getElementById('streetAddress'), document.getElementById('residential')].forEach(function (el) {
-        el.addEventListener('change', fetchShippingRates);
-        el.addEventListener('blur', fetchShippingRates);
+        el.addEventListener('change', function() {
+            hasAttemptedRates = true;
+            fetchShippingRates();
+        });
+        el.addEventListener('blur', function() {
+            hasAttemptedRates = true;
+            fetchShippingRates();
+        });
     });
-    // Also re-query on quantity change (already handled in quantity buttons)
-
-    // --- Initial state ---
     shippingRatesContainer.style.display = 'none';
     confirmShippingRateBtn.style.display = 'none';
 });

@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.25 - 2025-06-04</p>
+        <p>Form Version: 1.0.26 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>Shipping Information</h1>
@@ -355,12 +355,30 @@
 
         <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // --- DOM references ---
     const form = document.querySelector('form');
     const phoneInput = document.getElementById('phone');
     const countryInput = document.getElementById('countryCode');
     const stateInput = document.getElementById('state');
     const postalCodeInput = document.getElementById('postalCode');
+    const quantityDisplay = document.getElementById('quantityDisplay');
+    const totalPriceDisplay = document.getElementById('totalPriceDisplay');
+    const decreaseQuantityBtn = document.getElementById('decreaseQuantity');
+    const increaseQuantityBtn = document.getElementById('increaseQuantity');
+    const shippingRatesContainer = document.getElementById('shippingRatesContainer');
+    const ratesList = document.getElementById('ratesList');
+    const confirmShippingRateBtn = document.getElementById('confirmShippingRate');
 
+    // --- Constants ---
+    const PRODUCT_UNIT_PRICE = 70.00;
+    const MIN_QUANTITY = 5;
+    const MAX_QUANTITY = 100;
+    let currentQuantity = MIN_QUANTITY;
+    let selectedRate = null;
+    let shippingRates = [];
+    let paymentIntentClientSecret = null;
+
+    // --- State/Province Dropdown Logic ---
     const statesProvinces = {
         CA: [
             { value: 'AB', name: 'Alberta' }, { value: 'BC', name: 'British Columbia' }, { value: 'MB', name: 'Manitoba' },
@@ -389,7 +407,6 @@ document.addEventListener('DOMContentLoaded', function () {
             { value: 'WI', name: 'Wisconsin' }, { value: 'WY', name: 'Wyoming' }
         ]
     };
-
     function updateStatesProvinces(forceValue) {
         const selectedCountry = countryInput.value;
         const prevValue = forceValue !== undefined ? forceValue : stateInput.value;
@@ -411,6 +428,7 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('reset', function() { setTimeout(updateStatesProvinces, 0); });
     updateStatesProvinces();
 
+    // --- Phone and Postal/Zip Formatting ---
     function formatPhoneNumber(value) {
         let phoneNumber = value.replace(/\D/g, '');
         if (phoneNumber.length === 10) {
@@ -451,7 +469,175 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     postalCodeInput.addEventListener('blur', postalFormatHandler);
     postalCodeInput.addEventListener('input', postalFormatHandler);
+
+    // --- Product Quantity and Price Logic ---
+    function updateQuantityDisplay() {
+        quantityDisplay.textContent = currentQuantity;
+        totalPriceDisplay.textContent = (currentQuantity * PRODUCT_UNIT_PRICE).toFixed(2);
+    }
+    decreaseQuantityBtn.addEventListener('click', function () {
+        if (currentQuantity > MIN_QUANTITY) {
+            currentQuantity--;
+            updateQuantityDisplay();
+            fetchShippingRates();
+        }
+    });
+    increaseQuantityBtn.addEventListener('click', function () {
+        if (currentQuantity < MAX_QUANTITY) {
+            currentQuantity++;
+            updateQuantityDisplay();
+            fetchShippingRates();
+        }
+    });
+    updateQuantityDisplay();
+
+    // --- Shipping Rates AJAX Logic ---
+    function collectFormData() {
+        // Only collect fields needed for shipping rate calculation
+        return {
+            countryCode: countryInput.value,
+            state: stateInput.value,
+            city: document.getElementById('city').value,
+            postalCode: postalCodeInput.value,
+            streetAddress: document.getElementById('streetAddress').value,
+            residential: document.getElementById('residential').checked,
+            quantity: currentQuantity
+        };
+    }
+    function validateShippingFields() {
+        // Basic validation for required fields
+        const data = collectFormData();
+        if (!data.countryCode || !data.state || !data.city || !data.postalCode || !data.streetAddress) return false;
+        if (data.quantity < MIN_QUANTITY || data.quantity > MAX_QUANTITY) return false;
+        return true;
+    }
+    function fetchShippingRates() {
+        if (!validateShippingFields()) {
+            shippingRatesContainer.style.display = 'none';
+            return;
+        }
+        const data = collectFormData();
+        ratesList.innerHTML = '<div>Loading shipping rates...</div>';
+        shippingRatesContainer.style.display = 'block';
+        fetch('https://duckpond.smartducks.works/webhook/shiptime-rates2', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(json => {
+            if (!json.rates || !Array.isArray(json.rates) || json.rates.length === 0) {
+                ratesList.innerHTML = '<div>No shipping rates found for this address/quantity.</div>';
+                confirmShippingRateBtn.style.display = 'none';
+                return;
+            }
+            shippingRates = json.rates;
+            renderShippingRates();
+        })
+        .catch(() => {
+            ratesList.innerHTML = '<div>Error fetching shipping rates. Please check your address and try again.</div>';
+            confirmShippingRateBtn.style.display = 'none';
+        });
+    }
+    function renderShippingRates() {
+        ratesList.innerHTML = '';
+        shippingRates.forEach((rate, idx) => {
+            const div = document.createElement('div');
+            div.className = 'rate-option';
+            div.tabIndex = 0;
+            div.innerHTML = `
+                <input type="radio" name="shippingRate" id="rate${idx}" value="${idx}" ${selectedRate === idx ? 'checked' : ''} />
+                <span class="rate-carrier">${rate.carrier}</span> - <span class="rate-price">$${rate.price.toFixed(2)}</span>
+                <div class="rate-details">${rate.service} &bull; Est: ${rate.estimatedDelivery || 'N/A'}</div>
+            `;
+            div.addEventListener('click', function () {
+                selectShippingRate(idx);
+            });
+            div.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') selectShippingRate(idx);
+            });
+            if (selectedRate === idx) div.classList.add('selected-rate');
+            ratesList.appendChild(div);
+        });
+        confirmShippingRateBtn.style.display = 'block';
+    }
+    function selectShippingRate(idx) {
+        selectedRate = idx;
+        Array.from(ratesList.children).forEach((el, i) => {
+            el.classList.toggle('selected-rate', i === idx);
+            const radio = el.querySelector('input[type="radio"]');
+            if (radio) radio.checked = (i === idx);
+        });
+        confirmShippingRateBtn.disabled = false;
+    }
+    confirmShippingRateBtn.addEventListener('click', function () {
+        if (selectedRate === null || !shippingRates[selectedRate]) return;
+        // Proceed to payment UI (Stripe integration)
+        startStripePayment();
+    });
+
+    // --- Stripe Payment Integration (Client-side) ---
+    function startStripePayment() {
+        // Gather all form data for payment
+        const formData = {
+            firstName: document.getElementById('firstName').value,
+            lastName: document.getElementById('lastName').value,
+            email: document.getElementById('email').value,
+            phone: phoneInput.value,
+            companyName: document.getElementById('companyName').value,
+            countryCode: countryInput.value,
+            state: stateInput.value,
+            city: document.getElementById('city').value,
+            postalCode: postalCodeInput.value,
+            streetAddress: document.getElementById('streetAddress').value,
+            streetAddress2: document.getElementById('streetAddress2').value,
+            residential: document.getElementById('residential').checked,
+            quantity: currentQuantity,
+            shippingRate: shippingRates[selectedRate],
+            instructions: document.getElementById('instructions').value
+        };
+        // Call backend to create Stripe customer and payment intent
+        fetch('https://duckpond.smartducks.works/webhook/stripe-create-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        })
+        .then(res => res.json())
+        .then(json => {
+            if (!json.clientSecret) {
+                alert('Error creating payment. Please try again.');
+                return;
+            }
+            paymentIntentClientSecret = json.clientSecret;
+            // Show Stripe payment UI (use Stripe.js or redirect as needed)
+            alert('Payment intent created! (Stripe UI integration goes here)');
+            // TODO: Integrate Stripe.js for actual payment collection
+        })
+        .catch(() => {
+            alert('Error creating payment. Please try again.');
+        });
+    }
+
+    // --- Form Submission Handler (Prevent Reload, Trigger AJAX) ---
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        selectedRate = null;
+        shippingRates = [];
+        paymentIntentClientSecret = null;
+        fetchShippingRates();
+    });
+
+    // --- Re-query shipping rates when relevant fields change ---
+    [countryInput, stateInput, postalCodeInput, document.getElementById('city'), document.getElementById('streetAddress'), document.getElementById('residential')].forEach(function (el) {
+        el.addEventListener('change', fetchShippingRates);
+        el.addEventListener('blur', fetchShippingRates);
+    });
+    // Also re-query on quantity change (already handled in quantity buttons)
+
+    // --- Initial state ---
+    shippingRatesContainer.style.display = 'none';
+    confirmShippingRateBtn.style.display = 'none';
 });
-    </script>
+</script>
 </body>
 </html>

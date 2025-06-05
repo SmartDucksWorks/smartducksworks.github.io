@@ -372,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Constants ---
     const PRODUCT_UNIT_PRICE = 70.00;
     const MIN_QUANTITY = 5;
-    const MAX_QUANTITY = 100;
+    const MAX_QUANTITY = 20; // Changed from 100 to 20
     let currentQuantity = MIN_QUANTITY;
     let selectedRate = null;
     let shippingRates = [];
@@ -477,25 +477,49 @@ document.addEventListener('DOMContentLoaded', function () {
     postalCodeInput.addEventListener('input', postalFormatHandler);
 
     // --- Product Quantity and Price Logic ---
+    let lastQuantity = currentQuantity;
+    function getUnitPriceForQuantity(qty) {
+        if (qty <= 10) return 35;
+        if (qty <= 15) return 40;
+        return 45;
+    }
     function updateQuantityDisplay() {
+        const unitPrice = getUnitPriceForQuantity(currentQuantity);
         quantityDisplay.textContent = currentQuantity;
-        totalPriceDisplay.textContent = (currentQuantity * PRODUCT_UNIT_PRICE).toFixed(2);
+        totalPriceDisplay.textContent = (currentQuantity * unitPrice).toFixed(2);
+        // Disable buttons at bounds
+        decreaseQuantityBtn.disabled = currentQuantity <= MIN_QUANTITY;
+        increaseQuantityBtn.disabled = currentQuantity >= MAX_QUANTITY;
     }
     decreaseQuantityBtn.addEventListener('click', function () {
         if (currentQuantity > MIN_QUANTITY) {
             currentQuantity--;
             updateQuantityDisplay();
-            fetchShippingRates();
+            // Clear/hide shipping rates and reset selection
+            shippingRatesContainer.style.display = 'none';
+            ratesList.innerHTML = '';
+            confirmShippingRateBtn.style.display = 'none';
+            selectedRate = null;
+            shippingRates = [];
+            paymentIntentClientSecret = null;
         }
     });
     increaseQuantityBtn.addEventListener('click', function () {
         if (currentQuantity < MAX_QUANTITY) {
             currentQuantity++;
             updateQuantityDisplay();
-            fetchShippingRates();
+            // Clear/hide shipping rates and reset selection
+            shippingRatesContainer.style.display = 'none';
+            ratesList.innerHTML = '';
+            confirmShippingRateBtn.style.display = 'none';
+            selectedRate = null;
+            shippingRates = [];
+            paymentIntentClientSecret = null;
         }
     });
+    // Initial button state
     updateQuantityDisplay();
+    lastQuantity = currentQuantity;
 
     // --- Shipping Rates AJAX Logic ---
     function collectFormData() {
@@ -553,10 +577,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return true;
     }
     function fetchShippingRates() {
-        if (!hasAttemptedRates) {
-            shippingRatesContainer.style.display = 'none';
-            return;
-        }
         if (!validateShippingFields()) {
             shippingRatesContainer.style.display = 'none';
             return;
@@ -673,7 +693,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Form Submission Handler (Prevent Reload, Trigger AJAX) ---
     form.addEventListener('submit', function (e) {
         e.preventDefault();
-        hasAttemptedRates = true;
+        // Prevent repeated submission if invalid
+        if (currentQuantity < MIN_QUANTITY || currentQuantity > MAX_QUANTITY) {
+            alert('Number of SmartDucks must be between ' + MIN_QUANTITY + ' and ' + MAX_QUANTITY + '.');
+            return;
+        }
         selectedRate = null;
         shippingRates = [];
         paymentIntentClientSecret = null;

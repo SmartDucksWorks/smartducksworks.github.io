@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.35 - 2025-06-04</p>
+        <p>Form Version: 1.0.36 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -639,7 +639,10 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('https://duckpond.smartducks.works/webhook/create-customer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
+            body: JSON.stringify({
+                type: 'create_customer',
+                data: formData
+            })
         })
         .then(res => res.json())
         .then(json => {

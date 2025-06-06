@@ -636,47 +636,103 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- Payment Intent (Stripe) Logic ---
+    function buildCustomerPayload() {
+        // Build nested address object for Stripe
+        return {
+            firstName: document.getElementById('firstName').value.trim(),
+            lastName: document.getElementById('lastName').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            phone: phoneInput.value.trim(),
+            companyName: document.getElementById('companyName').value.trim(),
+            address: {
+                line1: document.getElementById('streetAddress').value.trim(),
+                line2: document.getElementById('streetAddress2').value.trim(),
+                city: document.getElementById('city').value.trim(),
+                state: stateInput.value.trim(),
+                postal_code: postalCodeInput.value.trim(),
+                country: countryInput.value.trim()
+            }
+        };
+    }
+    function buildPaymentIntentPayload(customerId, orderDetails) {
+        // Compose payment intent payload
+        return {
+            customerId: customerId,
+            quantity: orderDetails.quantity,
+            unitPrice: getUnitPriceForQuantity(orderDetails.quantity),
+            totalPrice: orderDetails.quantity * getUnitPriceForQuantity(orderDetails.quantity),
+            shippingRate: orderDetails.shippingRate,
+            address: orderDetails.address,
+            email: orderDetails.email,
+            phone: orderDetails.phone,
+            instructions: orderDetails.instructions || ''
+        };
+    }
     function startStripePayment() {
         // Gather all form data for payment
-        const formData = {
-            firstName: document.getElementById('firstName').value,
-            lastName: document.getElementById('lastName').value,
-            email: document.getElementById('email').value,
-            phone: phoneInput.value,
-            companyName: document.getElementById('companyName').value,
-            countryCode: countryInput.value,
-            state: stateInput.value,
-            city: document.getElementById('city').value,
-            postalCode: postalCodeInput.value,
-            streetAddress: document.getElementById('streetAddress').value,
-            streetAddress2: document.getElementById('streetAddress2').value,
+        const orderDetails = {
+            firstName: document.getElementById('firstName').value.trim(),
+            lastName: document.getElementById('lastName').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            phone: phoneInput.value.trim(),
+            companyName: document.getElementById('companyName').value.trim(),
+            countryCode: countryInput.value.trim(),
+            state: stateInput.value.trim(),
+            city: document.getElementById('city').value.trim(),
+            postalCode: postalCodeInput.value.trim(),
+            streetAddress: document.getElementById('streetAddress').value.trim(),
+            streetAddress2: document.getElementById('streetAddress2').value.trim(),
             residential: document.getElementById('residential').checked,
             quantity: currentQuantity,
             shippingRate: shippingRates[selectedRate],
-            instructions: document.getElementById('instructions').value
+            instructions: document.getElementById('instructions').value.trim(),
+            address: {
+                line1: document.getElementById('streetAddress').value.trim(),
+                line2: document.getElementById('streetAddress2').value.trim(),
+                city: document.getElementById('city').value.trim(),
+                state: stateInput.value.trim(),
+                postal_code: postalCodeInput.value.trim(),
+                country: countryInput.value.trim()
+            }
         };
-        // Call backend to create Stripe customer and payment intent
+        // Step 1: Create Stripe customer
         fetch('https://duckpond.smartducks.works/webhook/create-customer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'create_customer',
-                data: formData
+                data: buildCustomerPayload()
             })
         })
         .then(res => res.json())
         .then(json => {
-            if (!json.clientSecret) {
-                alert('Error creating payment. Please try again.');
+            if (!json.customerId) {
+                alert('Error creating customer: ' + (json.message || 'Unknown error'));
                 return;
             }
-            paymentIntentClientSecret = json.clientSecret;
-            // Show Stripe payment UI (use Stripe.js or redirect as needed)
-            alert('Payment intent created! (Stripe UI integration goes here)');
-            // TODO: Integrate Stripe.js for actual payment collection
+            // Step 2: Create PaymentIntent
+            fetch('https://duckpond.smartducks.works/webhook/payment-intent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(buildPaymentIntentPayload(json.customerId, orderDetails))
+            })
+            .then(res2 => res2.json())
+            .then(json2 => {
+                if (!json2.clientSecret) {
+                    alert('Error creating payment intent: ' + (json2.message || 'Unknown error'));
+                    return;
+                }
+                paymentIntentClientSecret = json2.clientSecret;
+                // Show Stripe payment UI (use Stripe.js or redirect as needed)
+                alert('Payment intent created! (Stripe UI integration goes here)');
+                // TODO: Integrate Stripe.js for actual payment collection
+            })
+            .catch(err2 => {
+                alert('Error creating payment intent. Please try again.');
+            });
         })
-        .catch(() => {
-            alert('Error creating payment. Please try again.');
+        .catch(err => {
+            alert('Error creating customer. Please check your address and try again.');
         });
     }
 

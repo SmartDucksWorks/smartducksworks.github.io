@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.38 - 2025-06-04</p>
+        <p>Form Version: 1.0.39 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -636,6 +636,21 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- Payment Intent (Stripe) Logic ---
+    // Add feedback elements
+    let paymentStatusDiv = document.getElementById('paymentStatusDiv');
+    if (!paymentStatusDiv) {
+        paymentStatusDiv = document.createElement('div');
+        paymentStatusDiv.id = 'paymentStatusDiv';
+        paymentStatusDiv.style = 'margin-top:20px; color:#007bff; font-weight:bold;';
+        shippingRatesContainer.appendChild(paymentStatusDiv);
+    }
+    function setPaymentStatus(msg, isError) {
+        paymentStatusDiv.textContent = msg;
+        paymentStatusDiv.style.color = isError ? '#c00' : '#007bff';
+    }
+    function clearPaymentStatus() {
+        paymentStatusDiv.textContent = '';
+    }
     function buildCustomerPayload() {
         // Build nested address object for Stripe
         return {
@@ -696,6 +711,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
         // Step 1: Create Stripe customer
+        confirmShippingRateBtn.disabled = true;
+        setPaymentStatus('Creating customer...', false);
         fetch('https://duckpond.smartducks.works/webhook/create-customer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -707,10 +724,11 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(res => res.json())
         .then(json => {
             if (!json.customerId) {
-                alert('Error creating customer: ' + (json.message || 'Unknown error'));
+                setPaymentStatus('Error creating customer: ' + (json.message || 'Unknown error'), true);
+                confirmShippingRateBtn.disabled = false;
                 return;
             }
-            // Step 2: Create PaymentIntent
+            setPaymentStatus('Customer created. Creating payment intent...', false);
             fetch('https://duckpond.smartducks.works/webhook/payment-intent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -719,20 +737,23 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(res2 => res2.json())
             .then(json2 => {
                 if (!json2.clientSecret) {
-                    alert('Error creating payment intent: ' + (json2.message || 'Unknown error'));
+                    setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error'), true);
+                    confirmShippingRateBtn.disabled = false;
                     return;
                 }
                 paymentIntentClientSecret = json2.clientSecret;
-                // Show Stripe payment UI (use Stripe.js or redirect as needed)
-                alert('Payment intent created! (Stripe UI integration goes here)');
+                setPaymentStatus('Payment intent created! (Stripe UI integration goes here)', false);
                 // TODO: Integrate Stripe.js for actual payment collection
+                confirmShippingRateBtn.disabled = false;
             })
             .catch(err2 => {
-                alert('Error creating payment intent. Please try again.');
+                setPaymentStatus('Error creating payment intent. Please try again.', true);
+                confirmShippingRateBtn.disabled = false;
             });
         })
         .catch(err => {
-            alert('Error creating customer. Please check your address and try again.');
+            setPaymentStatus('Error creating customer. Please check your address and try again.', true);
+            confirmShippingRateBtn.disabled = false;
         });
     }
 

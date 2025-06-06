@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.60 - 2025-06-04</p>
+        <p>Form Version: 1.0.61 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -1043,6 +1043,12 @@ document.addEventListener('DOMContentLoaded', function () {
         fetchShippingRates();
     });
 }); // End of DOMContentLoaded
+
+    function hideStripeCardUI() {
+        stripePaymentSection.style.display = 'none';
+        cardErrorsDiv.textContent = '';
+        if (cardElement && typeof cardElement.clear === 'function') cardElement.clear();
+    }
     </script>
 </body>
 </html>

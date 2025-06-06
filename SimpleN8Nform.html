@@ -732,7 +732,10 @@ document.addEventListener('DOMContentLoaded', function () {
             setPaymentStatus('Customer created. Creating payment intent...', false);
             fetch('https://duckpond.smartducks.works/webhook/payment-intent', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.getElementById('_csrf').value // Add CSRF token to headers
+                },
                 body: JSON.stringify(buildPaymentIntentPayload(json.customerId, orderDetails))
             })
             .then(res2 => res2.json())

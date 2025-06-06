@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.56 - 2025-06-04</p>
+        <p>Form Version: 1.0.57 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -371,10 +371,15 @@
     // Show a message if JS is running
     console.log('SmartDucks form JS loaded, version 1.0.53');
     const formDebug = document.getElementById('formDebug');
-    function showDebug(msg) {
+    function showDebug(msg, errObj) {
         if (formDebug) {
             formDebug.style.display = 'block';
             formDebug.textContent = msg;
+        }
+        if (errObj) {
+            console.error(msg, errObj);
+        } else {
+            console.error(msg);
         }
     }
     function clearDebug() {
@@ -675,62 +680,72 @@ document.addEventListener('DOMContentLoaded', function () {
         return true;
     }
     function fetchShippingRates() {
-        if (!validateShippingFields()) {
-            shippingRatesContainer.style.display = 'none';
-            return;
-        }
-        const data = collectFormData();
-        ratesList.innerHTML = '<div>Loading shipping rates...</div>';
-        shippingRatesContainer.style.display = 'block';
-        fetch('https://duckpond.smartducks.works/webhook/shiptime-rates2', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data }) // <-- Wrap in { data }
-        })
-        .then(res => res.json())
-        .then(json => {
-            if (!json.rates || !Array.isArray(json.rates) || json.rates.length === 0) {
-                ratesList.innerHTML = '<div>No shipping rates found for this address/quantity.</div>';
-                confirmShippingRateBtn.style.display = 'none';
+        try {
+            if (!validateShippingFields()) {
+                shippingRatesContainer.style.display = 'none';
+                showDebug('Validation failed: Please check all required fields.');
                 return;
             }
-            shippingRates = json.rates;
-            renderShippingRates();
-        })
-        .catch(() => {
-            ratesList.innerHTML = '<div>Error fetching shipping rates. Please check your address and try again.</div>';
-            confirmShippingRateBtn.style.display = 'none';
-        });
+            const data = collectFormData();
+            ratesList.innerHTML = '<div>Loading shipping rates...</div>';
+            shippingRatesContainer.style.display = 'block';
+            fetch('https://duckpond.smartducks.works/webhook/shiptime-rates2', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data })
+            })
+            .then(res => res.json())
+            .then(json => {
+                if (!json.rates || !Array.isArray(json.rates) || json.rates.length === 0) {
+                    ratesList.innerHTML = '<div>No shipping rates found for this address/quantity.</div>';
+                    confirmShippingRateBtn.style.display = 'none';
+                    showDebug('No shipping rates found for this address/quantity.');
+                    return;
+                }
+                shippingRates = json.rates;
+                try {
+                    renderShippingRates();
+                } catch (err) {
+                    showDebug('Error rendering shipping rates: ' + err.message, err);
+                    shippingRatesContainer.style.display = 'none';
+                }
+            })
+            .catch((err) => {
+                showDebug('Error fetching shipping rates: ' + (err && err.message ? err.message : err), err);
+                ratesList.innerHTML = '<div>Error fetching shipping rates. Please check your address and try again.</div>';
+                confirmShippingRateBtn.style.display = 'none';
+            });
+        } catch (err) {
+            showDebug('Unexpected error in fetchShippingRates: ' + err.message, err);
+            shippingRatesContainer.style.display = 'none';
+        }
     }
     function renderShippingRates() {
-        ratesList.innerHTML = '';
-        shippingRates.forEach((rate, idx) => {
-            const div = document.createElement('div');
-            div.className = 'rate-option';
-            div.tabIndex = 0;
-            div.innerHTML = `
-                <input type="radio" name="shippingRate" id="rate${idx}" value="${idx}" ${selectedRate === idx ? 'checked' : ''} />
-                <span class="rate-carrier">${rate.carrier}</span> - <span class="rate-price">$${rate.cost.toFixed(2)}</span>
-                <div class="rate-details">${rate.service} &bull; Est: ${rate.delivery_days ? rate.delivery_days + ' days' : (rate.estimatedDelivery || 'N/A')}</div>
-            `;
-            div.addEventListener('click', function () {
-                selectShippingRate(idx);
+        try {
+            ratesList.innerHTML = '';
+            shippingRates.forEach((rate, idx) => {
+                const div = document.createElement('div');
+                div.className = 'rate-option';
+                div.tabIndex = 0;
+                div.innerHTML = `
+                    <input type="radio" name="shippingRate" id="rate${idx}" value="${idx}" ${selectedRate === idx ? 'checked' : ''} />
+                    <span class="rate-carrier">${rate.carrier}</span> - <span class="rate-price">$${rate.cost.toFixed(2)}</span>
+                    <div class="rate-details">${rate.service} &bull; Est: ${rate.delivery_days ? rate.delivery_days + ' days' : (rate.estimatedDelivery || 'N/A')}</div>
+                `;
+                div.addEventListener('click', function () {
+                    selectShippingRate(idx);
+                });
+                div.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') selectShippingRate(idx);
+                });
+                if (selectedRate === idx) div.classList.add('selected-rate');
+                ratesList.appendChild(div);
             });
-            div.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' || e.key === ' ') selectShippingRate(idx);
-            });
-            if (selectedRate === idx) div.classList.add('selected-rate');
-            ratesList.appendChild(div);
-        });
-        confirmShippingRateBtn.style.display = 'block';
-    }
-    function selectShippingRate(idx) {
-        selectedRate = idx;
-        Array.from(ratesList.children).forEach((el, i) => {
-            el.classList.toggle('selected-rate', i === idx);
-            const radio = el.querySelector('input[type="radio"]');
-            if (radio) radio.checked = (i === idx);
-        });
+            confirmShippingRateBtn.style.display = 'block';
+        } catch (err) {
+            showDebug('Error in renderShippingRates: ' + err.message, err);
+            shippingRatesContainer.style.display = 'none';
+        }
     }
 
     // --- Payment Intent (Stripe) Logic ---

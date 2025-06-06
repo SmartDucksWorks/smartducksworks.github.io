@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.46 - 2025-06-04</p>
+        <p>Form Version: 1.0.47 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -324,10 +324,11 @@
                         <span id="quantityDisplay">5</span>
                         <button type="button" id="increaseQuantity">+</button>
                     </div>
-                    <div class="product-price-display">
-                        <label class="price-label">Total Price:</label>
-                        <div>$<span id="totalPriceDisplay">350.00</span></div>
-                    </div>
+                </div>
+                <div id="pricingBreakdown" style="margin-top:10px;"></div>
+                <div class="product-price-display" style="margin-top:10px;">
+                    <label class="price-label">Total Price:</label>
+                    <div>$<span id="totalPriceDisplay">520.00</span></div>
                 </div>
             </fieldset>
             <!-- End Product Order Section -->
@@ -368,6 +369,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const shippingRatesContainer = document.getElementById('shippingRatesContainer');
     const ratesList = document.getElementById('ratesList');
     const confirmShippingRateBtn = document.getElementById('confirmShippingRate');
+    const orderBreakdown = document.getElementById('orderBreakdown');
+    const pricingBreakdownDiv = document.getElementById('pricingBreakdown');
 
     // --- Constants ---
     const PRODUCT_UNIT_PRICE = 70.00;
@@ -493,13 +496,98 @@ document.addEventListener('DOMContentLoaded', function () {
         if (qty <= 15) return 40;
         return 45;
     }
+    function calculateOrderBreakdown(qty) {
+        let lines = [];
+        let total = 0;
+        // Base 5 units
+        lines.push({ label: '5 SmartDucks (Base)', qty: 5, unit: '', price: 400 });
+        total += 400;
+        // 6-9: $35 each
+        if (qty > 5) {
+            const n = Math.min(qty, 9) - 5;
+            if (n > 0) {
+                lines.push({ label: 'SmartDucks 6–9', qty: n, unit: '$35 each', price: n * 35 });
+                total += n * 35;
+            }
+        }
+        // 10-14: $40 each
+        if (qty > 9) {
+            const n = Math.min(qty, 14) - 9;
+            if (n > 0) {
+                lines.push({ label: 'SmartDucks 10–14', qty: n, unit: '$40 each', price: n * 40 });
+                total += n * 40;
+            }
+        }
+        // 15-20: $45 each
+        if (qty > 14) {
+            const n = Math.min(qty, 20) - 14;
+            if (n > 0) {
+                lines.push({ label: 'SmartDucks 15–20', qty: n, unit: '$45 each', price: n * 45 });
+                total += n * 45;
+            }
+        }
+        // DuckFeed (annual)
+        lines.push({ label: 'DuckFeed (annual)', qty: 1, unit: '', price: 120 });
+        total += 120;
+        return { lines, total };
+    }
+    function renderOrderBreakdown(qty) {
+        const breakdown = calculateOrderBreakdown(qty);
+        let html = '<table style="width:100%;margin-top:10px;margin-bottom:0;font-size:1em;">';
+        breakdown.lines.forEach(line => {
+            html += `<tr><td>${line.label}${line.qty > 1 && line.unit ? ` (${line.qty} x ${line.unit})` : ''}</td><td style='text-align:right;'>$${line.price.toFixed(2)}</td></tr>`;
+        });
+        html += `<tr><td style='font-weight:bold;'>Total Price:</td><td style='font-weight:bold;text-align:right;'>$${breakdown.total.toFixed(2)}</td></tr>`;
+        html += '</table>';
+        orderBreakdown.innerHTML = html;
+    }
+    function getPricingBreakdown(qty) {
+        let lines = [];
+        let total = 0;
+        // Base 5 SmartDucks
+        lines.push(`<div>5 SmartDucks (Base): $400</div>`);
+        total += 400;
+        // 6-9: $35 each
+        if (qty > 5) {
+            const n = Math.min(qty, 9) - 5;
+            if (n > 0) {
+                lines.push(`<div>${n} × $35 = $${(n*35).toFixed(2)}</div>`);
+                total += n * 35;
+            }
+        }
+        // 10-14: $40 each
+        if (qty > 9) {
+            const n = Math.min(qty, 14) - 9;
+            if (n > 0) {
+                lines.push(`<div>${n} × $40 = $${(n*40).toFixed(2)}</div>`);
+                total += n * 40;
+            }
+        }
+        // 15-20: $45 each
+        if (qty > 14) {
+            const n = Math.min(qty, 20) - 14;
+            if (n > 0) {
+                lines.push(`<div>${n} × $45 = $${(n*45).toFixed(2)}</div>`);
+                total += n * 45;
+            }
+        }
+        // DuckFeed (annual)
+        lines.push(`<div>DuckFeed (annual): $120</div>`);
+        total += 120;
+        return { lines, total };
+    }
+    function updatePricingBreakdown() {
+        const qty = currentQuantity;
+        const breakdown = getPricingBreakdown(qty);
+        pricingBreakdownDiv.innerHTML = breakdown.lines.join('');
+        totalPriceDisplay.textContent = breakdown.total.toFixed(2);
+    }
+    // Update on quantity change
     function updateQuantityDisplay() {
-        const unitPrice = getUnitPriceForQuantity(currentQuantity);
         quantityDisplay.textContent = currentQuantity;
-        totalPriceDisplay.textContent = (currentQuantity * unitPrice).toFixed(2);
-        // Disable buttons at bounds
         decreaseQuantityBtn.disabled = currentQuantity <= MIN_QUANTITY;
         increaseQuantityBtn.disabled = currentQuantity >= MAX_QUANTITY;
+        updatePricingBreakdown();
     }
     decreaseQuantityBtn.addEventListener('click', function () {
         if (currentQuantity > MIN_QUANTITY) {
@@ -799,6 +887,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     shippingRatesContainer.style.display = 'none';
     confirmShippingRateBtn.style.display = 'none';
+
+    // Initial display
+    updatePricingBreakdown();
 });
 </script>
 </body>

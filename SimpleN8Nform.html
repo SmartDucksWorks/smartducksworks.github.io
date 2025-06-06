@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.52 - 2025-06-04</p>
+        <p>Form Version: 1.0.53 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -844,29 +844,11 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Please select a shipping rate before continuing.');
             return;
         }
+        // Hide payment section before starting
+        hideStripeCardUI();
         // Proceed to payment or next step
         startStripePayment();
     });
-
-    // --- Form Submission Handler (Prevent Reload, Trigger AJAX) ---
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        // Prevent repeated submission if invalid
-        if (currentQuantity < MIN_QUANTITY || currentQuantity > MAX_QUANTITY) {
-            alert('Number of SmartDucks must be between ' + MIN_QUANTITY + ' and ' + MAX_QUANTITY + '.');
-            return;
-        }
-        selectedRate = null;
-        shippingRates = [];
-        paymentIntentClientSecret = null;
-        fetchShippingRates();
-    });
-
-    shippingRatesContainer.style.display = 'none';
-    confirmShippingRateBtn.style.display = 'none';
-
-    // Initial display
-    updatePricingBreakdown();
 
     // --- Stripe.js Integration ---
     let stripe = null;
@@ -923,7 +905,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 setPaymentStatus('Payment successful! Thank you for your order.', false);
                 cardErrorsDiv.textContent = '';
                 payNowButton.disabled = true;
-                // Optionally: hideStripeCardUI();
             } else {
                 setPaymentStatus('Payment did not complete. Please try again.', true);
                 payNowButton.disabled = false;

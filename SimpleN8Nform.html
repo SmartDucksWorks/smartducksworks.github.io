@@ -951,6 +951,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // --- Prevent default form submit and use AJAX for shipping rates ---
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetchShippingRates();
+    });
 }); // End of DOMContentLoaded
     </script>
 </body>

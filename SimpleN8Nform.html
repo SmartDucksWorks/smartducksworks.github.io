@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.51 - 2025-06-04</p>
+        <p>Form Version: 1.0.52 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -378,7 +378,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const shippingRatesContainer = document.getElementById('shippingRatesContainer');
     const ratesList = document.getElementById('ratesList');
     const confirmShippingRateBtn = document.getElementById('confirmShippingRate');
-    const orderBreakdown = document.getElementById('orderBreakdown');
     const pricingBreakdownDiv = document.getElementById('pricingBreakdown');
 
     // --- Constants ---
@@ -431,25 +430,34 @@ document.addEventListener('DOMContentLoaded', function () {
         ]
     };
     function updateStatesProvinces(forceValue) {
-        if (!countryInput || !stateInput) return; // Defensive: DOM not ready
-        const selectedCountry = countryInput.value;
-        const prevValue = forceValue !== undefined ? forceValue : stateInput.value;
-        stateInput.innerHTML = '<option value="">-- Select State/Province --</option>';
-        if (selectedCountry && statesProvinces[selectedCountry]) {
-            statesProvinces[selectedCountry].forEach(function (sp) {
-                const option = document.createElement('option');
-                option.value = sp.value;
-                option.textContent = sp.name;
-                stateInput.appendChild(option);
-            });
-            // Restore previous value if still valid
-            if (prevValue && statesProvinces[selectedCountry].some(sp => sp.value === prevValue)) {
-                stateInput.value = prevValue;
+        try {
+            if (!countryInput || !stateInput) {
+                console.error('State/Province dropdown: countryInput or stateInput not found');
+                return;
+            }
+            const selectedCountry = countryInput.value;
+            const prevValue = forceValue !== undefined ? forceValue : stateInput.value;
+            stateInput.innerHTML = '<option value="">-- Select State/Province --</option>';
+            if (selectedCountry && statesProvinces[selectedCountry]) {
+                statesProvinces[selectedCountry].forEach(function (sp) {
+                    const option = document.createElement('option');
+                    option.value = sp.value;
+                    option.textContent = sp.name;
+                    stateInput.appendChild(option);
+                });
+                // Restore previous value if still valid
+                if (prevValue && statesProvinces[selectedCountry].some(sp => sp.value === prevValue)) {
+                    stateInput.value = prevValue;
+                } else {
+                    stateInput.value = '';
+                }
             } else {
                 stateInput.value = '';
             }
-        } else {
-            stateInput.value = '';
+        } catch (err) {
+            console.error('State/Province dropdown error:', err);
+            // Fallback: ensure at least the default option is present
+            if (stateInput) stateInput.innerHTML = '<option value="">-- Select State/Province --</option>';
         }
     }
     countryInput.addEventListener('change', updateStatesProvinces);
@@ -506,51 +514,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (qty <= 15) return 40;
         return 45;
     }
-    function calculateOrderBreakdown(qty) {
-        let lines = [];
-        let total = 0;
-        // Base 5 units
-        lines.push({ label: '5 SmartDucks (Base)', qty: 5, unit: '', price: 400 });
-        total += 400;
-        // 6-9: $35 each
-        if (qty > 5) {
-            const n = Math.min(qty, 9) - 5;
-            if (n > 0) {
-                lines.push({ label: 'SmartDucks 6–9', qty: n, unit: '$35 each', price: n * 35 });
-                total += n * 35;
-            }
-        }
-        // 10-14: $40 each
-        if (qty > 9) {
-            const n = Math.min(qty, 14) - 9;
-            if (n > 0) {
-                lines.push({ label: 'SmartDucks 10–14', qty: n, unit: '$40 each', price: n * 40 });
-                total += n * 40;
-            }
-        }
-        // 15-20: $45 each
-        if (qty > 14) {
-            const n = Math.min(qty, 20) - 14;
-            if (n > 0) {
-                lines.push({ label: 'SmartDucks 15–20', qty: n, unit: '$45 each', price: n * 45 });
-                total += n * 45;
-            }
-        }
-        // DuckFeed (annual)
-        lines.push({ label: 'DuckFeed (annual)', qty: 1, unit: '', price: 120 });
-        total += 120;
-        return { lines, total };
-    }
-    function renderOrderBreakdown(qty) {
-        const breakdown = calculateOrderBreakdown(qty);
-        let html = '<table style="width:100%;margin-top:10px;margin-bottom:0;font-size:1em;">';
-        breakdown.lines.forEach(line => {
-            html += `<tr><td>${line.label}${line.qty > 1 && line.unit ? ` (${line.qty} x ${line.unit})` : ''}</td><td style='text-align:right;'>$${line.price.toFixed(2)}</td></tr>`;
-        });
-        html += `<tr><td style='font-weight:bold;'>Total Price:</td><td style='font-weight:bold;text-align:right;'>$${breakdown.total.toFixed(2)}</td></tr>`;
-        html += '</table>';
-        orderBreakdown.innerHTML = html;
-    }
+    // Remove unused calculateOrderBreakdown and renderOrderBreakdown
+    // Only use getPricingBreakdown and updatePricingBreakdown
     function getPricingBreakdown(qty) {
         let lines = [];
         let total = 0;

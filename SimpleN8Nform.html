@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.50 - 2025-06-04</p>
+        <p>Form Version: 1.0.51 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -431,6 +431,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ]
     };
     function updateStatesProvinces(forceValue) {
+        if (!countryInput || !stateInput) return; // Defensive: DOM not ready
         const selectedCountry = countryInput.value;
         const prevValue = forceValue !== undefined ? forceValue : stateInput.value;
         stateInput.innerHTML = '<option value="">-- Select State/Province --</option>';

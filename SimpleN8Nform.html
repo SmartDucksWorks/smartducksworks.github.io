@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.39 - 2025-06-04</p>
+        <p>Form Version: 1.0.40 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -680,7 +680,8 @@ document.addEventListener('DOMContentLoaded', function () {
             address: orderDetails.address,
             email: orderDetails.email,
             phone: orderDetails.phone,
-            instructions: orderDetails.instructions || ''
+            instructions: orderDetails.instructions || '',
+            _csrf: document.getElementById('_csrf').value // Add CSRF token
         };
     }
     function startStripePayment() {

@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.41 - 2025-06-04</p>
+        <p>Form Version: 1.0.42 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -378,6 +378,16 @@ document.addEventListener('DOMContentLoaded', function () {
     let shippingRates = [];
     let paymentIntentClientSecret = null;
     let hasAttemptedRates = false; // New flag to track if user has attempted to get rates
+
+    // --- CSRF Token Generation (for dev/testing) ---
+    function generateRandomCSRFToken() {
+        // 32-char hex string
+        return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    const csrfInput = document.getElementById('_csrf');
+    if (csrfInput && (!csrfInput.value || csrfInput.value === 'dummyCSRFToken12345')) {
+        csrfInput.value = generateRandomCSRFToken();
+    }
 
     // --- State/Province Dropdown Logic ---
     const statesProvinces = {

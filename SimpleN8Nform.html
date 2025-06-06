@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.48 - 2025-06-04</p>
+        <p>Form Version: 1.0.50 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -352,9 +352,18 @@
             </div>
             <button id="confirmShippingRate" style="display: none; margin-top: 15px; background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer;">Confirm Selection</button>
         </div>
+
+        <!-- Stripe Elements Card UI (hidden by default) -->
+        <div id="stripePaymentSection" style="display:none; margin-top:30px;">
+            <h2>Enter Payment Details</h2>
+            <div id="card-element" style="margin-bottom:15px;"></div>
+            <button id="payNowButton" style="background-color:#28a745;color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;">Pay Now</button>
+            <div id="card-errors" style="color:#c00;margin-top:10px;"></div>
+        </div>
     </div>
 
-        <script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
 document.addEventListener('DOMContentLoaded', function () {
     // --- DOM references ---
     const form = document.querySelector('form');
@@ -840,14 +849,16 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(res2 => res2.json())
             .then(json2 => {
-                if (!json2.clientSecret) {
+                // Support both 'clientSecret' and 'client_secret' from backend
+                const clientSecret = json2.clientSecret || json2.client_secret;
+                if (!clientSecret) {
                     setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error'), true);
                     confirmShippingRateBtn.disabled = false;
                     return;
                 }
-                paymentIntentClientSecret = json2.clientSecret;
-                setPaymentStatus('Payment intent created! (Stripe UI integration goes here)', false);
-                // TODO: Integrate Stripe.js for actual payment collection
+                paymentIntentClientSecret = clientSecret;
+                setPaymentStatus('Payment intent created! Please enter your card details below.', false);
+                showStripeCardUI(paymentIntentClientSecret);
                 confirmShippingRateBtn.disabled = false;
             })
             .catch(err2 => {
@@ -890,7 +901,70 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initial display
     updatePricingBreakdown();
-});
-</script>
+
+    // --- Stripe.js Integration ---
+    let stripe = null;
+    let elements = null;
+    let cardElement = null;
+    const stripePaymentSection = document.getElementById('stripePaymentSection');
+    const cardErrorsDiv = document.getElementById('card-errors');
+    const payNowButton = document.getElementById('payNowButton');
+    let latestClientSecret = null;
+    // Replace with your real Stripe publishable key
+    const STRIPE_PUBLISHABLE_KEY = 'pk_test_12345YOURKEYHERE';
+
+    function showStripeCardUI(clientSecret) {
+        if (!stripe) {
+            stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+            elements = stripe.elements();
+            cardElement = elements.create('card');
+            cardElement.mount('#card-element');
+        }
+        latestClientSecret = clientSecret;
+        stripePaymentSection.style.display = 'block';
+        cardErrorsDiv.textContent = '';
+    }
+    function hideStripeCardUI() {
+        stripePaymentSection.style.display = 'none';
+        cardErrorsDiv.textContent = '';
+        if (cardElement) cardElement.clear();
+    }
+    if (payNowButton) {
+        payNowButton.addEventListener('click', async function(e) {
+            e.preventDefault();
+            payNowButton.disabled = true;
+            cardErrorsDiv.textContent = '';
+            setPaymentStatus('Processing payment...', false);
+            if (!stripe || !cardElement || !latestClientSecret) {
+                setPaymentStatus('Stripe is not initialized. Please try again.', true);
+                payNowButton.disabled = false;
+                return;
+            }
+            // Get billing details
+            const name = (document.getElementById('firstName').value + ' ' + document.getElementById('lastName').value).trim();
+            const email = document.getElementById('email').value.trim();
+            const {error, paymentIntent} = await stripe.confirmCardPayment(latestClientSecret, {
+                payment_method: {
+                    card: cardElement,
+                    billing_details: { name, email }
+                }
+            });
+            if (error) {
+                cardErrorsDiv.textContent = error.message;
+                setPaymentStatus('Payment failed: ' + error.message, true);
+                payNowButton.disabled = false;
+            } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+                setPaymentStatus('Payment successful! Thank you for your order.', false);
+                cardErrorsDiv.textContent = '';
+                payNowButton.disabled = true;
+                // Optionally: hideStripeCardUI();
+            } else {
+                setPaymentStatus('Payment did not complete. Please try again.', true);
+                payNowButton.disabled = false;
+            }
+        });
+    }
+    // ...existing code...
+    </script>
 </body>
 </html>

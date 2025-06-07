@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.62 - 2025-06-04</p>
+        <p>Form Version: 1.0.63 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -360,9 +360,9 @@
         <!-- Stripe Elements Card UI (hidden by default) -->
         <div id="stripePaymentSection" style="display:none; margin-top:30px;">
             <h2>Enter Payment Details</h2>
-            <!-- Payment Request Button (Apple Pay/Google Pay) -->
-            <div id="payment-request-button" style="margin-bottom:20px;"></div>
-            <div id="prb-errors" style="color:#c00;margin-bottom:10px;"></div>
+            <!-- Express Checkout Element (Apple Pay/Google Pay/Link) -->
+            <div id="express-checkout-element" style="margin-bottom:20px;"></div>
+            <div id="express-errors" style="color:#c00;margin-bottom:10px;"></div>
             <div class="form-row">
                 <div class="form-group" style="flex:1; min-width:180px;">
                     <label for="billingName">Billing Name</label>
@@ -935,11 +935,12 @@ document.addEventListener('DOMContentLoaded', function () {
     let stripe = null;
     let elements = null;
     let cardElement = null;
+    let expressElement = null;
     const stripePaymentSection = document.getElementById('stripePaymentSection');
     const cardErrorsDiv = document.getElementById('card-errors');
+    const expressErrorsDiv = document.getElementById('express-errors');
     const payNowButton = document.getElementById('payNowButton');
     let latestClientSecret = null;
-    // Replace with your real Stripe publishable key
     const STRIPE_PUBLISHABLE_KEY = 'pk_test_12345YOURKEYHERE';
 
     function showStripeCardUI(clientSecret) {
@@ -950,46 +951,41 @@ document.addEventListener('DOMContentLoaded', function () {
         // Pre-fill billing fields from form
         document.getElementById('billingName').value = (document.getElementById('firstName').value + ' ' + document.getElementById('lastName').value).trim();
         document.getElementById('billingEmail').value = document.getElementById('email').value.trim();
-        // Payment Request Button setup
-        const prbDiv = document.getElementById('payment-request-button');
-        const prbErrors = document.getElementById('prb-errors');
-        prbDiv.innerHTML = '';
-        prbErrors.textContent = '';
-        let paymentRequest = stripe.paymentRequest({
-            country: countryInput.value || 'US',
-            currency: 'usd',
-            total: {
-                label: 'SmartDucks Order',
-                amount: Math.round(parseFloat(totalPriceDisplay.textContent) * 100)
+        // Express Checkout Element setup
+        const expressDiv = document.getElementById('express-checkout-element');
+        const expressErrors = document.getElementById('express-errors');
+        expressDiv.innerHTML = '';
+        expressErrors.textContent = '';
+        let expressCheckout = elements.create('expressCheckout', {
+            paymentRequest: {
+                country: countryInput.value || 'US',
+                currency: 'usd',
+                total: {
+                    label: 'SmartDucks Order',
+                    amount: Math.round(parseFloat(totalPriceDisplay.textContent) * 100)
+                },
+                requestPayerName: true,
+                requestPayerEmail: true
             },
-            requestPayerName: true,
-            requestPayerEmail: true
+            clientSecret: clientSecret
         });
-        const prb = elements.create('paymentRequestButton', { paymentRequest });
-        paymentRequest.canMakePayment().then(function(result) {
-            if (result) {
-                prb.mount('#payment-request-button');
-                prbDiv.style.display = 'block';
-            } else {
-                prbDiv.style.display = 'none';
-            }
-        });
-        paymentRequest.on('paymentmethod', async function(ev) {
-            setPaymentStatus('Processing payment...', false);
-            // Confirm the PaymentIntent with the payment method
-            const {error} = await stripe.confirmCardPayment(clientSecret, {
-                payment_method: ev.paymentMethod.id,
-                payment_method_options: { card: { request_three_d_secure: 'automatic' } },
-                receipt_email: ev.payerEmail
-            }, { handleActions: false });
+        expressCheckout.mount('#express-checkout-element');
+        expressCheckout.on('confirm', async (event) => {
+            setPaymentStatus('Processing wallet payment...', false);
+            const {error} = await stripe.confirmPayment({
+                elements,
+                clientSecret,
+                confirmParams: {
+                    return_url: window.location.href // Or a thank you page
+                },
+                redirect: 'if_required'
+            });
             if (error) {
-                ev.complete('fail');
-                prbErrors.textContent = error.message;
-                setPaymentStatus('Payment failed: ' + error.message, true);
+                expressErrors.textContent = error.message;
+                setPaymentStatus('Wallet payment failed: ' + error.message, true);
             } else {
-                ev.complete('success');
-                setPaymentStatus('Payment successful! Thank you for your order.', false);
-                prbErrors.textContent = '';
+                setPaymentStatus('Wallet payment successful! Thank you for your order.', false);
+                expressErrors.textContent = '';
                 hideStripeCardUI();
             }
         });
@@ -1036,17 +1032,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-
-    // --- Prevent default form submit and use AJAX for shipping rates ---
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        fetchShippingRates();
-    });
-
     function hideStripeCardUI() {
         stripePaymentSection.style.display = 'none';
         cardErrorsDiv.textContent = '';
+        expressErrorsDiv.textContent = '';
         if (cardElement && typeof cardElement.clear === 'function') cardElement.clear();
+        if (expressElement) expressElement.unmount();
     }
 }); // End of DOMContentLoaded
     </script>

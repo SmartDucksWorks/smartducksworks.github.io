@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.65 - 2025-06-04</p>
+        <p>Form Version: 1.0.66 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -941,7 +941,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const expressErrorsDiv = document.getElementById('express-errors');
     const payNowButton = document.getElementById('payNowButton');
     let latestClientSecret = null;
-    const STRIPE_PUBLISHABLE_KEY = 'pk_test_12345YOURKEYHERE';
+    const STRIPE_PUBLISHABLE_KEY = 'pk_live_51QL4n4G8FW8Uq8PBPZLJ0uhwZQ7vUEwmemkImC8MIkZsvNxVNUpfb9UEPAXd4ouyLUHWnh6Xbn0qC0XMWH7Kn1gK00psgsSy9x';
 
     function showStripeCardUI(clientSecret) {
         if (!stripe) {

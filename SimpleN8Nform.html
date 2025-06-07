@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.66 - 2025-06-04</p>
+        <p>Form Version: 1.0.67 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -982,11 +982,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 hideStripeCardUI();
             }
         });
-        // Card Element setup
-        if (!window.cardElement) {
-            window.cardElement = elements.create('card');
-            window.cardElement.mount('#card-element');
+        // Card Element setup: always re-create after elements is re-initialized
+        if (window.cardElement && typeof window.cardElement.unmount === 'function') {
+            window.cardElement.unmount();
         }
+        window.cardElement = elements.create('card');
+        window.cardElement.mount('#card-element');
         latestClientSecret = clientSecret;
         stripePaymentSection.style.display = 'block';
         cardErrorsDiv.textContent = '';
@@ -1030,6 +1031,7 @@ document.addEventListener('DOMContentLoaded', function () {
         cardErrorsDiv.textContent = '';
         expressErrorsDiv.textContent = '';
         if (window.cardElement && typeof window.cardElement.clear === 'function') window.cardElement.clear();
+        if (window.cardElement && typeof window.cardElement.unmount === 'function') window.cardElement.unmount();
         if (window.expressElement && typeof window.expressElement.unmount === 'function') window.expressElement.unmount();
     }
 

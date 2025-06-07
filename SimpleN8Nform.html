@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.64 - 2025-06-04</p>
+        <p>Form Version: 1.0.65 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -946,8 +946,9 @@ document.addEventListener('DOMContentLoaded', function () {
     function showStripeCardUI(clientSecret) {
         if (!stripe) {
             stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
-            elements = stripe.elements();
         }
+        // Always re-initialize elements with the new clientSecret
+        elements = stripe.elements({ clientSecret });
         // Pre-fill billing fields from form
         document.getElementById('billingName').value = (document.getElementById('firstName').value + ' ' + document.getElementById('lastName').value).trim();
         document.getElementById('billingEmail').value = document.getElementById('email').value.trim();
@@ -956,21 +957,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const expressErrors = document.getElementById('express-errors');
         expressDiv.innerHTML = '';
         expressErrors.textContent = '';
-        let expressCheckout = elements.create('expressCheckout', {
-            paymentRequest: {
-                country: countryInput.value || 'US',
-                currency: 'usd',
-                total: {
-                    label: 'SmartDucks Order',
-                    amount: Math.round(parseFloat(totalPriceDisplay.textContent) * 100)
-                },
-                requestPayerName: true,
-                requestPayerEmail: true
-            },
-            clientSecret: clientSecret
-        });
-        expressCheckout.mount('#express-checkout-element');
-        expressCheckout.on('confirm', async (event) => {
+        // Unmount previous expressElement if exists
+        if (window.expressElement && typeof window.expressElement.unmount === 'function') {
+            window.expressElement.unmount();
+        }
+        window.expressElement = elements.create('expressCheckout');
+        window.expressElement.mount('#express-checkout-element');
+        window.expressElement.on('confirm', async (event) => {
             setPaymentStatus('Processing wallet payment...', false);
             const {error} = await stripe.confirmPayment({
                 elements,
@@ -990,9 +983,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         // Card Element setup
-        if (!cardElement) {
-            cardElement = elements.create('card');
-            cardElement.mount('#card-element');
+        if (!window.cardElement) {
+            window.cardElement = elements.create('card');
+            window.cardElement.mount('#card-element');
         }
         latestClientSecret = clientSecret;
         stripePaymentSection.style.display = 'block';
@@ -1036,8 +1029,8 @@ document.addEventListener('DOMContentLoaded', function () {
         stripePaymentSection.style.display = 'none';
         cardErrorsDiv.textContent = '';
         expressErrorsDiv.textContent = '';
-        if (cardElement && typeof cardElement.clear === 'function') cardElement.clear();
-        if (expressElement) expressElement.unmount();
+        if (window.cardElement && typeof window.cardElement.clear === 'function') window.cardElement.clear();
+        if (window.expressElement && typeof window.expressElement.unmount === 'function') window.expressElement.unmount();
     }
 
     form.addEventListener('submit', function(e) {

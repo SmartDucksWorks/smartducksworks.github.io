@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.69 - 2025-06-04</p>
+        <p>Form Version: 1.0.70 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -825,7 +825,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     function buildPaymentIntentPayload(customerId, orderDetails) {
         // Use the same breakdown as the UI
-        // 'instructions' will be sent as Stripe metadata (see N8N workflow)
+        // 'instructions' will be sent to Stripe as metadata (see N8N workflow)
         const breakdown = getPricingBreakdown(orderDetails.quantity);
         const totalPrice = breakdown.total;
         return {
@@ -840,6 +840,7 @@ document.addEventListener('DOMContentLoaded', function () {
             email: orderDetails.email,
             phone: orderDetails.phone,
             instructions: orderDetails.instructions || '', // <-- This is sent to Stripe as metadata
+            idempotencyKey: orderDetails.idempotencyKey, // New: Add idempotency key
             _csrf: document.getElementById('_csrf').value
         };
     }
@@ -893,13 +894,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             setPaymentStatus('Customer created. Creating payment intent...', false);
+            // Attach idempotencyKey to payment intent payload as well
+            const paymentIntentPayload = buildPaymentIntentPayload(json.customerId, orderDetails);
+            paymentIntentPayload.idempotencyKey = idempotencyKey;
             fetch('https://duckpond.smartducks.works/webhook/payment-intent', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': document.getElementById('_csrf').value // Add CSRF token to headers
                 },
-                body: JSON.stringify({ data: buildPaymentIntentPayload(json.customerId, orderDetails) }) // Wrap in { data: ... }
+                body: JSON.stringify({ data: paymentIntentPayload }) // Wrap in { data: ... }
             })
             .then(res2 => res2.json())
             .then(json2 => {

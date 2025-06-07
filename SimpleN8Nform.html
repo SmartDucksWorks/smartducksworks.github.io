@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.68 - 2025-06-04</p>
+        <p>Form Version: 1.0.69 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -873,12 +873,16 @@ document.addEventListener('DOMContentLoaded', function () {
         // Step 1: Create Stripe customer
         confirmShippingRateBtn.disabled = true;
         setPaymentStatus('Creating customer...', false);
+        // --- Idempotency Key Generation ---
+        const idempotencyKey = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+        const customerPayload = buildCustomerPayload();
+        customerPayload.idempotencyKey = idempotencyKey;
         fetch('https://duckpond.smartducks.works/webhook/create-customer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'create_customer',
-                data: buildCustomerPayload()
+                data: customerPayload
             })
         })
         .then(res => res.json())

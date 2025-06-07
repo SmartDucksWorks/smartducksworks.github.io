@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.63 - 2025-06-04</p>
+        <p>Form Version: 1.0.64 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -1039,6 +1039,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (cardElement && typeof cardElement.clear === 'function') cardElement.clear();
         if (expressElement) expressElement.unmount();
     }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetchShippingRates();
+        return false;
+    });
 }); // End of DOMContentLoaded
     </script>
 </body>

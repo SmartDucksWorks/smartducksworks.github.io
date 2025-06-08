@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.70 - 2025-06-04</p>
+        <p>Form Version: 1.0.71 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -828,6 +828,28 @@ document.addEventListener('DOMContentLoaded', function () {
         // 'instructions' will be sent to Stripe as metadata (see N8N workflow)
         const breakdown = getPricingBreakdown(orderDetails.quantity);
         const totalPrice = breakdown.total;
+        // Always send all metadata fields as non-null strings
+        const metadata = {
+            instructions: (typeof orderDetails.instructions === 'string') ? orderDetails.instructions : '',
+            // Add future metadata fields here, always as strings
+        };
+        // Debug: log outgoing payment intent payload for admin verification
+        if (window && window.localStorage) {
+            try {
+                window.localStorage.setItem('lastPaymentIntentPayload', JSON.stringify({
+                    customerId,
+                    quantity: orderDetails.quantity,
+                    totalPrice,
+                    shippingRate: orderDetails.shippingRate,
+                    address: orderDetails.address,
+                    email: orderDetails.email,
+                    phone: orderDetails.phone,
+                    metadata,
+                    idempotencyKey: orderDetails.idempotencyKey,
+                    _csrf: document.getElementById('_csrf').value
+                }, null, 2));
+            } catch (e) { /* ignore */ }
+        }
         return {
             customerId: customerId,
             customer: customerId, // Add for N8N compatibility
@@ -839,12 +861,19 @@ document.addEventListener('DOMContentLoaded', function () {
             address: orderDetails.address,
             email: orderDetails.email,
             phone: orderDetails.phone,
-            instructions: orderDetails.instructions || '', // <-- This is sent to Stripe as metadata
+            // Always send metadata as an object
+            metadata,
             idempotencyKey: orderDetails.idempotencyKey, // New: Add idempotency key
             _csrf: document.getElementById('_csrf').value
         };
     }
+    let paymentIntentInProgress = false; // Prevent double payment intent
     function startStripePayment() {
+        if (paymentIntentInProgress) {
+            showDebug('Payment is already being processed. Please wait.');
+            return;
+        }
+        paymentIntentInProgress = true;
         // Gather all form data for payment
         const orderDetails = {
             firstName: document.getElementById('firstName').value.trim(),
@@ -891,6 +920,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!json.customerId) {
                 setPaymentStatus('Error creating customer: ' + (json.message || 'Unknown error'), true);
                 confirmShippingRateBtn.disabled = false;
+                paymentIntentInProgress = false;
                 return;
             }
             setPaymentStatus('Customer created. Creating payment intent...', false);
@@ -912,21 +942,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!clientSecret) {
                     setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error'), true);
                     confirmShippingRateBtn.disabled = false;
+                    paymentIntentInProgress = false;
                     return;
                 }
                 paymentIntentClientSecret = clientSecret;
                 setPaymentStatus('Payment intent created! Please enter your card details below.', false);
                 showStripeCardUI(paymentIntentClientSecret);
                 confirmShippingRateBtn.disabled = false;
+                paymentIntentInProgress = false;
             })
             .catch(err2 => {
                 setPaymentStatus('Error creating payment intent. Please try again.', true);
                 confirmShippingRateBtn.disabled = false;
+                paymentIntentInProgress = false;
             });
         })
         .catch(err => {
             setPaymentStatus('Error creating customer. Please check your address and try again.', true);
             confirmShippingRateBtn.disabled = false;
+            paymentIntentInProgress = false;
         });
     }
 

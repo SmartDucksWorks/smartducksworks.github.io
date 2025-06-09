@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.71 - 2025-06-04</p>
+        <p>Form Version: 1.0.72 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -900,13 +900,57 @@ document.addEventListener('DOMContentLoaded', function () {
                 country: countryInput.value.trim()
             }
         };
-        // Step 1: Create Stripe customer
+        const orderSessionKey = getOrderSessionKey(orderDetails);
+        let persisted = getPersistedOrderData(orderSessionKey);
+        let idempotencyKey, customerId;
+        if (persisted && persisted.customerId && persisted.idempotencyKey) {
+            // Reuse existing for this order
+            idempotencyKey = persisted.idempotencyKey;
+            customerId = persisted.customerId;
+        } else {
+            // New order/session
+            idempotencyKey = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+        }
         confirmShippingRateBtn.disabled = true;
         setPaymentStatus('Creating customer...', false);
-        // --- Idempotency Key Generation ---
-        const idempotencyKey = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(36).substr(2, 9));
         const customerPayload = buildCustomerPayload();
         customerPayload.idempotencyKey = idempotencyKey;
+        if (customerId) {
+            // If we already have a customerId, skip customer creation and go straight to payment intent
+            setPaymentStatus('Customer found. Creating payment intent...', false);
+            const paymentIntentPayload = buildPaymentIntentPayload(customerId, orderDetails);
+            paymentIntentPayload.idempotencyKey = idempotencyKey;
+            fetch('https://duckpond.smartducks.works/webhook/payment-intent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.getElementById('_csrf').value
+                },
+                body: JSON.stringify({ data: paymentIntentPayload })
+            })
+            .then(res2 => res2.json())
+            .then(json2 => {
+                const clientSecret = json2.clientSecret || json2.client_secret;
+                if (!clientSecret) {
+                    setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error'), true);
+                    confirmShippingRateBtn.disabled = false;
+                    paymentIntentInProgress = false;
+                    return;
+                }
+                paymentIntentClientSecret = clientSecret;
+                setPaymentStatus('Payment intent created! Please enter your card details below.', false);
+                showStripeCardUI(paymentIntentClientSecret);
+                confirmShippingRateBtn.disabled = false;
+                paymentIntentInProgress = false;
+            })
+            .catch(err2 => {
+                setPaymentStatus('Error creating payment intent. Please try again.', true);
+                confirmShippingRateBtn.disabled = false;
+                paymentIntentInProgress = false;
+            });
+            return;
+        }
+        // If no customerId, create customer as before
         fetch('https://duckpond.smartducks.works/webhook/create-customer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -923,21 +967,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 paymentIntentInProgress = false;
                 return;
             }
+            // Persist for this order/session
+            persistOrderData(orderSessionKey, json.customerId, idempotencyKey);
             setPaymentStatus('Customer created. Creating payment intent...', false);
-            // Attach idempotencyKey to payment intent payload as well
             const paymentIntentPayload = buildPaymentIntentPayload(json.customerId, orderDetails);
             paymentIntentPayload.idempotencyKey = idempotencyKey;
             fetch('https://duckpond.smartducks.works/webhook/payment-intent', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-Token': document.getElementById('_csrf').value // Add CSRF token to headers
+                    'X-CSRF-Token': document.getElementById('_csrf').value
                 },
-                body: JSON.stringify({ data: paymentIntentPayload }) // Wrap in { data: ... }
+                body: JSON.stringify({ data: paymentIntentPayload })
             })
             .then(res2 => res2.json())
             .then(json2 => {
-                // Support both 'clientSecret' and 'client_secret' from backend
                 const clientSecret = json2.clientSecret || json2.client_secret;
                 if (!clientSecret) {
                     setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error'), true);
@@ -1078,6 +1122,37 @@ document.addEventListener('DOMContentLoaded', function () {
         if (window.cardElement && typeof window.cardElement.clear === 'function') window.cardElement.clear();
         if (window.cardElement && typeof window.cardElement.unmount === 'function') window.cardElement.unmount();
         if (window.expressElement && typeof window.expressElement.unmount === 'function') window.expressElement.unmount();
+    }
+
+    // --- Idempotency Key and CustomerId Persistence ---
+    function getOrderSessionKey(orderDetails) {
+        // Use a hash of the order details that define a unique order (e.g., email+quantity+shippingRate)
+        // For simplicity, concatenate key fields
+        return [
+            orderDetails.email,
+            orderDetails.quantity,
+            orderDetails.shippingRate && orderDetails.shippingRate.id,
+            orderDetails.address && orderDetails.address.line1,
+            orderDetails.address && orderDetails.address.postal_code
+        ].join('|');
+    }
+
+    function getPersistedOrderData(orderSessionKey) {
+        if (window.localStorage) {
+            const data = window.localStorage.getItem('orderData_' + orderSessionKey);
+            if (data) return JSON.parse(data);
+        }
+        return null;
+    }
+    function persistOrderData(orderSessionKey, customerId, idempotencyKey) {
+        if (window.localStorage) {
+            window.localStorage.setItem('orderData_' + orderSessionKey, JSON.stringify({ customerId, idempotencyKey }));
+        }
+    }
+    function clearPersistedOrderData(orderSessionKey) {
+        if (window.localStorage) {
+            window.localStorage.removeItem('orderData_' + orderSessionKey);
+        }
     }
 
     form.addEventListener('submit', function(e) {

@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.74 - 2025-06-04</p>
+        <p>Form Version: 1.0.75 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -319,14 +319,14 @@
                 <div class="form-group">
                     <div style="font-weight: bold; margin-bottom: 4px;">SSID and Password</div>
                     <div style="font-size: 0.95em; color: #555; margin-bottom: 8px;">Required to write directly to your SmartDucks but not stored.</div>
-                    <div style="display: flex; gap: 15px; align-items: flex-end;">
-                        <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; gap: 15px; align-items: flex-start;">
+                        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
                             <label for="wifiSsid">SSID:</label>
-                            <input type="text" id="wifiSsid" name="wifiSsid" autocomplete="off" style="width: 100%;">
+                            <input type="text" id="wifiSsid" name="wifiSsid" autocomplete="off" style="width: 100%; min-height: 42px; line-height: 1.2; box-sizing: border-box; padding: 10px;">
                         </div>
-                        <div style="flex: 1; min-width: 0;">
+                        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
                             <label for="wifiPassword">Password:</label>
-                            <input type="password" id="wifiPassword" name="wifiPassword" autocomplete="off" style="width: 100%;">
+                            <input type="password" id="wifiPassword" name="wifiPassword" autocomplete="off" style="width: 100%; min-height: 42px; line-height: 1.2; box-sizing: border-box; padding: 10px;">
                         </div>
                     </div>
                 </div>

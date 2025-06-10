@@ -237,7 +237,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.78 - 2025-06-04</p>
+        <p>Form Version: 1.0.79 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -536,13 +536,18 @@ document.addEventListener('DOMContentLoaded', function () {
             phoneNumber = phoneNumber.substring(1);
             return `(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)}-${phoneNumber.substring(6)}`;
         }
-        return phoneNumber;
+        // If not 10 or 11 digits, return as-is (do not format)
+        return value;
     }
     function phoneFormatHandler() {
-        phoneInput.value = formatPhoneNumber(phoneInput.value);
+        // Only format if 10 or 11 digits, else leave as-is
+        const raw = phoneInput.value.replace(/\D/g, '');
+        if (raw.length === 10 || (raw.length === 11 && raw.startsWith('1'))) {
+            phoneInput.value = formatPhoneNumber(phoneInput.value);
+        }
     }
     phoneInput.addEventListener('blur', phoneFormatHandler);
-    phoneInput.addEventListener('input', phoneFormatHandler);
+    // Remove input event formatting to avoid interfering with user typing
 
     function postalFormatHandler() {
         const selectedCountry = countryInput.value;

@@ -57,14 +57,19 @@
         .checkbox-group {
             display: flex;
             align-items: center;
+            justify-content: center; /* Center horizontally */
+            margin-top: 32px; /* More space above */
+            margin-bottom: 32px; /* More space below */
         }
         .checkbox-group input[type="checkbox"] {
-            margin-right: 8px;
-            width: auto;
+            margin-right: 12px;
+            width: 22px;
+            height: 22px;
         }
         .checkbox-group label {
             margin-bottom: 0;
             font-weight: normal;
+            font-size: 1.08em;
         }
         button[type="submit"] {
             background-color: #5cb85c;
@@ -232,7 +237,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.75 - 2025-06-04</p>
+        <p>Form Version: 1.0.76 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -312,7 +317,7 @@
                     <label for="streetAddress2">Apartment, suite, etc. (Optional)</label>
                     <input type="text" id="streetAddress2" name="streetAddress2">
                 </div>
-                 <div class="form-group checkbox-group" style="margin-top: 18px; margin-bottom: 18px;">
+                 <div class="form-group checkbox-group">
                     <input type="checkbox" id="residential" name="residential">
                     <label for="residential">This is a business address.</label>
                 </div>

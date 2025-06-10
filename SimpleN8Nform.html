@@ -237,7 +237,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.79 - 2025-06-04</p>
+        <p>Form Version: 1.0.80 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -544,10 +544,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const raw = phoneInput.value.replace(/\D/g, '');
         if (raw.length === 10 || (raw.length === 11 && raw.startsWith('1'))) {
             phoneInput.value = formatPhoneNumber(phoneInput.value);
+        } else {
+            // If not enough digits, do not format or change the value
+            phoneInput.value = raw;
         }
     }
     phoneInput.addEventListener('blur', phoneFormatHandler);
     // Remove input event formatting to avoid interfering with user typing
+
+    // When a shipping rate is selected, do not reformat the phone number
+    // (No code needed here unless you have a handler that modifies phoneInput.value)
 
     function postalFormatHandler() {
         const selectedCountry = countryInput.value;
@@ -956,9 +962,14 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(json2 => {
                 const clientSecret = json2.clientSecret || json2.client_secret;
                 if (!clientSecret) {
-                    setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error'), true);
+                    // Show full backend response for debugging
+                    setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error') + (json2.error ? ' (' + json2.error + ')' : '') + (json2.status ? ' [status: ' + json2.status + ']' : '') + (json2.statusCode ? ' [code: ' + json2.statusCode + ']' : '') + (json2.paymentIntentId ? ' [paymentIntentId: ' + json2.paymentIntentId + ']' : '') + (json2.paymentIntentStatus ? ' [paymentIntentStatus: ' + json2.paymentIntentStatus + ']' : '') + (json2.paymentIntentAmount ? ' [amount: ' + json2.paymentIntentAmount + ']' : '') + (json2.paymentIntentCurrency ? ' [currency: ' + json2.paymentIntentCurrency + ']' : '') + (json2.client_secret === undefined ? ' [client_secret missing in backend response]' : ''), true);
                     confirmShippingRateBtn.disabled = false;
                     paymentIntentInProgress = false;
+                    // Also log the full response for admin debugging
+                    if (window && window.localStorage) {
+                        try { window.localStorage.setItem('lastPaymentIntentError', JSON.stringify(json2, null, 2)); } catch (e) {}
+                    }
                     return;
                 }
                 // If message is 'Reusing existing PaymentIntent', treat as success
@@ -1013,9 +1024,14 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(json2 => {
                 const clientSecret = json2.clientSecret || json2.client_secret;
                 if (!clientSecret) {
-                    setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error'), true);
+                    // Show full backend response for debugging
+                    setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error') + (json2.error ? ' (' + json2.error + ')' : '') + (json2.status ? ' [status: ' + json2.status + ']' : '') + (json2.statusCode ? ' [code: ' + json2.statusCode + ']' : '') + (json2.paymentIntentId ? ' [paymentIntentId: ' + json2.paymentIntentId + ']' : '') + (json2.paymentIntentStatus ? ' [paymentIntentStatus: ' + json2.paymentIntentStatus + ']' : '') + (json2.paymentIntentAmount ? ' [amount: ' + json2.paymentIntentAmount + ']' : '') + (json2.paymentIntentCurrency ? ' [currency: ' + json2.paymentIntentCurrency + ']' : '') + (json2.client_secret === undefined ? ' [client_secret missing in backend response]' : ''), true);
                     confirmShippingRateBtn.disabled = false;
                     paymentIntentInProgress = false;
+                    // Also log the full response for admin debugging
+                    if (window && window.localStorage) {
+                        try { window.localStorage.setItem('lastPaymentIntentError', JSON.stringify(json2, null, 2)); } catch (e) {}
+                    }
                     return;
                 }
                 // If message is 'Reusing existing PaymentIntent', treat as success

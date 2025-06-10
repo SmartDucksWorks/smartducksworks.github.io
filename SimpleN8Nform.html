@@ -232,7 +232,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.72 - 2025-06-04</p>
+        <p>Form Version: 1.0.73 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -315,6 +315,14 @@
                  <div class="form-group checkbox-group">
                     <input type="checkbox" id="residential" name="residential">
                     <label for="residential">This is a residential address</label>
+                </div>
+                <div class="form-group">
+                    <div style="font-weight: bold; margin-bottom: 4px;">SSID and Password</div>
+                    <div style="font-size: 0.95em; color: #555; margin-bottom: 8px;">Required to write directly to your SmartDucks but not stored.</div>
+                    <label for="wifiSsid">SSID:</label>
+                    <input type="text" id="wifiSsid" name="wifiSsid" autocomplete="off">
+                    <label for="wifiPassword" style="margin-top: 8px;">Password:</label>
+                    <input type="password" id="wifiPassword" name="wifiPassword" autocomplete="off">
                 </div>
             </fieldset>
 
@@ -937,8 +945,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     paymentIntentInProgress = false;
                     return;
                 }
+                // If message is 'Reusing existing PaymentIntent', treat as success
+                if (json2.message && json2.message.toLowerCase().includes('reusing existing paymentintent')) {
+                    setPaymentStatus('Payment intent found. Please enter your card details below.', false);
+                } else {
+                    setPaymentStatus('Payment intent created! Please enter your card details below.', false);
+                }
                 paymentIntentClientSecret = clientSecret;
-                setPaymentStatus('Payment intent created! Please enter your card details below.', false);
                 showStripeCardUI(paymentIntentClientSecret);
                 confirmShippingRateBtn.disabled = false;
                 paymentIntentInProgress = false;
@@ -989,8 +1002,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     paymentIntentInProgress = false;
                     return;
                 }
+                // If message is 'Reusing existing PaymentIntent', treat as success
+                if (json2.message && json2.message.toLowerCase().includes('reusing existing paymentintent')) {
+                    setPaymentStatus('Payment intent found. Please enter your card details below.', false);
+                } else {
+                    setPaymentStatus('Payment intent created! Please enter your card details below.', false);
+                }
                 paymentIntentClientSecret = clientSecret;
-                setPaymentStatus('Payment intent created! Please enter your card details below.', false);
                 showStripeCardUI(paymentIntentClientSecret);
                 confirmShippingRateBtn.disabled = false;
                 paymentIntentInProgress = false;

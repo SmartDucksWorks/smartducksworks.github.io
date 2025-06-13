@@ -862,6 +862,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const metadata = {
             instructions: (typeof orderDetails.instructions === 'string') ? orderDetails.instructions : '',
             // Add future metadata fields here, always as strings
+            idempotencyKey: orderDetails.idempotencyKey || ''
         };
         // Debug: log outgoing payment intent payload for admin verification
         if (window && window.localStorage) {

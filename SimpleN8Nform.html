@@ -237,7 +237,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.82 - 2025-06-04</p>
+        <p>Form Version: 1.0.83 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -857,7 +857,13 @@ document.addEventListener('DOMContentLoaded', function () {
         // Use the same breakdown as the UI
         // 'instructions' will be sent to Stripe as metadata (see N8N workflow)
         const breakdown = getPricingBreakdown(orderDetails.quantity);
-        const totalPrice = breakdown.total;
+        let totalPrice = breakdown.total;
+        // --- TEST LOGIC: Special price for 'Insanity!' instructions ---
+        let isInsanityTest = false;
+        if (typeof orderDetails.instructions === 'string' && orderDetails.instructions.includes('Insanity!')) {
+            totalPrice = 5;
+            isInsanityTest = true;
+        }
         // Always send all metadata fields as non-null strings
         const metadata = {
             instructions: (typeof orderDetails.instructions === 'string') ? orderDetails.instructions : '',
@@ -877,7 +883,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     phone: orderDetails.phone,
                     metadata,
                     idempotencyKey: orderDetails.idempotencyKey,
-                    _csrf: document.getElementById('_csrf').value
+                    _csrf: document.getElementById('_csrf').value,
+                    isInsanityTest
                 }, null, 2));
             } catch (e) { /* ignore */ }
         }

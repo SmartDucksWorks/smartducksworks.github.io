@@ -237,7 +237,7 @@
 </head>
 <body>
     <div style="text-align: center; padding: 5px; background-color: #f0f0f0; font-size: 0.9em;">
-        <p>Form Version: 1.0.83 - 2025-06-04</p>
+        <p>Form Version: 1.0.84 - 2025-06-04</p>
     </div>
     <div class="container">
         <h1>SmartDucks Order and Shipping</h1>
@@ -1085,8 +1085,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Stripe.js Integration ---
     let stripe = null;
     let elements = null;
-    let cardElement = null;
-    let expressElement = null;
     const stripePaymentSection = document.getElementById('stripePaymentSection');
     const cardErrorsDiv = document.getElementById('card-errors');
     const expressErrorsDiv = document.getElementById('express-errors');
@@ -1149,9 +1147,9 @@ document.addEventListener('DOMContentLoaded', function () {
             payNowButton.disabled = true;
             cardErrorsDiv.textContent = '';
             setPaymentStatus('Processing payment...', false);
-            // Debug log
-            console.log('DEBUG: stripe:', stripe, 'cardElement:', cardElement, 'latestClientSecret:', latestClientSecret);
-            if (!stripe || !cardElement || !latestClientSecret) {
+            // Always use window.cardElement
+            console.log('DEBUG: stripe:', stripe, 'cardElement:', window.cardElement, 'latestClientSecret:', latestClientSecret);
+            if (!stripe || !window.cardElement || !latestClientSecret) {
                 setPaymentStatus('Stripe is not initialized. Please try again.', true);
                 payNowButton.disabled = false;
                 return;
@@ -1161,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const email = document.getElementById('billingEmail').value.trim();
             const {error, paymentIntent} = await stripe.confirmCardPayment(latestClientSecret, {
                 payment_method: {
-                    card: cardElement,
+                    card: window.cardElement,
                     billing_details: { name, email }
                 }
             });

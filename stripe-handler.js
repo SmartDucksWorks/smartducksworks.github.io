@@ -372,3 +372,6 @@ class StripeHandler {
         }
     }
 }
+
+// Make StripeHandler available globally for inline scripts
+window.StripeHandler = StripeHandler;

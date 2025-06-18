@@ -830,6 +830,7 @@ document.addEventListener('DOMContentLoaded', function () {
         shippingRatesContainer.appendChild(paymentStatusDiv);
     }
     // --- StripeHandler integration ---
+    // StripeHandler must be initialized after STRIPE_PUBLISHABLE_KEY is defined
     let stripeHandler = null;
     if (window.StripeHandler) {
         stripeHandler = new window.StripeHandler(STRIPE_PUBLISHABLE_KEY);

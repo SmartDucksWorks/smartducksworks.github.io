@@ -399,6 +399,7 @@
     </div>
 
     <script src="https://js.stripe.com/v3/"></script>
+    <script src="js/stripe-handler.js"></script>
     <script>
     // Show a message if JS is running
     console.log('SmartDucks form JS loaded, version 1.0.53');
@@ -828,6 +829,11 @@ document.addEventListener('DOMContentLoaded', function () {
         paymentStatusDiv.style = 'margin-top:20px; color:#007bff; font-weight:bold;';
         shippingRatesContainer.appendChild(paymentStatusDiv);
     }
+    // --- StripeHandler integration ---
+    let stripeHandler = null;
+    if (window.StripeHandler) {
+        stripeHandler = new window.StripeHandler(STRIPE_PUBLISHABLE_KEY);
+    }
     function setPaymentStatus(msg, isError) {
         paymentStatusDiv.textContent = msg;
         paymentStatusDiv.style.color = isError ? '#c00' : '#007bff';
@@ -942,132 +948,58 @@ document.addEventListener('DOMContentLoaded', function () {
         let persisted = getPersistedOrderData(orderSessionKey);
         let idempotencyKey, customerId;
         if (persisted && persisted.customerId && persisted.idempotencyKey) {
-            // Reuse existing for this order
             idempotencyKey = persisted.idempotencyKey;
             customerId = persisted.customerId;
         } else {
-            // New order/session
             idempotencyKey = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(36).substr(2, 9));
         }
         confirmShippingRateBtn.disabled = true;
         setPaymentStatus('Creating customer...', false);
         const customerPayload = buildCustomerPayload();
         customerPayload.idempotencyKey = idempotencyKey;
-        if (customerId) {
-            // If we already have a customerId, skip customer creation and go straight to payment intent
-            setPaymentStatus('Customer found. Creating payment intent...', false);
-            orderDetails.idempotencyKey = idempotencyKey; // Ensure it is set before building payload
-            const paymentIntentPayload = buildPaymentIntentPayload(customerId, orderDetails);
-            paymentIntentPayload.idempotencyKey = idempotencyKey;
-            fetch('https://duckpond.smartducks.works/webhook/payment-intent', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': document.getElementById('_csrf').value
-                },
-                body: JSON.stringify({ data: paymentIntentPayload })
-            })
-            .then(res2 => res2.json())
-            .then(json2 => {
-                const clientSecret = json2.clientSecret || json2.client_secret;
-                console.log('DEBUG: Received clientSecret from backend:', clientSecret, 'Full backend response:', json2);
+        async function handleStripeFlow() {
+            try {
+                let customerResult = null;
+                if (!customerId) {
+                    if (!stripeHandler) throw new Error('StripeHandler not loaded');
+                    customerResult = await stripeHandler.createCustomer(customerPayload);
+                    if (!customerResult || !customerResult.customerId) {
+                        setPaymentStatus('Error creating customer: ' + (customerResult && customerResult.error ? customerResult.error : 'Unknown error'), true);
+                        confirmShippingRateBtn.disabled = false;
+                        paymentIntentInProgress = false;
+                        return;
+                    }
+                    persistOrderData(orderSessionKey, customerResult.customerId, idempotencyKey);
+                    customerId = customerResult.customerId;
+                    setPaymentStatus('Customer created. Creating payment intent...', false);
+                } else {
+                    setPaymentStatus('Customer found. Creating payment intent...', false);
+                }
+                // Build payment intent using StripeHandler
+                const paymentIntentResult = await stripeHandler.createPaymentIntent({
+                    total: getPricingBreakdown(orderDetails.quantity).total,
+                    shipping: orderDetails.shippingRate,
+                    selectedQuote: orderDetails.shippingRate.id,
+                    ...orderDetails
+                }, customerId);
+                const clientSecret = paymentIntentResult.clientSecret || paymentIntentResult.client_secret;
                 if (!clientSecret) {
-                    // Show full backend response for debugging
-                    setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error') + (json2.error ? ' (' + json2.error + ')' : '') + (json2.status ? ' [status: ' + json2.status + ']' : '') + (json2.statusCode ? ' [code: ' + json2.statusCode + ']' : '') + (json2.paymentIntentId ? ' [paymentIntentId: ' + json2.paymentIntentId + ']' : '') + (json2.paymentIntentStatus ? ' [paymentIntentStatus: ' + json2.paymentIntentStatus + ']' : '') + (json2.paymentIntentAmount ? ' [amount: ' + json2.paymentIntentAmount + ']' : '') + (json2.paymentIntentCurrency ? ' [currency: ' + json2.paymentIntentCurrency + ']' : '') + (json2.client_secret === undefined ? ' [client_secret missing in backend response]' : ''), true);
+                    setPaymentStatus('Error creating payment intent: ' + (paymentIntentResult && paymentIntentResult.error ? paymentIntentResult.error : 'Unknown error'), true);
                     confirmShippingRateBtn.disabled = false;
                     paymentIntentInProgress = false;
-                    // Also log the full response for admin debugging
-                    if (window && window.localStorage) {
-                        try { window.localStorage.setItem('lastPaymentIntentError', JSON.stringify(json2, null, 2)); } catch (e) {}
-                    }
                     return;
-                }
-                // If message is 'Reusing existing PaymentIntent', treat as success
-                if (json2.message && json2.message.toLowerCase().includes('reusing existing paymentintent')) {
-                    setPaymentStatus('Payment intent found. Please enter your card details below.', false);
-                } else {
-                    setPaymentStatus('Payment intent created! Please enter your card details below.', false);
                 }
                 paymentIntentClientSecret = clientSecret;
                 showStripeCardUI(paymentIntentClientSecret);
                 confirmShippingRateBtn.disabled = false;
                 paymentIntentInProgress = false;
-            })
-            .catch(err2 => {
-                setPaymentStatus('Error creating payment intent. Please try again.', true);
+            } catch (err) {
+                setPaymentStatus('Error in payment flow: ' + (err && err.message ? err.message : err), true);
                 confirmShippingRateBtn.disabled = false;
                 paymentIntentInProgress = false;
-            });
-            return;
-        }
-        // If no customerId, create customer as before
-        fetch('https://duckpond.smartducks.works/webhook/create-customer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                type: 'create_customer',
-                data: customerPayload
-            })
-        })
-        .then(res => res.json())
-        .then(json => {
-            if (!json.customerId) {
-                setPaymentStatus('Error creating customer: ' + (json.message || 'Unknown error'), true);
-                confirmShippingRateBtn.disabled = false;
-                paymentIntentInProgress = false;
-                return;
             }
-            // Persist for this order/session
-            persistOrderData(orderSessionKey, json.customerId, idempotencyKey);
-            setPaymentStatus('Customer created. Creating payment intent...', false);
-            orderDetails.idempotencyKey = idempotencyKey; // Ensure it is set before building payload
-            const paymentIntentPayload = buildPaymentIntentPayload(json.customerId, orderDetails);
-            paymentIntentPayload.idempotencyKey = idempotencyKey;
-            fetch('https://duckpond.smartducks.works/webhook/payment-intent', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': document.getElementById('_csrf').value
-                },
-                body: JSON.stringify({ data: paymentIntentPayload })
-            })
-            .then(res2 => res2.json())
-            .then(json2 => {
-                const clientSecret = json2.clientSecret || json2.client_secret;
-                console.log('DEBUG: Received clientSecret from backend:', clientSecret, 'Full backend response:', json2);
-                if (!clientSecret) {
-                    // Show full backend response for debugging
-                    setPaymentStatus('Error creating payment intent: ' + (json2.message || 'Unknown error') + (json2.error ? ' (' + json2.error + ')' : '') + (json2.status ? ' [status: ' + json2.status + ']' : '') + (json2.statusCode ? ' [code: ' + json2.statusCode + ']' : '') + (json2.paymentIntentId ? ' [paymentIntentId: ' + json2.paymentIntentId + ']' : '') + (json2.paymentIntentStatus ? ' [paymentIntentStatus: ' + json2.paymentIntentStatus + ']' : '') + (json2.paymentIntentAmount ? ' [amount: ' + json2.paymentIntentAmount + ']' : '') + (json2.paymentIntentCurrency ? ' [currency: ' + json2.paymentIntentCurrency + ']' : '') + (json2.client_secret === undefined ? ' [client_secret missing in backend response]' : ''), true);
-                    confirmShippingRateBtn.disabled = false;
-                    paymentIntentInProgress = false;
-                    // Also log the full response for admin debugging
-                    if (window && window.localStorage) {
-                        try { window.localStorage.setItem('lastPaymentIntentError', JSON.stringify(json2, null, 2)); } catch (e) {}
-                    }
-                    return;
-                }
-                // If message is 'Reusing existing PaymentIntent', treat as success
-                if (json2.message && json2.message.toLowerCase().includes('reusing existing paymentintent')) {
-                    setPaymentStatus('Payment intent found. Please enter your card details below.', false);
-                } else {
-                    setPaymentStatus('Payment intent created! Please enter your card details below.', false);
-                }
-                paymentIntentClientSecret = clientSecret;
-                showStripeCardUI(paymentIntentClientSecret);
-                confirmShippingRateBtn.disabled = false;
-                paymentIntentInProgress = false;
-            })
-            .catch(err2 => {
-                setPaymentStatus('Error creating payment intent. Please try again.', true);
-                confirmShippingRateBtn.disabled = false;
-                paymentIntentInProgress = false;
-            });
-        })
-        .catch(err => {
-            setPaymentStatus('Error creating customer. Please check your address and try again.', true);
-            confirmShippingRateBtn.disabled = false;
-            paymentIntentInProgress = false;
-        });
+        }
+        handleStripeFlow();
     }
 
     // --- Confirm Shipping Rate Button Handler ---

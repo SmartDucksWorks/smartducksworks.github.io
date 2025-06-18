@@ -1171,6 +1171,103 @@ document.addEventListener('DOMContentLoaded', function () {
                 setPaymentStatus('Payment successful! Thank you for your order.', false);
                 cardErrorsDiv.textContent = '';
                 payNowButton.disabled = true;
+                // --- Trigger shipment creation after payment success ---
+                try {
+                    // Gather all required shipment data
+                    const orderDetails = {
+                        firstName: document.getElementById('firstName').value.trim(),
+                        lastName: document.getElementById('lastName').value.trim(),
+                        email: document.getElementById('email').value.trim(),
+                        phone: phoneInput.value.trim(),
+                        companyName: document.getElementById('companyName').value.trim(),
+                        countryCode: countryInput.value.trim(),
+                        state: stateInput.value.trim(),
+                        city: document.getElementById('city').value.trim(),
+                        postalCode: postalCodeInput.value.trim(),
+                        streetAddress: document.getElementById('streetAddress').value.trim(),
+                        streetAddress2: document.getElementById('streetAddress2').value.trim(),
+                        residential: document.getElementById('residential').checked,
+                        quantity: currentQuantity,
+                        shippingRate: shippingRates[selectedRate],
+                        instructions: document.getElementById('instructions').value.trim(),
+                        address: {
+                            line1: document.getElementById('streetAddress').value.trim(),
+                            line2: document.getElementById('streetAddress2').value.trim(),
+                            city: document.getElementById('city').value.trim(),
+                            state: stateInput.value.trim(),
+                            postal_code: postalCodeInput.value.trim(),
+                            country: countryInput.value.trim()
+                        }
+                    };
+                    // Build rateRequest for shipment
+                    const rateRequest = {
+                        from: {
+                            companyName: "SmartDucks.Works",
+                            streetAddress: "2053 Wildflower Drive",
+                            city: "Orleans",
+                            state: "ON",
+                            postalCode: "K1E 3R5",
+                            countryCode: "CA",
+                            attention: "SmartDucks Support",
+                            phone: "6137993682",
+                            email: "support@smartducks.works"
+                        },
+                        to: {
+                            companyName: orderDetails.companyName || (orderDetails.firstName + ' ' + orderDetails.lastName),
+                            streetAddress: orderDetails.streetAddress,
+                            city: orderDetails.city,
+                            state: orderDetails.state,
+                            postalCode: orderDetails.postalCode,
+                            countryCode: orderDetails.countryCode,
+                            attention: orderDetails.firstName + ' ' + orderDetails.lastName,
+                            phone: orderDetails.phone,
+                            email: orderDetails.email
+                        },
+                        packageType: 'PACKAGE',
+                        unitOfMeasurement: 'IMPERIAL',
+                        shipDate: new Date().toISOString().split('T')[0],
+                        lineItems: [
+                            {
+                                length: 12,
+                                width: 5,
+                                height: 5,
+                                weight: 0.7,
+                                declaredValue: { currency: 'CAD', amount: 1000 },
+                                description: 'SmartDucks',
+                                nmfcCode: '',
+                                freightClass: 'package'
+                            }
+                        ]
+                    };
+                    // Prepare shipment payload
+                    const shipmentPayload = {
+                        rateRequest: rateRequest,
+                        quoteId: orderDetails.shippingRate.id, // Use quoteId from selected rate
+                        customerId: (getPersistedOrderData && typeof getPersistedOrderData === 'function') ? (getPersistedOrderData(getOrderSessionKey(orderDetails))?.customerId || null) : null
+                    };
+                    // POST to shipment webhook
+                    fetch('https://duckpond.smartducks.works/webhook/create-shipment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': document.getElementById('_csrf').value
+                        },
+                        body: JSON.stringify(shipmentPayload)
+                    })
+                    .then(res => res.json())
+                    .then(json => {
+                        if (json.success) {
+                            setPaymentStatus('Shipment created! Tracking info will be sent to your email.', false);
+                        } else {
+                            setPaymentStatus('Payment succeeded, but shipment failed: ' + (json.error || 'Unknown error'), true);
+                        }
+                    })
+                    .catch(err => {
+                        setPaymentStatus('Payment succeeded, but shipment creation failed. Please contact support.', true);
+                    });
+                } catch (err) {
+                    setPaymentStatus('Payment succeeded, but shipment trigger failed. Please contact support.', true);
+                }
             } else {
                 setPaymentStatus('Payment did not complete. Please try again.', true);
                 payNowButton.disabled = false;
